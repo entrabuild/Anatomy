@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Human Pancreas — Interactive 3D</title>
+<style>
+  :root{--glass:rgba(16,14,18,.66);--line:rgba(255,255,255,.09);--txt:#f3efe9;--mut:#a69f99;--acc:#ffb35c;--ins:#4fc3ff;--glu:#ff5fd2}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07070a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  canvas.gl{display:block;outline:none;touch-action:none}
+  .panel{position:fixed;background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  #left{top:16px;left:16px;width:304px;padding:16px 16px 14px;max-height:calc(100vh - 32px);overflow:auto}
+  #left h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.2px}
+  #left .sub{font-size:11.5px;color:var(--mut);margin-top:3px}
+  .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 2px 7px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .gl-row{display:flex;align-items:flex-end;gap:10px}
+  .gl-big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .gl-unit{font-size:12px;color:var(--mut);margin-bottom:4px}
+  .chip{margin-left:auto;font-size:11.5px;font-weight:650;padding:4px 10px;border-radius:20px;border:1px solid}
+  .chip.ok{color:#7dffb3;border-color:rgba(125,255,179,.4);background:rgba(125,255,179,.08)}
+  .chip.hi{color:#ffb35c;border-color:rgba(255,179,92,.5);background:rgba(255,179,92,.1)}
+  .chip.lo{color:#ff7b9c;border-color:rgba(255,123,156,.5);background:rgba(255,123,156,.1)}
+  #chart{width:100%;height:92px;margin-top:10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid var(--line);display:block}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .meter{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mut)}
+  .meter b{color:var(--txt);font-size:13px;font-weight:600;float:right;font-variant-numeric:tabular-nums}
+  .bar{height:5px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:20%;border-radius:4px;transition:width .2s}
+  #story{font-size:12.2px;line-height:1.45;color:#ddd6cf;margin-top:9px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);min-height:54px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:9px}
+  .ctl{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{font:inherit;font-size:12.4px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s,transform .08s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:active{transform:scale(.97)}
+  button.on{background:rgba(255,179,92,.15);border-color:rgba(255,179,92,.55)}
+  #explode{grid-column:1/3;background:linear-gradient(180deg,#e0883a,#b05f1f);border-color:#f3a25c;font-weight:650;font-size:13.5px;padding:11px}
+  #explode:hover{background:linear-gradient(180deg,#ec9447,#bf6a26)}
+  .speed{grid-column:1/3;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut);padding:2px 2px 0}
+  .speed input{flex:1;accent-color:var(--acc)}
+  .speed b{color:var(--txt);font-weight:600;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+  .legend{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:11.5px;color:var(--mut)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+  #right{top:16px;right:16px;width:272px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:12px 10px 10px}
+  #right h2{margin:8px 6px 5px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:600}
+  #list{overflow:auto;flex:1;padding-right:2px}
+  .item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:12.6px;cursor:pointer;border:1px solid transparent}
+  .item:hover{background:rgba(255,255,255,.06)}
+  .item.sel{background:rgba(255,179,92,.12);border-color:rgba(255,179,92,.4)}
+  .item i{width:9px;height:9px;border-radius:50%;flex:none}
+  #info{margin-top:10px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;line-height:1.45;color:#ddd6cf;min-height:74px}
+  #info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--mut);background:var(--glass);border:1px solid var(--line);padding:7px 14px;border-radius:20px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .label{position:absolute;left:0;top:0;font-size:11.8px;font-weight:550;padding:4px 9px;border-radius:7px;background:rgba(14,11,12,.85);border:1px solid rgba(255,255,255,.22);white-space:nowrap;opacity:0;will-change:transform}
+  .label::after{content:"";position:absolute;left:50%;bottom:-10px;width:1px;height:9px;background:rgba(255,255,255,.55)}
+  .label.hot{border-color:var(--acc);background:rgba(70,40,10,.92)}
+  .label.inset{background:rgba(255,179,92,.14);border-color:rgba(255,179,92,.45);font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+  .label.inset::after{display:none}
+  #tip{position:fixed;left:0;top:0;pointer-events:none;max-width:300px;padding:9px 12px;border-radius:10px;background:rgba(14,11,12,.95);border:1px solid rgba(255,179,92,.45);font-size:12.8px;line-height:1.42;opacity:0;transition:opacity .12s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #tip b{display:block;font-size:13.5px;margin-bottom:2px;color:#ffd1a1}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13.5px;color:var(--mut);background:#07070a;z-index:20;transition:opacity .6s}
+  #loading .bar2{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  #loading .bar2::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #listToggle{display:none;position:fixed;top:16px;right:16px;z-index:5}
+  @media (max-width:1100px){#right{display:none;top:64px}#right.open{display:flex}#listToggle{display:block}}
+  @media (max-width:680px){
+    #left{top:auto;bottom:12px;left:12px;right:12px;width:auto;padding:12px;max-height:48vh}
+    #left .sub,.legend,#chart,.meters{display:none}
+    #hint{display:none}
+    #right{left:12px;right:12px;width:auto;max-height:45vh}
+  }
+</style>
+</head>
+<body>
+<div id="loading"><div>Building the pancreas…</div><div class="bar2"></div></div>
+
+<div id="left" class="panel">
+  <h1>Human Pancreas</h1>
+  <div class="sub">Interactive 3D anatomy · digestion &amp; blood-sugar control</div>
+  <div class="sec"><span>Blood glucose</span><span id="clock">08:00</span></div>
+  <div class="gl-row"><div class="gl-big" id="gVal">90</div><div class="gl-unit">mg/dL</div><div class="chip ok" id="gChip">Normal</div></div>
+  <canvas id="chart" width="560" height="184"></canvas>
+  <div class="meters">
+    <div class="meter">Insulin <b id="iVal">20%</b><div class="bar"><i id="iBar" style="background:#4fc3ff"></i></div></div>
+    <div class="meter">Glucagon <b id="nVal">20%</b><div class="bar"><i id="nBar" style="background:#ff5fd2"></i></div></div>
+  </div>
+  <div id="story">Balanced: insulin and glucagon keep blood glucose between 70 and 140 mg/dL.</div>
+  <div class="row3">
+    <button id="meal">🍽 Eat a meal</button>
+    <button id="fast">🏃 Exercise</button>
+    <button id="auto">Auto day</button>
+  </div>
+  <div class="ctl">
+    <button id="explode">Explode</button>
+    <button id="cut">Cutaway</button>
+    <button id="flow" class="on">Flows on</button>
+    <button id="pause">Pause</button>
+    <button id="inset" class="on">Lobule view</button>
+    <button id="reset">Reset view</button>
+    <div class="speed">Speed <input id="speed" type="range" min="0.25" max="3" step="0.05" value="1"><b id="speedTxt">1.0×</b></div>
+  </div>
+  <div class="legend">
+    <div><i style="background:#ffb84a"></i>Digestive enzymes</div>
+    <div><i style="background:#7ddc4c"></i>Bile</div>
+    <div><i style="background:#4fc3ff"></i>Insulin</div>
+    <div><i style="background:#ff5fd2"></i>Glucagon</div>
+    <div><i style="background:#ffffff"></i>Glucose</div>
+    <div><i style="background:#ff4236"></i>Arterial blood</div>
+  </div>
+</div>
+
+<button id="listToggle">Structures</button>
+<div id="right" class="panel">
+  <div id="list"></div>
+  <div id="info"><b>Explore</b>Hover any structure, or pick one from this list to highlight it.</div>
+</div>
+
+<div id="hint">Drag to rotate · Scroll to zoom · Hover to identify</div>
+<div id="labels"></div>
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ================= math helpers ================= */
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+let seed = 31337;
+const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const PERM = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+function grad(h, x, y, z) { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
+function noise(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const X = fx & 255, Y = fy & 255, Z = fz & 255; x -= fx; y -= fy; z -= fz;
+  const u = fade(x), v = fade(y), w = fade(z), P = PERM;
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z), u), lerp(grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z), u), v),
+              lerp(lerp(grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1), u), lerp(grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1), u), v), w);
+}
+function fbm(x, y, z, o = 3) { let a = .5, f = 1, s = 0; for (let i = 0; i < o; i++) { s += a * noise(x * f, y * f, z * f); f *= 2.03; a *= .5; } return s; }
+function worley3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z); let f1 = 9, f2 = 9;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+    const cx = xi + dx, cy = yi + dy, cz = zi + dz, h = PERM[(PERM[(PERM[cx & 255] + (cy & 255)) & 255] + (cz & 255)) & 255];
+    const d = (cx + PERM[h] / 255 - x) ** 2 + (cy + PERM[h + 1] / 255 - y) ** 2 + (cz + PERM[h + 2] / 255 - z) ** 2;
+    if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+  }
+  return [Math.sqrt(f1), Math.sqrt(f2)];
+}
+
+/* ================= glucose regulation model (minutes) ================= */
+function makeSim() { return { G: 90, I: 0.2, Gn: 0.2, C: 0, ex: 0, exT: 0, ra: 0 }; }
+function stepSim(S, min) {
+  const n = Math.max(1, Math.ceil(min / 0.5)), h = min / n;
+  for (let k = 0; k < n; k++) {
+    S.ra = 0.03 * S.C; S.C -= S.ra * h;                                   // sugar absorbed from the gut
+    if (S.exT > 0) { S.exT -= h; S.ex = 2.2; } else S.ex = 0;            // exercise / fasting demand
+    const hep = Math.max(0, 1.0 + 3.2 * (S.Gn - 0.2) - 1.4 * (S.I - 0.2));  // liver releases glucose
+    const up = (S.G / 90) * Math.max(0.2, 1.0 + 3.0 * (S.I - 0.2)) + S.ex;   // muscle & fat take it up
+    S.G = clamp(S.G + (S.ra * 2.8 + hep - up) * h, 40, 320);
+    const It = clamp(0.2 + (S.G - 90) / 60, 0.03, 1), Gt = clamp(0.2 + (90 - S.G) / 28, 0.02, 1);
+    S.I += (It - S.I) * Math.min(1, 0.055 * h); S.Gn += (Gt - S.Gn) * Math.min(1, 0.05 * h);
+  }
+}
+
+/* ================= anatomy layout (anterior view; patient's right = viewer's left = -x) ================= */
+const PANC_C = [V(-1.2, -0.62, 0), V(-1.22, -0.15, 0), V(-1.05, 0.25, 0), V(-0.5, 0.42, 0), V(0.35, 0.55, 0), V(1.25, 0.7, 0), V(2.05, 0.95, 0), V(2.8, 1.25, 0)];
+const SEG = { HEAD: [0, 0.22], NECK: [0.22, 0.33], BODY: [0.33, 0.7], TAIL: [0.7, 1] };
+const pW = u => (u < 0.17 ? 1.05 : u < 0.3 ? lerp(1.05, 0.55, ss(0.17, 0.3, u)) : u < 0.45 ? lerp(0.55, 0.76, ss(0.3, 0.45, u)) : u < 0.75 ? lerp(0.76, 0.62, (u - 0.45) / 0.3) : lerp(0.62, 0.34, (u - 0.75) / 0.25));
+const pD = u => (u < 0.17 ? 0.7 : u < 0.3 ? lerp(0.7, 0.42, ss(0.17, 0.3, u)) : u < 0.45 ? lerp(0.42, 0.52, ss(0.3, 0.45, u)) : lerp(0.52, 0.36, (u - 0.45) / 0.55));
+const endRound = u => Math.sqrt(clamp01(Math.min(u / 0.035, (1 - u) / 0.03))) * 0.85 + 0.15 * clamp01(Math.min(u / 0.035, (1 - u) / 0.03));
+const UNC_C = [V(-1.05, -0.62, -0.05), V(-0.62, -0.85, -0.3), V(-0.16, -0.8, -0.5), V(0.1, -0.62, -0.55)];
+const DUO = [V(-0.55, 1.22, 0.42), V(-1.2, 1.28, 0.25), V(-1.9, 1.18, 0.05), V(-2.28, 0.75, 0), V(-2.32, 0, 0), V(-2.25, -0.85, 0), V(-1.85, -1.38, 0), V(-0.9, -1.5, 0.05), V(0.2, -1.5, 0.05), V(0.85, -1.2, 0), V(1.1, -0.55, -0.05), V(1.3, -0.3, 0.15), V(1.75, -0.45, 0.35)];
+const STOM = [V(0.4, 1.62, 0.58), V(-0.12, 1.36, 0.52), V(-0.55, 1.22, 0.42)];
+const AMP = V(-1.9, -0.15, -0.03), PAPILLA = V(-2.02, -0.15, -0.02), MINOR_PAP = V(-2.0, 0.42, 0.02);
+const MAIN_DUCT = [V(2.7, 1.18, 0.02), V(2.0, 0.9, 0.02), V(1.25, 0.64, 0.02), V(0.35, 0.5, 0.02), V(-0.5, 0.36, 0.02), V(-1.0, 0.14, 0.02), V(-1.32, -0.1, 0.01), V(-1.62, -0.18, -0.01), AMP];
+const ACC_DUCT = [V(-0.55, 0.38, 0.02), V(-1.2, 0.46, 0.02), MINOR_PAP];
+const CBD = [V(-1.25, 2.3, 0.05), V(-1.4, 1.7, -0.25), V(-1.55, 1.1, -0.3), V(-1.62, 0.5, -0.22), V(-1.75, 0.0, -0.1), AMP];
+const CHD = [V(-1.12, 3.2, 0), V(-1.2, 2.72, 0.03), V(-1.25, 2.3, 0.05)];
+const GB = [V(-3.12, 1.68, 0.92), V(-2.98, 1.9, 0.78), V(-2.75, 2.2, 0.56), V(-2.45, 2.5, 0.34), V(-2.25, 2.62, 0.25)];
+const CYSTIC = [V(-2.25, 2.62, 0.25), V(-2.0, 2.66, 0.22), V(-1.75, 2.5, 0.2), V(-1.55, 2.45, 0.12), V(-1.25, 2.3, 0.05)];
+const AORTA = [V(0.32, 2.4, -1.35), V(0.32, 0.0, -1.35), V(0.32, -2.6, -1.35)];
+const CELIAC = [V(0.32, 1.55, -1.05), V(0.32, 1.62, -0.85), V(0.32, 1.66, -0.65)];
+const SPL_A = [V(0.32, 1.66, -0.65), V(0.8, 1.28, -0.35), V(1.1, 1.36, -0.22), V(1.45, 1.2, -0.2), V(1.8, 1.42, -0.18), V(2.15, 1.38, -0.2), V(2.55, 1.66, -0.15), V(3.15, 1.6, -0.2)];
+const HEP_A = [V(0.32, 1.66, -0.65), V(-0.2, 1.76, -0.4), V(-0.75, 1.78, -0.25), V(-1.0, 2.5, -0.15), V(-1.05, 3.1, -0.1)];
+const GDA = [V(-0.75, 1.78, -0.25), V(-0.95, 1.25, -0.2), V(-1.05, 0.75, 0.3), V(-1.55, 0.3, 0.38), V(-1.66, -0.3, 0.37), V(-1.4, -0.74, 0.32), V(-0.6, -0.96, 0.2), V(0.18, -0.95, -0.02)];
+const LGA = [V(0.32, 1.66, -0.65), V(0.36, 2.1, -0.4), V(0.22, 2.5, -0.2)];
+const SMA = [V(0.32, 0.95, -1.05), V(0.26, 0.3, -0.55), V(0.2, -0.6, -0.05), V(0.2, -1.5, 0.5), V(0.2, -2.55, 0.56)];
+const SMV = [V(-0.12, -2.55, 0.56), V(-0.12, -1.5, 0.5), V(-0.1, -0.9, 0.0), V(-0.08, -0.2, -0.38), V(-0.05, 0.55, -0.45)];
+const SPL_V = [V(3.15, 1.25, -0.35), V(2.4, 1.05, -0.36), V(1.6, 0.82, -0.36), V(0.8, 0.62, -0.42), V(0.3, 0.55, -0.45), V(-0.05, 0.55, -0.45)];
+const PORTAL = [V(-0.05, 0.55, -0.45), V(-0.45, 1.3, -0.36), V(-0.85, 2.2, -0.26), V(-1.0, 3.05, -0.2)];
+const INSET_POS = V(2.95, -2.05, 0);
+
+/* ================= geometry helpers ================= */
+const curveOf = pts => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+function taperTube(curve, segs, radial, rFn, dispFn) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], uv = [], idx = [], P = V(), N = V();
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs; curve.getPointAt(u, P);
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, s = Math.sin(a), c = -Math.cos(a), n = frames.normals[i], b = frames.binormals[i];
+      N.set(c * n.x + s * b.x, c * n.y + s * b.y, c * n.z + s * b.z).normalize();
+      const r = rFn(u, a) * (dispFn ? dispFn(P.x + N.x, P.y + N.y, P.z + N.z, u, a) : 1);
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(u * 6, j / radial);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  if (dispFn) g.computeVertexNormals();
+  g.computeBoundingSphere(); return g;
+}
+const tube = (pts, r0, r1, radial = 14, segs) => { const c = curveOf(pts); return taperTube(c, segs || Math.max(16, Math.round(c.getLength() * 40)), radial, u => lerp(r0, r1, u)); };
+function mergeGeoms(list) {
+  let nv = 0, ni = 0; for (const g of list) { nv += g.attributes.position.count; ni += g.index.count; }
+  const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), U = new Float32Array(nv * 2), I = new Uint32Array(ni); let ov = 0, oi = 0;
+  for (const g of list) {
+    P.set(g.attributes.position.array, ov * 3); N.set(g.attributes.normal.array, ov * 3); if (g.attributes.uv) U.set(g.attributes.uv.array, ov * 2);
+    const ia = g.index.array; for (let i = 0; i < ia.length; i++) I[oi + i] = ia[i] + ov;
+    ov += g.attributes.position.count; oi += ia.length;
+  }
+  const m = new THREE.BufferGeometry();
+  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(N, 3)); m.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+  m.setIndex(new THREE.BufferAttribute(I, 1)); m.computeBoundingSphere(); return m;
+}
+function blob(cx, cy, cz, rx, ry, rz, amp = 0.04, sd = 0, seg = 36) {
+  const g = new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), p = g.attributes.position, v = V();
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + amp * fbm(v.x * 2 + sd, v.y * 2, v.z * 2, 3); p.setXYZ(i, cx + v.x * rx * n, cy + v.y * ry * n, cz + v.z * rz * n); }
+  g.computeVertexNormals(); return g;
+}
+let NM;
+function phys(o) { return new THREE.MeshPhysicalMaterial(Object.assign({ roughness: 0.42, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.3 }, o)); }
+const tissue = (hex, o = {}) => phys(Object.assign({ color: hex, normalMap: NM, normalScale: new THREE.Vector2(0.25, 0.25), sheen: 0.4, sheenColor: new THREE.Color('#fff0e6'), emissive: new THREE.Color(hex).multiplyScalar(0.05) }, o));
+
+/* ================= parts registry ================= */
+const root = new THREE.Group(), insetRoot = new THREE.Group();
+insetRoot.position.copy(INSET_POS);
+const parts = [], pickables = [];
+let cutZ = 99;                                     // world z of the cutaway plane (99 = no cut)
+function newPart(key, name, desc, explode, color, opts = {}) {
+  const group = new THREE.Group(); (opts.inset ? insetRoot : root).add(group);
+  const p = { key, name, desc, group, explode, color, mats: [], hl: 0, glow: 0, anchor: null, plane: null, sub: [], inset: !!opts.inset, ...opts };
+  parts.push(p); return p;
+}
+function clipOf(part) { if (!part.plane) part.plane = new THREE.Plane(V(0, 0, -1), 99); return [part.plane]; }
+function addMesh(part, mesh, parent, info, pick = true) {
+  (parent || part.group).add(mesh);
+  mesh.userData.part = part; if (info) mesh.userData.info = info; if (pick) pickables.push(mesh);
+  const m = mesh.material;
+  if (m.emissive && !part.mats.includes(m)) { m.userData.baseEm = m.emissive.clone(); part.mats.push(m); }
+  return mesh;
+}
+function instanced(part, geo, mat, list, info) {    // list: [{p, s(Vector3 scale), q(optional quaternion), c(optional Color)}]
+  const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
+  list.forEach((e, i) => { m4.compose(e.p, e.q || q0, e.s); im.setMatrixAt(i, m4); if (e.c) im.setColorAt(i, e.c); });
+  im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere();
+  return addMesh(part, im, null, info);
+}
+
+/* ================= PANCREAS ================= */
+const pcurve = curveOf(PANC_C);
+function pancFrame(u, C, N) { pcurve.getPointAt(u, C); const T = pcurve.getTangentAt(u); N.set(-T.y, T.x, 0).normalize(); }
+function pancColor(x, y, z, c) {
+  const [f1, f2] = worley3(x * 5.2, y * 5.2, z * 5.2), edge = 1 - ss(0, 0.09, f2 - f1), n = noise(x * 3, y * 3, z * 3) * .5 + .5;
+  c.setRGB(0.92, 0.72, 0.56).multiplyScalar(0.9 + 0.14 * n).lerp(new THREE.Color(0.72, 0.42, 0.36), edge * 0.55);
+  return c;
+}
+const lobDisp = (x, y, z) => { const [f1, f2] = worley3(x * 5.2, y * 5.2, z * 5.2); return 1 + 0.06 * ss(0, 0.25, f2 - f1) - 0.03 + 0.02 * noise(x * 9, y * 9, z * 9); };
+function sweepSegment(u0, u1, segs = 90, radial = 72) {
+  const pos = [], col = [], uv = [], idx = [], C = V(), N = V(), c = new THREE.Color();
+  for (let i = 0; i <= segs; i++) {
+    const u = lerp(u0, u1, i / segs); pancFrame(u, C, N); const er = endRound(u), w = pW(u) / 2 * er, d = pD(u) / 2 * er;
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      let x = C.x + N.x * w * ca, y = C.y + N.y * w * ca, z = C.z + d * sa;
+      const k = lobDisp(x, y, z); x = C.x + (x - C.x) * k; y = C.y + (y - C.y) * k; z = C.z + (z - C.z) * k;
+      pos.push(x, y, z); uv.push(u * 14, j / radial * 4); pancColor(x, y, z, c); col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  // flat end caps where segments meet (seen when exploded)
+  for (const [u, flip] of [[u0, true], [u1, false]]) {
+    if (u <= 0.001 || u >= 0.999) continue;
+    pancFrame(u, C, N); const base = pos.length / 3; pos.push(C.x, C.y, C.z); uv.push(0, 0); pancColor(C.x, C.y, C.z, c); col.push(c.r * 0.92, c.g * 0.88, c.b * 0.86);
+    const w = pW(u) / 2, d = pD(u) / 2;
+    for (let j = 0; j <= radial; j++) { const a = j / radial * Math.PI * 2; let x = C.x + N.x * w * Math.cos(a), y = C.y + N.y * w * Math.cos(a), z = C.z + d * Math.sin(a); const k = lobDisp(x, y, z); x = C.x + (x - C.x) * k; y = C.y + (y - C.y) * k; z = C.z + (z - C.z) * k; pos.push(x, y, z); uv.push(Math.cos(a), Math.sin(a)); pancColor(x, y, z, c); col.push(c.r * 0.92, c.g * 0.88, c.b * 0.86); }
+    for (let j = 0; j < radial; j++) flip ? idx.push(base, base + 1 + j + 1, base + 1 + j) : idx.push(base, base + 1 + j, base + 1 + j + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
+}
+/* the cut face (z = 0) of a segment: lobules separated by pale septa */
+function cutFace(u0, u1, segs = 120, rows = 26) {
+  const pos = [], col = [], nor = [], uv = [], idx = [], C = V(), N = V(), c = new THREE.Color(), sep = new THREE.Color(0.97, 0.9, 0.82), lob = new THREE.Color();
+  for (let i = 0; i <= segs; i++) {
+    const u = lerp(u0, u1, i / segs); pancFrame(u, C, N); const w = pW(u) / 2 * endRound(u);
+    for (let j = 0; j <= rows; j++) {
+      const t = j / rows * 2 - 1;
+      let x = C.x + N.x * w * t, y = C.y + N.y * w * t; const k = lobDisp(x, y, 0); x = C.x + (x - C.x) * k * 0.995; y = C.y + (y - C.y) * k * 0.995;
+      pos.push(x, y, 0.002); nor.push(0, 0, 1); uv.push(x, y);
+      const [f1, f2] = worley3(x * 5.2 + 40, y * 5.2, 3.3), edge = 1 - ss(0, 0.07, f2 - f1), gr = noise(x * 34, y * 34, 1.7);
+      lob.setRGB(0.88, 0.6, 0.5).multiplyScalar(0.9 + 0.12 * (noise(x * 6, y * 6, 2) * .5 + .5)); if (gr > 0.3) lob.multiplyScalar(0.88);
+      c.copy(lob).lerp(sep, edge * 0.8); col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < rows; j++) { const a = i * (rows + 1) + j, b = a + rows + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+const capMeshes = [];
+const ISLETS = [];          // islet positions on the cut face (for hormone release)
+function buildPancreas() {
+  const D = {
+    HEAD: ['Head of pancreas', 'The broad end cradled by the duodenum; the bile duct runs through it to meet the pancreatic duct.', V(-0.5, -0.15, 1.15), '#f0b98f'],
+    NECK: ['Neck of pancreas', 'A short narrow band lying in front of the portal and superior mesenteric veins.', V(0.05, 0.4, 1.55), '#f4c29a'],
+    BODY: ['Body of pancreas', 'The long middle section that crosses in front of the aorta and spine, behind the stomach.', V(0.45, 0.65, 1.15), '#efb68c'],
+    TAIL: ['Tail of pancreas', 'The tapering end reaching toward the spleen — the part richest in insulin-making islets.', V(1.05, 0.75, 0.95), '#e9ad84'],
+  };
+  for (const k in D) {
+    const [nm, ds, ex, colr] = D[k], part = newPart(k, nm, ds, ex, colr);
+    const mat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.46, clearcoat: 0.45, clearcoatRoughness: 0.3, sheen: 0.7, sheenColor: new THREE.Color('#ffe2c8'), normalMap: NM, normalScale: new THREE.Vector2(0.35, 0.35), side: THREE.DoubleSide, clippingPlanes: clipOf(part), emissive: new THREE.Color('#120804') });
+    addMesh(part, new THREE.Mesh(sweepSegment(SEG[k][0], SEG[k][1]), mat));
+    const cm = phys({ color: 0xffffff, vertexColors: true, roughness: 0.6, clearcoat: 0.25, normalMap: NM, normalScale: new THREE.Vector2(0.6, 0.6), side: THREE.DoubleSide, transparent: true, opacity: 0, emissive: new THREE.Color('#100604') });
+    const cap = addMesh(part, new THREE.Mesh(cutFace(SEG[k][0], SEG[k][1]), cm), null, { name: 'Pancreatic lobules (' + nm.split(' ')[0].toLowerCase() + ')', desc: 'The exocrine tissue: hundreds of lobules packed with acini that make about 1.5 litres of digestive juice a day.' });
+    capMeshes.push(cap);
+    const pC = V(), pN = V(); pancFrame((SEG[k][0] + SEG[k][1]) / 2, pC, pN); part.anchor = pC.clone().add(V(0, 0, pD((SEG[k][0] + SEG[k][1]) / 2) / 2));
+  }
+  // uncinate process (hooks behind the superior mesenteric vessels)
+  const un = newPart('UNC', 'Uncinate process', 'A hook of the head that curls behind the superior mesenteric vessels.', V(0.15, -0.95, 0.45), '#ebb088');
+  const uc = curveOf(UNC_C);
+  const umat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.46, clearcoat: 0.45, sheen: 0.7, sheenColor: new THREE.Color('#ffe2c8'), normalMap: NM, normalScale: new THREE.Vector2(0.35, 0.35), side: THREE.DoubleSide, clippingPlanes: clipOf(un), emissive: new THREE.Color('#120804') });
+  const ug = taperTube(uc, 60, 48, (u, a) => { const r = lerp(0.24, 0.1, u) * Math.sqrt(clamp01((1 - u) / 0.12) * 0.85 + 0.15); return r * (Math.abs(Math.sin(a)) > 0.7 ? 0.8 : 1); }, (x, y, z) => lobDisp(x, y, z));
+  { const p = ug.attributes.position, c = new THREE.Color(), col = new Float32Array(p.count * 3); for (let i = 0; i < p.count; i++) { pancColor(p.getX(i), p.getY(i), p.getZ(i), c); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; } ug.setAttribute('color', new THREE.BufferAttribute(col, 3)); }
+  addMesh(un, new THREE.Mesh(ug, umat)); un.anchor = V(-0.3, -0.85, -0.3);
+
+  // islets of Langerhans, scattered through the cut face (more toward the tail)
+  const isl = newPart('ISL', 'Islets of Langerhans', 'About a million tiny hormone-making clusters; their beta cells make insulin and alpha cells make glucagon.', V(0.25, 0.25, 2.1), '#fff1c4');
+  const C = V(), N = V(), list = [];
+  for (let i = 0; i < 260; i++) {
+    const u = Math.pow(rand(), 0.75) * 0.97 + 0.015, t = (rand() * 2 - 1) * 0.82;
+    pancFrame(u, C, N); const w = pW(u) / 2 * endRound(u);
+    const p = V(C.x + N.x * w * t, C.y + N.y * w * t, 0.004), s = 0.016 + rand() * 0.018;
+    list.push({ p, s: V(s, s, s * 0.6) }); if (i % 6 === 0) ISLETS.push({ p, u });
+  }
+  isl.isletMat = phys({ color: '#fff3d0', roughness: 0.3, clearcoat: 0.8, transparent: true, opacity: 0, emissive: new THREE.Color('#3a2a08') });
+  const im = instanced(isl, new THREE.SphereGeometry(1, 12, 8), isl.isletMat, list);
+  isl.anchor = list[200].p.clone(); isl.cutOnly = true; isl.mesh = im;
+}
+
+/* ================= DUCTS, DUODENUM, GALLBLADDER ================= */
+function hollow(part, pts, rFn, wallHex, lumenHex, info, radial = 40, foldFn) {
+  const c = curveOf(pts), segs = Math.max(40, Math.round(c.getLength() * 50));
+  const wall = tissue(wallHex, { side: THREE.DoubleSide, clippingPlanes: clipOf(part) });
+  const lum = tissue(lumenHex, { side: THREE.BackSide, roughness: 0.55, clippingPlanes: clipOf(part) });
+  addMesh(part, new THREE.Mesh(taperTube(c, segs, radial, rFn), wall), null, info);
+  addMesh(part, new THREE.Mesh(taperTube(c, segs, radial, (u, a) => rFn(u, a) * 0.86, foldFn), lum), null, info);
+  return c;
+}
+let duoCurve, gbFill;
+function buildDigestive() {
+  const du = newPart('DUO', 'Duodenum', 'The first 25 cm of the small intestine; pancreatic enzymes and bile pour in here to digest food.', V(-1.35, -0.55, -0.6), '#e8968d');
+  duoCurve = hollow(du, DUO, u => 0.32 + 0.03 * Math.sin(u * 60) * 0.3, '#e59a8f', '#c96b6a', null, 44,
+    (x, y, z, u) => 1 - 0.09 * Math.max(0, Math.sin(u * 150)));                                   // circular folds of the lining
+  addMesh(du, new THREE.Mesh(blob(PAPILLA.x, PAPILLA.y, PAPILLA.z, 0.05, 0.08, 0.07, 0.05, 3), tissue('#b85a5e', { clippingPlanes: clipOf(du) })), null, { name: 'Major duodenal papilla', desc: 'The nipple-like opening where pancreatic juice and bile enter the duodenum.' });
+  addMesh(du, new THREE.Mesh(blob(MINOR_PAP.x, MINOR_PAP.y, MINOR_PAP.z, 0.035, 0.05, 0.05, 0.05, 4), tissue('#b85a5e', { clippingPlanes: clipOf(du) })), null, { name: 'Minor duodenal papilla', desc: 'Opening of the accessory pancreatic duct, a little above the major papilla.' });
+  du.anchor = V(-2.32, 0.2, 0.3);
+  const st = newPart('STO', 'Stomach (pyloric end)', 'Churns food into chyme and lets it into the duodenum through the pyloric sphincter.', V(0.7, 1.15, 0.6), '#e7a59a');
+  hollow(st, STOM, u => lerp(0.58, 0.34, ss(0, 1, u)), '#e4a296', '#c97872', null, 44);
+  addMesh(st, new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.06, 12, 40).rotateY(Math.PI / 2 + 0.35).translate(-0.5, 1.23, 0.41), tissue('#d4877d', { clippingPlanes: clipOf(st) })), null, { name: 'Pyloric sphincter', desc: 'A ring of muscle that meters chyme from the stomach into the duodenum.' });
+  st.anchor = V(0.05, 1.45, 0.75);
+
+  const md = newPart('PD', 'Main pancreatic duct', 'Runs the length of the gland collecting enzyme-rich juice and delivers it to the duodenum.', V(-0.1, -0.25, 2.5), '#f6e2a0');
+  const dm = tissue('#f3dfa6', { roughness: 0.35, clearcoat: 0.8 });
+  addMesh(md, new THREE.Mesh(tube(MAIN_DUCT, 0.04, 0.07, 14), dm));
+  addMesh(md, new THREE.Mesh(tube(ACC_DUCT, 0.032, 0.04, 12), dm), null, { name: 'Accessory pancreatic duct', desc: 'A smaller duct (of Santorini) draining the upper head into the minor papilla.' });
+  // side branches into the lobules (visible on the cut face)
+  const br = [], mc = curveOf(MAIN_DUCT), C = V(), N = V();
+  for (let i = 0; i < 46; i++) {
+    const u = 0.04 + i / 46 * 0.86, p = mc.getPointAt(u), side = i % 2 ? 1 : -1;
+    const pu = clamp01(1 - u * 0.95); pancFrame(clamp(pu, 0.02, 0.98), C, N);
+    const w = pW(pu) / 2 * 0.78, e = p.clone().addScaledVector(N, side * w * (0.6 + rand() * 0.35)); e.z = 0.02;
+    const m = p.clone().lerp(e, 0.5).add(V((rand() - .5) * 0.08, (rand() - .5) * 0.08, 0));
+    br.push(tube([p, m, e], 0.018, 0.008, 6, 10));
+    const e2 = m.clone().addScaledVector(N, side * 0.12).add(V(0.08 * (rand() - .5), 0.08 * (rand() - .5), 0)); br.push(tube([m, m.clone().lerp(e2, 0.5), e2], 0.01, 0.006, 5, 6));
+  }
+  addMesh(md, new THREE.Mesh(mergeGeoms(br), dm), null, { name: 'Interlobular ducts', desc: 'Branch ducts that drain each lobule into the main pancreatic duct.' });
+  md.anchor = curveOf(MAIN_DUCT).getPointAt(0.42);
+
+  const amp = newPart('AMP', 'Ampulla of Vater & sphincter of Oddi', 'Where the bile duct and pancreatic duct merge; a muscle ring controls when their juices enter the duodenum.', V(-0.7, -0.45, 2.1), '#d9775f');
+  addMesh(amp, new THREE.Mesh(blob(AMP.x, AMP.y, AMP.z, 0.11, 0.1, 0.1, 0.04, 6), tissue('#e7c08a')), null, { name: 'Hepatopancreatic ampulla', desc: 'The short shared chamber where bile and pancreatic juice mix before entering the duodenum.' });
+  addMesh(amp, new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.035, 10, 32).rotateY(Math.PI / 2).translate(AMP.x - 0.06, AMP.y, AMP.z), tissue('#c8654f')), null, { name: 'Sphincter of Oddi', desc: 'A muscular valve that opens after meals to let bile and pancreatic juice flow into the gut.' });
+  amp.anchor = AMP.clone();
+
+  const cb = newPart('CBD', 'Common bile duct', 'Carries bile from the liver and gallbladder down through the pancreatic head to the duodenum.', V(-0.75, 0.75, 1.5), '#9fcf63');
+  const bm = tissue('#a7c96b', { roughness: 0.35, clearcoat: 0.7 });
+  addMesh(cb, new THREE.Mesh(tube(CBD, 0.095, 0.08, 16), bm));
+  addMesh(cb, new THREE.Mesh(tube(CHD, 0.08, 0.095, 14), bm), null, { name: 'Common hepatic duct', desc: 'Brings bile down from the liver (cut here) to meet the cystic duct.' });
+  cb.anchor = V(-1.55, 1.1, -0.3);
+
+  const gb = newPart('GB', 'Gallbladder', 'Stores and concentrates bile, then squeezes it out after a fatty meal.', V(-1.35, 0.95, 0.75), '#6f9a3b');
+  const gc = hollow(gb, GB, u => 0.44 * Math.sqrt(clamp01(u / 0.14)) * (u > 0.55 ? lerp(1, 0.38, (u - 0.55) / 0.45) : 1) + 0.01, '#6b9440', '#4f7a2c', null, 44);
+  gbFill = new THREE.Mesh(taperTube(gc, 80, 40, u => (0.44 * Math.sqrt(clamp01(u / 0.14)) * (u > 0.55 ? lerp(1, 0.38, (u - 0.55) / 0.45) : 1) + 0.01) * 0.8), phys({ color: '#5f8f1f', roughness: 0.15, clearcoat: 1, transparent: true, opacity: 0.6, emissive: new THREE.Color('#1c2a05'), clippingPlanes: clipOf(gb) }));
+  addMesh(gb, gbFill, null, { name: 'Bile (inside gallbladder)', desc: 'Greenish fluid that breaks fat into tiny droplets so pancreatic lipase can digest it.' });
+  addMesh(gb, new THREE.Mesh(tube(CYSTIC, 0.06, 0.07, 12), bm), null, { name: 'Cystic duct', desc: 'Spiral duct linking the gallbladder to the bile duct; bile flows both ways through it.' });
+  gb.anchor = V(-2.85, 2.05, 0.7);
+}
+
+/* ================= BLOOD VESSELS ================= */
+function buildVessels() {
+  const ar = newPart('ART', 'Arteries', 'The celiac trunk and superior mesenteric artery branches that feed the pancreas, duodenum and spleen.', V(0.1, 1.15, -1.7), '#d1262c');
+  const ve = newPart('VEN', 'Veins (portal system)', 'The splenic and superior mesenteric veins carry insulin, glucagon and absorbed sugar to the liver via the portal vein.', V(0, -0.5, -2.6), '#3e56b8');
+  const am = tissue('#c8252c', { roughness: 0.3, clearcoat: 0.85 }), vm = tissue('#3a52b2', { roughness: 0.3, clearcoat: 0.85 });
+  const A = (pts, r0, r1, nm, ds) => addMesh(ar, new THREE.Mesh(tube(pts, r0, r1, 16), am), null, { name: nm, desc: ds });
+  A(AORTA, 0.3, 0.27, 'Abdominal aorta', 'The main artery of the body; the celiac trunk and SMA branch from its front.');
+  A(CELIAC, 0.11, 0.1, 'Celiac trunk', 'Short trunk that splits into the splenic, common hepatic and left gastric arteries.');
+  A(SPL_A, 0.07, 0.06, 'Splenic artery', 'Winds along the top of the pancreas toward the spleen, sending branches into the body and tail.');
+  A(HEP_A, 0.075, 0.06, 'Common hepatic artery', 'Supplies the liver and gives off the gastroduodenal artery.');
+  A(GDA, 0.045, 0.035, 'Pancreaticoduodenal arcade', 'Loops of arteries around the pancreatic head and duodenum.');
+  A(LGA, 0.045, 0.04, 'Left gastric artery', 'Supplies the stomach’s inner curve.');
+  A(SMA, 0.1, 0.085, 'Superior mesenteric artery', 'Passes behind the pancreatic neck to feed the small intestine and lower head.');
+  const V2 = (pts, r0, r1, nm, ds) => addMesh(ve, new THREE.Mesh(tube(pts, r0, r1, 16), vm), null, { name: nm, desc: ds });
+  V2(SMV, 0.12, 0.15, 'Superior mesenteric vein', 'Drains the intestines — after a meal it is loaded with absorbed sugar.');
+  V2(SPL_V, 0.11, 0.14, 'Splenic vein', 'Runs behind the pancreas and collects insulin and glucagon from the islets.');
+  V2(PORTAL, 0.18, 0.18, 'Portal vein', 'Carries pancreatic hormones and nutrients straight to the liver.');
+  // small vessels on the cut face
+  const sa = [], sv = [], C = V(), N = V();
+  for (let i = 0; i < 26; i++) {
+    const u = 0.05 + i / 26 * 0.9; pancFrame(u, C, N); const w = pW(u) / 2;
+    const top = C.clone().addScaledVector(N, w * 0.95); top.z = 0.015; const mid = C.clone().addScaledVector(N, w * (0.2 + rand() * 0.3)); mid.z = 0.015;
+    sa.push(tube([top, top.clone().lerp(mid, 0.5).add(V(0.05 * (rand() - .5), 0, 0)), mid], 0.016, 0.008, 6, 10));
+    const bot = C.clone().addScaledVector(N, -w * 0.95); bot.z = 0.015; const m2 = C.clone().addScaledVector(N, -w * (0.15 + rand() * 0.3)); m2.z = 0.015;
+    sv.push(tube([m2, m2.clone().lerp(bot, 0.5).add(V(0.05 * (rand() - .5), 0, 0)), bot], 0.008, 0.018, 6, 10));
+  }
+  addMesh(ar, new THREE.Mesh(mergeGeoms(sa), am), null, { name: 'Intralobular arterioles', desc: 'Tiny arteries that carry blood into each lobule and islet.' });
+  addMesh(ve, new THREE.Mesh(mergeGeoms(sv), vm), null, { name: 'Pancreatic venules', desc: 'Collect hormone-rich blood from the islets and drain it toward the splenic vein.' });
+  ar.anchor = V(1.8, 1.42, -0.18); ve.anchor = V(-0.45, 1.3, -0.36);
+}
+
+/* ================= MAGNIFIED LOBULE (acini + islet) ================= */
+const INS = {};
+function buildInset() {
+  const ISC = V(0.38, 0.05, 0), ISR = 0.42;
+  // acini placed around the islet
+  const acini = [];
+  for (let k = 0; k < 13; k++) {
+    const a = k / 13 * Math.PI * 2 + 0.2, r = 0.82 + (k % 2) * 0.2;
+    const p = V(ISC.x + Math.cos(a) * r * 1.05, ISC.y + Math.sin(a) * r * 0.92, (rand() - .5) * 0.35);
+    if (p.x < -0.75 && Math.abs(p.y + 0.1) < 0.3) continue;   // leave room for the outlet duct
+    acini.push(p);
+  }
+  for (let k = 0; k < 4; k++) acini.push(V(-0.45 + k * 0.08, 0.62 - k * 0.4, (rand() - .5) * 0.3));
+  // duct tree: acinus → intercalated duct → intralobular duct → outlet
+  const HUB = V(-0.62, -0.1, 0), OUT = V(-1.45, -0.18, 0), nodes = [V(-0.25, 0.62, 0.05), V(-0.3, -0.72, -0.05), V(0.4, 0.95, 0.0), V(0.45, -0.92, 0.0), V(1.15, 0.0, 0.0)];
+  const ductG = [], ductPaths = [];
+  ductG.push(tube([OUT, V(-1.0, -0.14, 0), HUB], 0.07, 0.055, 14));
+  const nodePath = n => { const toHub = [n, n.clone().lerp(HUB, 0.5).add(V(0, 0, 0.03)), HUB]; return toHub; };
+  for (const n of nodes) ductG.push(tube(nodePath(n), 0.035, 0.045, 10));
+  // route from node 4 (right side) around the islet
+  ductG.push(tube([nodes[4], V(1.05, 0.65, 0.05), nodes[2]], 0.03, 0.035, 10));
+  acini.forEach(A => {
+    let best = 0, bd = 1e9; nodes.forEach((n, i) => { const d = n.distanceTo(A); if (d < bd) { bd = d; best = i; } });
+    const n = nodes[best], m = A.clone().lerp(n, 0.5).add(V((rand() - .5) * 0.06, (rand() - .5) * 0.06, 0));
+    ductG.push(tube([A, m, n], 0.012, 0.022, 6, 12));
+    const path = [A, m, n];
+    if (best === 4) path.push(V(1.05, 0.65, 0.05), nodes[2]);
+    path.push(...nodePath(path[path.length - 1]).slice(1), V(-1.0, -0.14, 0), OUT);
+    ductPaths.push({ A, path });
+  });
+  const dp = newPart('I_DUCT', 'Intercalated & intralobular ducts', 'Tiny ducts lined by cells that add bicarbonate, which neutralises stomach acid in the duodenum.', V(-0.15, -0.35, 0.35), '#f3dfa6', { inset: true });
+  addMesh(dp, new THREE.Mesh(mergeGeoms(ductG), phys({ color: '#f3dfa6', roughness: 0.3, clearcoat: 0.8, transparent: true, opacity: 0.85, emissive: new THREE.Color('#2a1f08') })));
+  dp.anchor = V(-1.0, -0.14, 0);
+  // acinar cells around each acinus lumen, with zymogen granules at their tips
+  const ap = newPart('I_ACI', 'Acinar cells', 'Wedge-shaped cells that pack digestive enzymes (amylase, lipase, proteases) into granules and release them into the ducts.', V(-0.35, 0.35, 0.45), '#c77ba6', { inset: true });
+  const cells = [], grans = [], up = V(0, 1, 0);
+  acini.forEach(A => {
+    for (let i = 0; i < 9; i++) {
+      const ph = i / 9 * Math.PI * 2, th = 0.9 + (i % 3) * 0.55, d = V(Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)).normalize();
+      const q = new THREE.Quaternion().setFromUnitVectors(up, d);
+      cells.push({ p: A.clone().addScaledVector(d, 0.105), s: V(0.062, 0.085, 0.062), q, c: new THREE.Color().setHSL(0.88 + rand() * 0.04, 0.38, 0.55 + rand() * 0.07) });
+      for (let g = 0; g < 3; g++) grans.push({ p: A.clone().addScaledVector(d, 0.045 + rand() * 0.02).add(V((rand() - .5) * 0.03, (rand() - .5) * 0.03, (rand() - .5) * 0.03)), s: V(0.012, 0.012, 0.012) });
+    }
+  });
+  instanced(ap, new THREE.SphereGeometry(1, 14, 10), phys({ color: 0xffffff, roughness: 0.45, clearcoat: 0.4, emissive: new THREE.Color('#1a0812') }), cells);
+  instanced(ap, new THREE.SphereGeometry(1, 8, 6), phys({ color: '#ffb84a', roughness: 0.3, emissive: new THREE.Color('#5a2a00') }), grans, { name: 'Zymogen granules', desc: 'Packets of inactive enzymes stored at the cell tip until a meal triggers their release.' });
+  ap.anchor = acini[2].clone();
+  // islet cells: beta core, alpha & delta at the rim
+  const beta = [], alpha = [], delta = [], betaPts = [], alphaPts = [];
+  for (let i = 0; i < 900 && beta.length + alpha.length + delta.length < 170; i++) {
+    const p = V(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1); if (p.length() > 1) continue;
+    const r = p.length(); p.multiplyScalar(ISR * 0.92).add(ISC);
+    if ([...beta, ...alpha, ...delta].some(e => e.p.distanceTo(p) < 0.075)) continue;
+    const s = V(0.048, 0.048, 0.048);
+    if (r > 0.76 && rand() < 0.62) { (rand() < 0.18 ? delta : alpha).push({ p, s }); } else beta.push({ p, s });
+  }
+  for (const e of beta) betaPts.push(e.p); for (const e of alpha) alphaPts.push(e.p);
+  const isl = newPart('I_ISL', 'Islet of Langerhans', 'A hormone-making island among the enzyme-making acini, laced with capillaries so hormones go straight into the blood.', V(0.3, 0.1, 0.55), '#fff1c4', { inset: true });
+  addMesh(isl, new THREE.Mesh(new THREE.SphereGeometry(ISR + 0.03, 40, 28).translate(ISC.x, ISC.y, ISC.z), phys({ color: '#fff4dc', roughness: 0.2, clearcoat: 1, transparent: true, opacity: 0.16, depthWrite: false, emissive: new THREE.Color('#2a2410') })));
+  isl.anchor = ISC.clone().add(V(0, ISR, 0));
+  const bp = newPart('I_BETA', 'Beta cells (insulin)', 'The majority of islet cells; when blood sugar rises they release insulin, which lets cells absorb glucose.', V(0.45, -0.25, 0.9), '#4fc3ff', { inset: true });
+  instanced(bp, new THREE.SphereGeometry(1, 14, 10), phys({ color: '#7ec9ff', roughness: 0.35, clearcoat: 0.6, emissive: new THREE.Color('#0a2440') }), beta);
+  bp.anchor = ISC.clone();
+  const alp = newPart('I_ALPHA', 'Alpha cells (glucagon)', 'When blood sugar falls they release glucagon, telling the liver to release stored glucose.', V(0.75, 0.4, 0.7), '#ff5fd2', { inset: true });
+  instanced(alp, new THREE.SphereGeometry(1, 14, 10), phys({ color: '#ff8adc', roughness: 0.35, clearcoat: 0.6, emissive: new THREE.Color('#40082c') }), alpha);
+  alp.anchor = alpha.length ? alpha[0].p.clone() : ISC.clone();
+  const dlp = newPart('I_DELTA', 'Delta cells (somatostatin)', 'Release somatostatin, a local brake that tunes down both insulin and glucagon release.', V(0.85, -0.45, 0.55), '#9be36b', { inset: true });
+  instanced(dlp, new THREE.SphereGeometry(1, 14, 10), phys({ color: '#a8e37c', roughness: 0.35, clearcoat: 0.6, emissive: new THREE.Color('#14300a') }), delta.length ? delta : [{ p: ISC.clone().add(V(0, -ISR * 0.9, 0)), s: V(0.048, 0.048, 0.048) }]);
+  dlp.anchor = (delta[0] || { p: ISC }).p.clone();
+  // capillaries threading the islet: arteriole in, venule out
+  const capPaths = [];
+  for (let k = 0; k < 4; k++) {
+    const pts = [V(-0.05, 1.35, 0.1), V(0.15, 0.75, 0.05)];
+    for (let i = 0; i < 7; i++) { const a = rand() * Math.PI * 2, b = Math.acos(rand() * 2 - 1), r = ISR * (0.25 + 0.6 * rand()); pts.push(V(ISC.x + r * Math.sin(b) * Math.cos(a), ISC.y + r * Math.cos(b), ISC.z + r * Math.sin(b) * Math.sin(a))); }
+    pts.push(V(0.85, 0.5, 0.05), V(1.4, 1.15, 0.05));
+    capPaths.push(pts);
+  }
+  const cp = newPart('I_CAP', 'Islet capillaries', 'A dense, leaky capillary web: insulin and glucagon pass straight into the blood and on to the liver.', V(0.2, 0.75, -0.6), '#d23a44', { inset: true });
+  const cg = capPaths.map(p => tube(p, 0.03, 0.03, 8, 120));
+  const capGeo = mergeGeoms(cg), colA = new THREE.Color('#d6262f'), colV = new THREE.Color('#5a4cb8'), cc = new THREE.Color(), cols = new Float32Array(capGeo.attributes.position.count * 3);
+  { let o = 0; for (const g of cg) { const n = g.attributes.position.count; for (let i = 0; i < n; i++) { cc.copy(colA).lerp(colV, ss(0.35, 0.85, Math.floor(i / 9) / 120)); cols[(o + i) * 3] = cc.r; cols[(o + i) * 3 + 1] = cc.g; cols[(o + i) * 3 + 2] = cc.b; } o += n; } }
+  capGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  addMesh(cp, new THREE.Mesh(capGeo, phys({ color: 0xffffff, vertexColors: true, roughness: 0.3, clearcoat: 0.8, emissive: new THREE.Color('#200608') })));
+  cp.anchor = V(-0.05, 1.3, 0.1);
+  // magnifier ring + leader line back to the tail
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.012, 8, 120), new THREE.MeshBasicMaterial({ color: 0xffc489, transparent: true, opacity: 0.45 }));
+  insetRoot.add(ring);
+  Object.assign(INS, { ISC, ISR, acini, ductPaths, betaPts, alphaPts, capPaths, ring });
+}
+
+/* ================= PARTICLE FLOWS ================= */
+const NS = 160;
+function table(pts) {
+  const p = []; for (const q of pts) if (!p.length || p[p.length - 1].distanceToSquared(q) > 1e-10) p.push(q);
+  const cum = [0]; for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + p[i].distanceTo(p[i - 1]));
+  const L = cum[cum.length - 1], tab = new Float32Array((NS + 1) * 3); let k = 1;
+  for (let s = 0; s <= NS; s++) {
+    const d = s / NS * L; while (k < p.length - 1 && cum[k] < d) k++;
+    const t = clamp01((d - cum[k - 1]) / Math.max(1e-9, cum[k] - cum[k - 1]));
+    tab[s * 3] = lerp(p[k - 1].x, p[k].x, t); tab[s * 3 + 1] = lerp(p[k - 1].y, p[k].y, t); tab[s * 3 + 2] = lerp(p[k - 1].z, p[k].z, t);
+  }
+  return { tab, len: L };
+}
+function samp(T, u, out) { const x = clamp01(u) * NS, k = Math.min(NS - 1, Math.floor(x)), t = x - k, a = T.tab; return out.set(lerp(a[k * 3], a[k * 3 + 3], t), lerp(a[k * 3 + 1], a[k * 3 + 4], t), lerp(a[k * 3 + 2], a[k * 3 + 5], t)); }
+const cpts = (pts, n) => { const c = curveOf(pts), o = []; for (let i = 0; i <= n; i++) o.push(c.getPointAt(i / n)); return o; };
+function nearestIdx(arr, p) { let b = 0, bd = 1e9; arr.forEach((q, i) => { const d = q.distanceToSquared(p); if (d < bd) { bd = d; b = i; } }); return b; }
+const FLOW_TYPES = {
+  ENZ: { color: [1.8, 1.05, 0.25], size: 0.85 }, BILE: { color: [0.75, 1.75, 0.35], size: 0.85 }, INS: { color: [0.4, 1.3, 2.0], size: 1.0 },
+  GLN: { color: [2.0, 0.45, 1.6], size: 1.0 }, GLU: { color: [1.7, 1.7, 1.7], size: 0.7 }, BLOOD: { color: [1.8, 0.25, 0.2], size: 0.75 }, CHYME: { color: [1.4, 1.0, 0.6], size: 1.0 },
+};
+let FL;
+function buildFlows() {
+  // organ-level routes
+  const duoPts = cpts(DUO, 120), papI = nearestIdx(duoPts, PAPILLA);
+  const intoGut = duoPts.slice(papI).map((p, i) => p.clone().add(V(0, 0, -0.08 + 0.04 * Math.sin(i))));
+  const ductPts = cpts(MAIN_DUCT, 80).map(p => p.clone().add(V(0, 0, 0.075)));
+  const enzymes = [];
+  for (let s = 0; s < 8; s++) { const st = Math.floor(s / 8 * 70); enzymes.push(table([...ductPts.slice(st), AMP, PAPILLA, ...intoGut])); }
+  enzymes.push(table([...cpts(ACC_DUCT, 20).map(p => p.clone().add(V(0, 0, 0.05))), MINOR_PAP, ...duoPts.slice(nearestIdx(duoPts, MINOR_PAP)).map(p => p.clone().add(V(0, 0, -0.08)))]));
+  const gbIn = cpts(GB, 30).map(p => p.clone().add(V(0, 0, -0.08)));
+  const bile = [table([...gbIn, ...cpts(CYSTIC, 20), ...cpts(CBD, 50), AMP, PAPILLA, ...intoGut]), table([...cpts(CHD, 16), ...cpts(CBD, 50), AMP, PAPILLA, ...intoGut])];
+  const chyme = [table([...cpts(STOM, 20).map(p => p.clone().add(V(0, 0, -0.1))), ...duoPts.map(p => p.clone().add(V(0, 0, -0.1)))])];
+  const pv = cpts(PORTAL, 40), sv = cpts(SPL_V, 60), smv = cpts(SMV, 60);
+  const hormone = ISLETS.map(I => {
+    const useSV = I.u > 0.3, vein = useSV ? sv : smv, k = nearestIdx(vein, I.p);
+    return table([I.p.clone().add(V(0, 0, 0.02)), vein[k].clone().lerp(I.p, 0.4).add(V(0, 0, -0.1)), ...vein.slice(k), ...pv]);
+  });
+  const glucoseGut = [table([...smv, ...pv])];
+  const arterial = [table([...cpts(AORTA.slice(0, 2), 20).slice(0, 12), ...cpts(CELIAC, 6), ...cpts(SPL_A, 60)]), table([...cpts(CELIAC, 6), ...cpts(HEP_A, 40)]), table([...cpts(CELIAC, 6), ...cpts(HEP_A, 12).slice(0, 7), ...cpts(GDA, 60)]), table(cpts(SMA, 60))];
+  // inset routes (local coordinates)
+  const enzI = INS.ductPaths.map(d => table(d.path));
+  const capT = INS.capPaths.map(p => table(cpts(p, 120)));
+  const capSamples = capT.map(T => { const a = []; for (let s = 0; s <= NS; s += 4) a.push(samp(T, s / NS, V())); return a; });
+  const hormoneI = (cellPts) => cellPts.map(p => {
+    let bt = 0, bi = 0, bd = 1e9; capSamples.forEach((arr, t) => arr.forEach((q, i) => { const d = q.distanceToSquared(p); if (d < bd) { bd = d; bt = t; bi = i; } }));
+    const u0 = bi * 4 / NS; const pts = [p.clone()]; for (let s = Math.ceil(u0 * NS); s <= NS; s += 4) pts.push(samp(capT[bt], s / NS, V()));
+    return table(pts);
+  });
+  const insI = hormoneI(INS.betaPts.filter((_, i) => i % 2 === 0)), glnI = hormoneI(INS.alphaPts);
+  FL = { enzymes, bile, chyme, hormone, glucoseGut, arterial, enzI, capT, insI, glnI };
+}
+function makePoints(n, parent) {
+  const g = new THREE.BufferGeometry();
+  for (const [k, s] of [['position', 3], ['color', 3], ['alpha', 1], ['size', 1]]) g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(n * s), s));
+  const p = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: 900 * 0.05 }, uOpacity: { value: 1 } },
+    vertexShader: `attribute vec3 color; attribute float alpha; attribute float size; uniform float uScale; varying vec3 vC; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = size*uScale/max(0.1,-mv.z); gl_Position = projectionMatrix*mv; vC=color; vA=alpha; }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vC; varying float vA;
+      void main(){ float d = length(gl_PointCoord-0.5); float a = smoothstep(0.5,0.0,d); float core = smoothstep(0.2,0.0,d);
+        gl_FragColor = vec4(vC*(0.55+0.95*core), a*vA*uOpacity); }`,
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending
+  }));
+  p.frustumCulled = false; p.renderOrder = 30; parent.add(p);
+  return { pts: p, list: Array.from({ length: n }, () => ({ on: false })), n };
+}
+/* a pool of particles: spawn(type, table, speed) */
+function spawn(pool, type, T, speed, jitter = 0.03) {
+  for (const q of pool.list) if (!q.on) {
+    Object.assign(q, { on: true, type, T, u: 0, sp: speed * (0.8 + rand() * 0.4), j: V(rand() - .5, rand() - .5, rand() - .5).multiplyScalar(jitter * 2) });
+    return q;
+  }
+  return null;
+}
+function updatePool(pool, dt) {
+  const g = pool.pts.geometry, pos = g.attributes.position.array, col = g.attributes.color.array, al = g.attributes.alpha.array, sz = g.attributes.size.array, tmp = V();
+  pool.list.forEach((q, i) => {
+    if (!q.on) { al[i] = 0; return; }
+    q.u += dt * q.sp / q.T.len;
+    if (q.u >= 1) { q.on = false; al[i] = 0; if (q.onEnd) q.onEnd(); return; }
+    samp(q.T, q.u, tmp).add(q.j);
+    const ft = FLOW_TYPES[q.type];
+    pos[i * 3] = tmp.x; pos[i * 3 + 1] = tmp.y; pos[i * 3 + 2] = tmp.z;
+    col[i * 3] = ft.color[0]; col[i * 3 + 1] = ft.color[1]; col[i * 3 + 2] = ft.color[2];
+    al[i] = ss(0, 0.03, q.u) * (1 - ss(0.94, 1, q.u)) * 0.9; sz[i] = ft.size;
+  });
+  g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.attributes.alpha.needsUpdate = true; g.attributes.size.needsUpdate = true;
+}
+
+function buildAll() {
+  buildPancreas(); buildDigestive(); buildVessels(); buildInset(); buildFlows();
+  root.updateMatrixWorld(true); insetRoot.updateMatrixWorld(true);
+  for (const p of parts) if (!p.anchor) { const b = new THREE.Box3().setFromObject(p.group); p.anchor = b.getCenter(V()); if (p.inset) p.anchor.sub(INSET_POS); }
+}
+
+/* ================= renderer & scene ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.localClippingEnabled = true;
+renderer.domElement.className = 'gl';
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+{
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 220, 20, 256, 256, 420);
+  gr.addColorStop(0, '#2a2018'); gr.addColorStop(.5, '#120e0c'); gr.addColorStop(1, '#050405');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+}
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
+const HOME_T = V(0.35, 0.05, 0);
+const homeDist = () => innerWidth / innerHeight < 0.8 ? 21 : 13;
+const sph = (t, r, th, ph) => V(t.x + r * Math.sin(ph) * Math.sin(th), t.y + r * Math.cos(ph), t.z + r * Math.sin(ph) * Math.cos(th));
+const HOME_TH = 0.12, HOME_PH = 1.45;
+camera.position.copy(sph(HOME_T, homeDist(), HOME_TH, HOME_PH));
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.zoomToCursor = true; controls.zoomSpeed = 0.6; controls.rotateSpeed = 0.8;
+controls.target.copy(HOME_T); controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 2.5; controls.maxDistance = 34; controls.enablePan = false;
+scene.add(new THREE.HemisphereLight(0xfff4ea, 0x1a120e, 0.6));
+const key = new THREE.DirectionalLight(0xfff2e6, 2.3); key.position.set(4, 7, 9); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9ab8ff, 1.3); rim.position.set(-7, 4, -7); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffd8c0, 0.55); fill.position.set(-6, -3, 6); scene.add(fill);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 0.95));
+composer.addPass(new OutputPass());
+scene.add(root); scene.add(insetRoot);
+
+function makeNormalMap(size, fine) {
+  const H = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size, cu = Math.cos(u * Math.PI * 2), su = Math.sin(u * Math.PI * 2), cv = Math.cos(v * Math.PI * 2), sv = Math.sin(v * Math.PI * 2);
+    H[y * size + x] = fbm(cu * 4 + cv * 2, su * 4, sv * 4, 3) * 0.6 + fine * noise(cu * 26 + cv * 9, su * 26, sv * 26);
+  }
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(size, size), d = img.data;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const xl = (x - 1 + size) % size, xr = (x + 1) % size, yu = (y - 1 + size) % size, yd = (y + 1) % size;
+    let nx = -(H[y * size + xr] - H[y * size + xl]) * 2.2, ny = -(H[yd * size + x] - H[yu * size + x]) * 2.2, nz = 1;
+    const l = Math.hypot(nx, ny, nz), i = (y * size + x) * 4;
+    d[i] = (nx / l * .5 + .5) * 255; d[i + 1] = (ny / l * .5 + .5) * 255; d[i + 2] = (nz / l * .5 + .5) * 255; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+const state = { explode: false, cut: false, flow: true, paused: false, inset: true, speed: 1, auto: false };
+const S = makeSim();
+let simMin = 0, nextMeal = 30, nextEx = 170;
+const labelsEl = $('labels'), tip = $('tip'), info = $('info');
+let camTween = null;
+function tweenCamera(toP, toT, dur = 1.3) { camTween = { fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT, t: 0, dur }; }
+$('explode').onclick = () => { state.explode = !state.explode; $('explode').textContent = state.explode ? 'Assemble' : 'Explode'; tweenCamera(state.explode ? sph(HOME_T, homeDist() * 1.35, 0.7, 1.25) : sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone()); };
+$('cut').onclick = () => { state.cut = !state.cut; $('cut').classList.toggle('on', state.cut); $('cut').textContent = state.cut ? 'Close cutaway' : 'Cutaway'; };
+$('flow').onclick = () => { state.flow = !state.flow; $('flow').classList.toggle('on', state.flow); $('flow').textContent = state.flow ? 'Flows on' : 'Flows off'; };
+$('pause').onclick = () => { state.paused = !state.paused; $('pause').textContent = state.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', state.paused); };
+$('inset').onclick = () => { state.inset = !state.inset; $('inset').classList.toggle('on', state.inset); };
+$('reset').onclick = () => tweenCamera(sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone());
+$('speed').oninput = e => { state.speed = +e.target.value; $('speedTxt').textContent = state.speed.toFixed(2).replace(/0$/, '') + '×'; };
+$('meal').onclick = () => { S.C += 60; flashStory = 2.5; };
+$('fast').onclick = () => { S.exT = 45; flashStory = 2.5; };
+$('auto').onclick = () => { state.auto = !state.auto; $('auto').classList.toggle('on', state.auto); nextMeal = simMin + 10; nextEx = simMin + 150; };
+$('listToggle').onclick = () => $('right').classList.toggle('open');
+controls.addEventListener('start', () => { camTween = null; });
+let flashStory = 0;
+
+let selected = null, listHover = null;
+function showInfo(o) { info.innerHTML = o ? `<b>${o.name}</b>${o.desc}` : '<b>Explore</b>Hover any structure, or pick one from this list to highlight it.'; }
+function buildList() {
+  const groups = [['Pancreas', ['HEAD', 'UNC', 'NECK', 'BODY', 'TAIL', 'ISL']], ['Ducts & gut', ['PD', 'AMP', 'CBD', 'GB', 'DUO', 'STO']], ['Blood supply', ['ART', 'VEN']], ['Magnified lobule', ['I_ACI', 'I_DUCT', 'I_ISL', 'I_BETA', 'I_ALPHA', 'I_DELTA', 'I_CAP']]];
+  const list = $('list');
+  for (const [title, keys] of groups) {
+    const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+    for (const k of keys) {
+      const p = parts.find(q => q.key === k); if (!p) continue;
+      const el = document.createElement('div'); el.className = 'item'; el.innerHTML = `<i style="background:${p.color}"></i>${p.name}`;
+      el.onmouseenter = () => { listHover = p; }; el.onmouseleave = () => { listHover = null; };
+      el.onclick = () => { selected = selected === p ? null : p; showInfo(selected); if (selected?.inset && !state.inset) $('inset').click(); if ((k === 'ISL') && !state.cut) $('cut').click(); };
+      p.itemEl = el; list.appendChild(el);
+    }
+  }
+}
+const mouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+let mouseIn = false, mouseMoved = false, mx = 0, my = 0, hovered = null, hoveredInfo = null, downAt = null;
+renderer.domElement.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); mouseIn = true; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerleave', () => { mouseIn = false; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => { if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; selected = hovered || null; showInfo(selected ? (hoveredInfo || hovered) : null); });
+function doHover() {
+  let found = null, inf = null;
+  if (mouseIn) {
+    ray.setFromCamera(mouse, camera);
+    for (const h of ray.intersectObjects(pickables, false)) {
+      const o = h.object, m = o.material, part = o.userData.part;
+      if (part.inset && !insetRoot.visible) continue;
+      if (m.clippingPlanes && m.clippingPlanes[0].distanceToPoint(h.point) < 0) continue;
+      if (m.transparent && m.opacity < 0.05) continue;
+      found = part; inf = o.userData.info || null; break;
+    }
+  }
+  const o = found ? (inf || found) : null;
+  if (found !== hovered || inf !== hoveredInfo) {
+    hovered = found; hoveredInfo = inf;
+    if (o) { tip.innerHTML = `<b>${o.name}</b>${o.desc}`; tip.style.opacity = 1; renderer.domElement.style.cursor = 'pointer'; }
+    else { tip.style.opacity = 0; renderer.domElement.style.cursor = ''; }
+  }
+  if (o) { const w = tip.offsetWidth, h = tip.offsetHeight; let x = mx + 18, y = my + 18; if (x + w > innerWidth - 10) x = mx - w - 18; if (y + h > innerHeight - 10) y = my - h - 18; tip.style.transform = `translate(${x}px,${y}px)`; }
+}
+// glucose chart
+const chart = $('chart'), cctx = chart.getContext('2d'), HG = [], HI = [], HN = [];
+function drawChart() {
+  const W = chart.width, H = chart.height, gy = g => H - 10 - (clamp(g, 40, 200) - 40) / 160 * (H - 20);
+  cctx.clearRect(0, 0, W, H);
+  cctx.fillStyle = 'rgba(125,255,179,.07)'; cctx.fillRect(0, gy(140), W, gy(70) - gy(140));
+  cctx.strokeStyle = 'rgba(125,255,179,.25)'; cctx.setLineDash([6, 6]); cctx.lineWidth = 1.5;
+  for (const v of [70, 140]) { cctx.beginPath(); cctx.moveTo(0, gy(v)); cctx.lineTo(W, gy(v)); cctx.stroke(); } cctx.setLineDash([]);
+  const n = HG.length, X = i => W - (n - 1 - i) * (W / 239);
+  const area = (arr, col) => { cctx.beginPath(); cctx.moveTo(X(0), H); arr.forEach((v, i) => cctx.lineTo(X(i), H - v * 46)); cctx.lineTo(X(n - 1), H); cctx.closePath(); cctx.fillStyle = col; cctx.fill(); };
+  if (n > 1) {
+    area(HI, 'rgba(79,195,255,.28)'); area(HN, 'rgba(255,95,210,.28)');
+    cctx.beginPath(); HG.forEach((g, i) => i ? cctx.lineTo(X(i), gy(g)) : cctx.moveTo(X(i), gy(g)));
+    cctx.strokeStyle = '#ffffff'; cctx.lineWidth = 3; cctx.shadowColor = '#ffffff'; cctx.shadowBlur = 6; cctx.stroke(); cctx.shadowBlur = 0;
+  }
+  cctx.fillStyle = 'rgba(220,210,200,.55)'; cctx.font = '19px system-ui'; cctx.fillText('glucose', 10, 24);
+  cctx.fillStyle = 'rgba(79,195,255,.8)'; cctx.fillText('insulin', 100, 24); cctx.fillStyle = 'rgba(255,95,210,.85)'; cctx.fillText('glucagon', 175, 24);
+}
+
+/* ================= loop ================= */
+let last = performance.now(), eAmt = 0, eVel = 0, cutAmt = 0, insVis = 1, uiT = 0, simAcc = 0, flowVis = 1, organPool, insetPool, leader;
+const acc = {};
+function rate(key, perSec, dt, fn) { acc[key] = (acc[key] || 0) + perSec * dt; while (acc[key] >= 1) { acc[key] -= 1; fn(); } }
+const pick = a => a[Math.floor(rand() * a.length)];
+const HLC = new THREE.Color(1.0, 0.62, 0.3), tmpC = new THREE.Color(), tmpV = V();
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  const run = state.paused ? 0 : state.speed, fdt = dt * run;
+  // physiology clock: 3 simulated minutes per second
+  if (run > 0) {
+    const m = dt * 3 * run; simMin += m; stepSim(S, m);
+    if (state.auto) { if (simMin >= nextMeal) { S.C += 60; nextMeal = simMin + 240; flashStory = 2.5; } if (simMin >= nextEx) { S.exT = 40; nextEx = simMin + 240; flashStory = 2.5; } }
+    simAcc += m; if (simAcc >= 1) { simAcc = 0; HG.push(S.G); HI.push(S.I); HN.push(S.Gn); if (HG.length > 240) { HG.shift(); HI.shift(); HN.shift(); } }
+  }
+  // explode
+  eVel += (70 * ((state.explode ? 1 : 0) - eAmt) - 12.5 * eVel) * dt; eAmt += eVel * dt;
+  for (const p of parts) { p.group.position.copy(p.explode).multiplyScalar(eAmt); for (const s of p.sub) s.obj.position.copy(s.v).multiplyScalar(eAmt); }
+  // cutaway: a plane sweeps from the front down to the mid-plane of the gland
+  cutAmt = lerp(cutAmt, state.cut ? 1 : 0, Math.min(1, dt * 2.6)); if (Math.abs(cutAmt - (state.cut ? 1 : 0)) < 0.002) cutAmt = state.cut ? 1 : 0;
+  cutZ = cutAmt > 0.002 ? lerp(1.4, 0.0, ss(0, 1, cutAmt)) : 99;
+  for (const p of parts) if (p.plane) p.plane.constant = cutZ + p.group.position.z;
+  const capA = ss(0.82, 1, cutAmt);
+  for (const m of capMeshes) { m.material.opacity = capA; m.visible = capA > 0.01; }
+  const isl = parts.find(p => p.key === 'ISL'); isl.isletMat.opacity = capA; isl.mesh.visible = capA > 0.01;
+  isl.isletMat.emissive.setRGB(0.25 + 0.5 * S.I * 0.4 + 0.5 * S.Gn * 0.6, 0.18 + 0.2 * S.I, 0.08 + 0.5 * S.I + 0.3 * S.Gn); isl.isletMat.userData.baseEm.copy(isl.isletMat.emissive);
+  gbFill.material.opacity = lerp(0.6, 0.32, clamp01(S.C / 45));
+  // inset visibility
+  insVis = lerp(insVis, state.inset ? 1 : 0, Math.min(1, dt * 5)); insetRoot.visible = insVis > 0.02; insetRoot.scale.setScalar(0.6 + 0.4 * insVis);
+  leader.visible = insetRoot.visible && eAmt < 0.5; INS.ring.rotation.z += dt * 0.1;
+  // camera tween
+  if (camTween) {
+    camTween.t += dt / camTween.dur; const k = ss(0, 1, camTween.t);
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, k);
+    const a = camTween.fromP.clone().sub(camTween.fromT), b = camTween.toP.clone().sub(camTween.toT);
+    const r = lerp(a.length(), b.length(), k); a.normalize(); b.normalize();
+    camera.position.copy(controls.target).addScaledVector(a.lerp(b, k).normalize(), r);
+    if (camTween.t >= 1) camTween = null;
+  }
+  // flows
+  flowVis = lerp(flowVis, state.flow ? 1 - ss(0.02, 0.3, Math.abs(eAmt)) : 0, Math.min(1, dt * 6));
+  organPool.pts.material.uniforms.uOpacity.value = flowVis * (0.55 + 0.45 * cutAmt); insetPool.pts.material.uniforms.uOpacity.value = flowVis;
+  organPool.pts.visible = flowVis > 0.01; insetPool.pts.visible = flowVis > 0.01 && insetRoot.visible;
+  if (fdt > 0 && flowVis > 0.01) {
+    const meal = clamp01(S.C / 30);
+    rate('enz', 7 + 22 * meal, fdt, () => spawn(organPool, 'ENZ', pick(FL.enzymes), 0.55, 0.025));
+    rate('bile', 1.5 + 16 * meal, fdt, () => spawn(organPool, 'BILE', pick(FL.bile), 0.6, 0.03));
+    rate('chy', 12 * meal, fdt, () => spawn(organPool, 'CHYME', FL.chyme[0], 0.5, 0.12));
+    rate('ins', 34 * S.I, fdt, () => spawn(organPool, 'INS', pick(FL.hormone), 0.8, 0.04));
+    rate('gln', 34 * S.Gn, fdt, () => spawn(organPool, 'GLN', pick(FL.hormone), 0.8, 0.04));
+    rate('glu', 2 + 26 * clamp01(S.ra / 1.4), fdt, () => spawn(organPool, 'GLU', FL.glucoseGut[0], 0.9, 0.06));
+    rate('art', 16, fdt, () => spawn(organPool, 'BLOOD', pick(FL.arterial), 1.0, 0.03));
+    rate('artg', 5 * S.G / 90, fdt, () => spawn(organPool, 'GLU', pick(FL.arterial), 1.0, 0.03));
+    if (insetRoot.visible) {
+      rate('ienz', 10 + 26 * meal, fdt, () => spawn(insetPool, 'ENZ', pick(FL.enzI), 0.32, 0.012));
+      rate('iins', 40 * S.I, fdt, () => spawn(insetPool, 'INS', pick(FL.insI), 0.35, 0.01));
+      rate('igln', 40 * S.Gn, fdt, () => spawn(insetPool, 'GLN', pick(FL.glnI), 0.35, 0.01));
+      rate('iblood', 14, fdt, () => spawn(insetPool, 'BLOOD', pick(FL.capT), 0.45, 0.015));
+      rate('iglu', 8 * S.G / 90, fdt, () => spawn(insetPool, 'GLU', pick(FL.capT), 0.45, 0.015));
+    }
+    updatePool(organPool, fdt); updatePool(insetPool, fdt);
+  }
+  // hover + highlight
+  if (mouseMoved || Math.abs(eVel) > 0.02 || camTween) { doHover(); mouseMoved = false; }
+  for (const p of parts) {
+    const on = p === hovered || p === selected || p === listHover;
+    p.hl = lerp(p.hl, on ? 1 : 0, Math.min(1, dt * 10));
+    for (const m of p.mats) { m.emissive.copy(m.userData.baseEm); if (p.hl > 0.002) m.emissive.add(tmpC.copy(HLC).multiplyScalar(p.hl * 0.33)); }
+    p.itemEl?.classList.toggle('sel', p === selected);
+  }
+  // labels
+  const le = ss(0.45, 0.85, eAmt);
+  for (const p of parts) {
+    const el = p.labelEl; if (!el) continue;
+    const vis = (le > 0.01 || p === selected || p === hovered) && (!p.inset || insetRoot.visible) && (p.key !== 'ISL' || capA > 0.3);
+    if (!vis) { el.style.opacity = 0; continue; }
+    tmpV.copy(p.anchor).add(p.group.position);
+    if (p.inset) tmpV.multiplyScalar(insetRoot.scale.x).add(insetRoot.position);
+    tmpV.project(camera);
+    if (tmpV.z > 1) { el.style.opacity = 0; continue; }
+    el.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,calc(-100% - 12px))`;
+    el.style.opacity = Math.max(le, (p === selected || p === hovered) ? 1 : 0);
+    el.classList.toggle('hot', p === hovered || p === selected);
+  }
+  if (insetLabel) {
+    tmpV.copy(insetRoot.position).add(V(0, 1.68 * insetRoot.scale.x, 0)).project(camera);
+    insetLabel.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,-50%)`;
+    insetLabel.style.opacity = insetRoot.visible ? insVis * (1 - le) : 0;
+  }
+  // dashboard
+  if ((uiT += dt) > 0.12) {
+    uiT = 0;
+    $('gVal').textContent = Math.round(S.G);
+    const chip = $('gChip'); chip.className = 'chip ' + (S.G > 140 ? 'hi' : S.G < 70 ? 'lo' : 'ok'); chip.textContent = S.G > 140 ? 'High' : S.G < 70 ? 'Low' : 'Normal';
+    $('iVal').textContent = Math.round(S.I * 100) + '%'; $('iBar').style.width = (S.I * 100).toFixed(0) + '%';
+    $('nVal').textContent = Math.round(S.Gn * 100) + '%'; $('nBar').style.width = (S.Gn * 100).toFixed(0) + '%';
+    const tm = 8 * 60 + simMin, hh = Math.floor(tm / 60) % 24, mm = Math.floor(tm % 60); $('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    let st;
+    if (S.C > 3 && S.G >= 100) st = '<b style="color:#ffb35c">After a meal:</b> sugar is absorbed into the blood → <b style="color:#4fc3ff">beta cells release insulin</b> → muscle, fat and liver cells take up glucose, and enzymes plus bile pour into the duodenum.';
+    else if (S.G > 140) st = '<b style="color:#ffb35c">Glucose high:</b> <b style="color:#4fc3ff">insulin</b> is rising to move sugar out of the blood and into cells.';
+    else if (S.exT > 0 || S.G < 80) st = '<b style="color:#ff7b9c">Glucose falling</b> (exercise or fasting) → <b style="color:#ff5fd2">alpha cells release glucagon</b> → the liver breaks down glycogen and releases glucose.';
+    else if (S.Gn > 0.3) st = '<b style="color:#ff5fd2">Glucagon</b> is bringing glucose back up as the liver releases its stores.';
+    else st = '<b style="color:#7dffb3">Balanced:</b> small, steady amounts of insulin and glucagon hold glucose between 70 and 140 mg/dL.';
+    $('story').innerHTML = st;
+    drawChart();
+  }
+  if (flashStory > 0) { flashStory -= dt; $('story').style.borderColor = 'rgba(255,179,92,' + (0.2 + 0.4 * Math.max(0, flashStory / 2.5)) + ')'; }
+  controls.update();
+  composer.render();
+  requestAnimationFrame(frame);
+}
+let insetLabel;
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  for (const p of [organPool, insetPool]) if (p) p.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+});
+requestAnimationFrame(() => setTimeout(() => {
+  try {
+    NM = makeNormalMap(512, 0.4);
+    buildAll();
+    organPool = makePoints(1900, root); insetPool = makePoints(1000, insetRoot);
+    for (const p of [organPool, insetPool]) p.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+    const C = V(), N = V(); pancFrame(0.86, C, N);
+    const lg = new THREE.BufferGeometry().setFromPoints([C.clone().setZ(0.05), INSET_POS.clone().add(V(-0.6, 1.38, 0))]);
+    leader = new THREE.Line(lg, new THREE.LineDashedMaterial({ color: 0xffc489, dashSize: 0.08, gapSize: 0.06, transparent: true, opacity: 0.7 })); leader.computeLineDistances(); scene.add(leader);
+  } catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong while building the model: ' + err.message; return; }
+  for (const p of parts) { const el = document.createElement('div'); el.className = 'label'; el.textContent = p.name; labelsEl.appendChild(el); p.labelEl = el; }
+  insetLabel = document.createElement('div'); insetLabel.className = 'label inset'; insetLabel.textContent = 'Pancreatic lobule · magnified'; labelsEl.appendChild(insetLabel);
+  buildList();
+  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
+  last = performance.now(); requestAnimationFrame(frame);
+}, 40));
+</script>
+<a id="homeLink" href="../index.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
+<script>if (window.self === window.top) document.getElementById('homeLink').style.display = 'block';</script>
+</body>
+</html>

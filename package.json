@@ -1,0 +1,6 @@
+{
+  "name": "anatomy-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive 3D human anatomy explorer with nine organ modules"
+}

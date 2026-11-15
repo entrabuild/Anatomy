@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Human Nervous System — Interactive 3D</title>
+<style>
+  :root{--glass:rgba(16,13,14,.66);--line:rgba(255,255,255,.09);--txt:#f4eeeb;--mut:#a89c98;--acc:#ff8a6a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07070a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  canvas.gl{display:block;outline:none;touch-action:none}
+  .panel{position:fixed;background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  #left{top:16px;left:16px;width:304px;padding:16px 16px 14px;max-height:calc(100vh - 32px);overflow:auto}
+  #left h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.2px}
+  #left .sub{font-size:11.5px;color:var(--mut);margin-top:3px}
+  .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 2px 7px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .gl-row{display:flex;align-items:flex-end;gap:10px}
+  .gl-big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .gl-unit{font-size:12px;color:var(--mut);margin-bottom:4px}
+  .chip{margin-left:auto;font-size:11.5px;font-weight:650;padding:4px 10px;border-radius:20px;border:1px solid}
+  .chip.ok{color:#7dffb3;border-color:rgba(125,255,179,.4);background:rgba(125,255,179,.08)}
+  .chip.hi{color:#ffb35c;border-color:rgba(255,179,92,.5);background:rgba(255,179,92,.1)}
+  .chip.lo{color:#ff7b9c;border-color:rgba(255,123,156,.5);background:rgba(255,123,156,.1)}
+  #chart{width:100%;height:92px;margin-top:10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid var(--line);display:block}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .meter{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mut)}
+  .meter b{color:var(--txt);font-size:13px;font-weight:600;float:right;font-variant-numeric:tabular-nums}
+  .bar{height:5px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:20%;border-radius:4px;transition:width .2s}
+  #story{font-size:12.2px;line-height:1.45;color:#ddd6cf;margin-top:9px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);min-height:54px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:9px}
+  .ctl{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{font:inherit;font-size:12.4px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s,transform .08s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:active{transform:scale(.97)}
+  button.on{background:rgba(255,138,106,.16);border-color:rgba(255,138,106,.55)}
+  #explode{grid-column:1/3;background:linear-gradient(180deg,#c9503a,#94301f);border-color:#ec7a5f;font-weight:650;font-size:13.5px;padding:11px}
+  #explode:hover{background:linear-gradient(180deg,#d95c45,#a33a26)}
+  .speed{grid-column:1/3;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut);padding:2px 2px 0}
+  .speed input{flex:1;accent-color:var(--acc)}
+  .speed b{color:var(--txt);font-weight:600;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+  .legend{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:11.5px;color:var(--mut)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+  .dist{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;height:84px;align-items:end}
+  .dist>div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px}
+  .dist i{display:block;width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#f2c46a,#c98a3a);height:4%;transition:height .3s;min-height:3px}
+  .dist>div:nth-child(4) i{background:linear-gradient(180deg,#c9925a,#8f5a2e)}
+  .dist>div:nth-child(5) i{background:linear-gradient(180deg,#9a6a40,#6a4220)}
+  .dist span{font-size:10px;color:var(--mut);text-align:center;line-height:1.15}
+  .statrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px}
+  .statrow div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+  .statrow b{display:block;font-size:16px}
+  .statrow span{font-size:10.5px;color:var(--mut)}
+  #seen{width:100%;height:76px;display:block;border-radius:10px;background:#0d0b0c;border:1px solid var(--line)}
+  .phases{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px}
+  .phases div{font-size:11.5px;font-weight:600;text-align:center;padding:7px 4px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);transition:all .3s}
+  .phases small{display:block;font-size:9.8px;font-weight:500;opacity:.75;margin-top:2px}
+  .phases div.on{color:#fff;border-color:rgba(255,138,106,.6);background:rgba(255,138,106,.16)}
+  .split{display:flex;height:9px;border-radius:6px;overflow:hidden;margin-top:2px}
+  .splitk{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:5px}
+  .fn{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .fn button{padding:7px 4px;font-size:12px}
+  #right{top:16px;right:16px;width:272px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:12px 10px 10px}
+  #right h2{margin:8px 6px 5px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:600}
+  #list{overflow:auto;flex:1;padding-right:2px}
+  .item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:12.6px;cursor:pointer;border:1px solid transparent}
+  .item:hover{background:rgba(255,255,255,.06)}
+  .item.sel{background:rgba(255,138,106,.13);border-color:rgba(255,138,106,.42)}
+  .item i{width:9px;height:9px;border-radius:50%;flex:none}
+  #info{margin-top:10px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;line-height:1.45;color:#ddd6cf;min-height:74px}
+  #info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--mut);background:var(--glass);border:1px solid var(--line);padding:7px 14px;border-radius:20px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .label{position:absolute;left:0;top:0;font-size:11.8px;font-weight:550;padding:4px 9px;border-radius:7px;background:rgba(14,11,12,.85);border:1px solid rgba(255,255,255,.22);white-space:nowrap;opacity:0;will-change:transform}
+  .label::after{content:"";position:absolute;left:50%;bottom:-10px;width:1px;height:9px;background:rgba(255,255,255,.55)}
+  .label.hot{border-color:var(--acc);background:rgba(70,22,14,.92)}
+  .label.inset{background:rgba(255,138,106,.14);border-color:rgba(255,138,106,.45);font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+  .label.inset::after{display:none}
+  #tip{position:fixed;left:0;top:0;pointer-events:none;max-width:300px;padding:9px 12px;border-radius:10px;background:rgba(14,11,12,.95);border:1px solid rgba(255,138,106,.45);font-size:12.8px;line-height:1.42;opacity:0;transition:opacity .12s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #tip b{display:block;font-size:13.5px;margin-bottom:2px;color:#ffc2b0}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13.5px;color:var(--mut);background:#07070a;z-index:20;transition:opacity .6s}
+  #loading .bar2{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  #loading .bar2::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #listToggle{display:none;position:fixed;top:16px;right:16px;z-index:5}
+  @media (max-width:1100px){#right{display:none;top:64px}#right.open{display:flex}#listToggle{display:block}}
+  @media (max-width:680px){
+    #left{top:auto;bottom:12px;left:12px;right:12px;width:auto;padding:12px;max-height:48vh}
+    #left .sub,.legend,.meters,.statrow{display:none}
+    #hint{display:none}
+    #right{left:12px;right:12px;width:auto;max-height:45vh}
+  }
+</style>
+</head>
+<body>
+<div id="loading"><div>Building the nervous system…</div><div class="bar2"></div></div>
+
+<div id="left" class="panel">
+  <h1>Human Nervous System</h1>
+  <div class="sub">Interactive 3D anatomy · how signals travel</div>
+  <div class="statrow"><div><b>86 bn</b><span>neurons</span></div><div><b>~72 km</b><span>of nerves</span></div><div><b>120 m/s</b><span>top speed</span></div></div>
+  <div class="sec"><span>Signal pathway</span><span id="modeTxt">All signals</span></div>
+  <div class="fn">
+    <button data-mode="hand">✋ Move hand</button><button data-mode="leg">🦶 Move leg</button><button data-mode="touch">👆 Feel touch</button><button data-mode="reflex">🔨 Knee reflex</button>
+  </div>
+  <div class="row3">
+    <button data-mode="rest">🌿 Rest &amp; digest</button>
+    <button data-mode="fight">⚡ Fight or flight</button>
+    <button data-mode="all" class="on">All signals</button>
+  </div>
+  <div class="meters">
+    <div class="meter">Impulse speed <b id="spVal">70 m/s</b><div class="bar"><i id="spBar" style="background:#ffb070"></i></div></div>
+    <div class="meter">Signals <b id="sgVal">0 /s</b><div class="bar"><i id="sgBar" style="background:#7fdcff"></i></div></div>
+    <div class="meter">Reaction time <b id="rtVal">180 ms</b><div class="bar"><i id="rtBar" style="background:#c890ff"></i></div></div>
+    <div class="meter">Heart rate <b id="hrVal">70 bpm</b><div class="bar"><i id="hrBar" style="background:#ff6a7a"></i></div></div>
+  </div>
+  <div id="story">Signals are always on the move.</div>
+  <div class="ctl">
+    <button id="explode">Explode</button>
+    <button id="inset" class="on">Neuron view</button>
+    <button id="shell" class="on">Body &amp; bones</button>
+    <button id="pause">Pause</button>
+    <button id="reset">Reset view</button>
+    <div class="speed">Speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"><b id="speedTxt">1.0×</b></div>
+  </div>
+  <div class="legend">
+    <div><i style="background:#f4dfbc"></i>Brain &amp; spinal cord</div>
+    <div><i style="background:#f2d27a"></i>Nerves</div>
+    <div><i style="background:#ff9a4a"></i>Motor signals</div>
+    <div><i style="background:#5ad8ff"></i>Sensory signals</div>
+    <div><i style="background:#7fe08a"></i>Autonomic</div>
+    <div><i style="background:#c890ff"></i>Neuron</div>
+  </div>
+</div>
+
+<button id="listToggle">Structures</button>
+<div id="right" class="panel">
+  <div id="list"></div>
+  <div id="info"><b>Explore</b>Hover any structure, or pick one from this list to highlight it.</div>
+</div>
+
+<div id="hint">Drag to rotate · Scroll to zoom · Hover to identify</div>
+<div id="labels"></div>
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ================= math helpers ================= */
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+let seed = 31337;
+const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const PERM = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+function grad(h, x, y, z) { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
+function noise(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const X = fx & 255, Y = fy & 255, Z = fz & 255; x -= fx; y -= fy; z -= fz;
+  const u = fade(x), v = fade(y), w = fade(z), P = PERM;
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z), u), lerp(grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z), u), v),
+              lerp(lerp(grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1), u), lerp(grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1), u), v), w);
+}
+function fbm(x, y, z, o = 3) { let a = .5, f = 1, s = 0; for (let i = 0; i < o; i++) { s += a * noise(x * f, y * f, z * f); f *= 2.03; a *= .5; } return s; }
+function worley3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z); let f1 = 9, f2 = 9;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+    const cx = xi + dx, cy = yi + dy, cz = zi + dz, h = PERM[(PERM[(PERM[cx & 255] + (cy & 255)) & 255] + (cz & 255)) & 255];
+    const d = (cx + PERM[h] / 255 - x) ** 2 + (cy + PERM[h + 1] / 255 - y) ** 2 + (cz + PERM[h + 2] / 255 - z) ** 2;
+    if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+  }
+  return [Math.sqrt(f1), Math.sqrt(f2)];
+}
+
+
+/* ================= geometry helpers ================= */
+const curveOf = pts => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+function taperTube(curve, segs, radial, rFn) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], uv = [], idx = [], P = V(), N = V();
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs; curve.getPointAt(u, P); const r = rFn(u);
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, s = Math.sin(a), c = -Math.cos(a), n = frames.normals[i], b = frames.binormals[i];
+      N.set(c * n.x + s * b.x, c * n.y + s * b.y, c * n.z + s * b.z).normalize();
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(u * 6, j / radial);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+const tube = (pts, r0, r1, radial = 14, segs) => { const c = curveOf(pts); return taperTube(c, segs || Math.max(12, Math.round(c.getLength() * 40)), radial, u => lerp(r0, r1, u)); };
+function mergeGeoms(list) {
+  let nv = 0, ni = 0; for (const g of list) { nv += g.attributes.position.count; ni += g.index.count; }
+  const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), U = new Float32Array(nv * 2), I = new Uint32Array(ni); let ov = 0, oi = 0;
+  for (const g of list) {
+    P.set(g.attributes.position.array, ov * 3); N.set(g.attributes.normal.array, ov * 3); if (g.attributes.uv) U.set(g.attributes.uv.array, ov * 2);
+    const ia = g.index.array; for (let i = 0; i < ia.length; i++) I[oi + i] = ia[i] + ov;
+    ov += g.attributes.position.count; oi += ia.length;
+  }
+  const m = new THREE.BufferGeometry();
+  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(N, 3)); m.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+  m.setIndex(new THREE.BufferAttribute(I, 1)); m.computeBoundingSphere(); return m;
+}
+function blob(cx, cy, cz, rx, ry, rz, amp = 0.04, sd = 0, seg = 28) {
+  const g = new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), p = g.attributes.position, v = V();
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + amp * fbm(v.x * 2 + sd, v.y * 2, v.z * 2, 3); p.setXYZ(i, cx + v.x * rx * n, cy + v.y * ry * n, cz + v.z * rz * n); }
+  g.computeVertexNormals(); return g;
+}
+/* surface nets: smooth iso-surface mesh from a sampled field */
+function surfaceNets(F, nx, ny, nz, o, h, iso) {
+  const idx = (i, j, k) => i + nx * (j + ny * k), cell = new Int32Array(nx * ny * nz).fill(-1), pos = [];
+  const cx = [0, 1, 0, 1, 0, 1, 0, 1], cy = [0, 0, 1, 1, 0, 0, 1, 1], cz = [0, 0, 0, 0, 1, 1, 1, 1];
+  const E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]], v = new Float32Array(8);
+  for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    let m = 0; for (let c = 0; c < 8; c++) { v[c] = F[idx(i + cx[c], j + cy[c], k + cz[c])] - iso; if (v[c] < 0) m |= 1 << c; }
+    if (m === 0 || m === 255) continue;
+    let sx = 0, sy = 0, sz = 0, n = 0;
+    for (const [a, b] of E) { if ((v[a] < 0) === (v[b] < 0)) continue; const t = v[a] / (v[a] - v[b]); sx += cx[a] + (cx[b] - cx[a]) * t; sy += cy[a] + (cy[b] - cy[a]) * t; sz += cz[a] + (cz[b] - cz[a]) * t; n++; }
+    cell[idx(i, j, k)] = pos.length / 3; pos.push(o.x + (i + sx / n) * h, o.y + (j + sy / n) * h, o.z + (k + sz / n) * h);
+  }
+  const tri = [];
+  const quad = (a, b, c, d) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; tri.push(a, b, c, a, c, d); };
+  for (let k = 1; k < nz - 1; k++) for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) {
+    const s0 = F[idx(i, j, k)] < iso;
+    if ((F[idx(i + 1, j, k)] < iso) !== s0 && i < nx - 1) quad(cell[idx(i, j - 1, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i, j - 1, k)]);
+    if ((F[idx(i, j + 1, k)] < iso) !== s0) quad(cell[idx(i - 1, j, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
+    if ((F[idx(i, j, k + 1)] < iso) !== s0) quad(cell[idx(i - 1, j - 1, k)], cell[idx(i, j - 1, k)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
+  }
+  // gradient normals (trilinear) and winding fix
+  const grad = (x, y, z, out) => {
+    const fx = (x - o.x) / h, fy = (y - o.y) / h, fz = (z - o.z) / h;
+    const g = (a, b, c) => { a = clamp(a, 0, nx - 1.001); b = clamp(b, 0, ny - 1.001); c = clamp(c, 0, nz - 1.001); const i = Math.floor(a), j = Math.floor(b), k = Math.floor(c), u = a - i, w = b - j, t = c - k;
+      const L = (ii, jj, kk) => F[idx(ii, jj, kk)];
+      return lerp(lerp(lerp(L(i, j, k), L(i + 1, j, k), u), lerp(L(i, j + 1, k), L(i + 1, j + 1, k), u), w), lerp(lerp(L(i, j, k + 1), L(i + 1, j, k + 1), u), lerp(L(i, j + 1, k + 1), L(i + 1, j + 1, k + 1), u), w), t); };
+    return out.set(g(fx + .5, fy, fz) - g(fx - .5, fy, fz), g(fx, fy + .5, fz) - g(fx, fy - .5, fz), g(fx, fy, fz + .5) - g(fx, fy, fz - .5)).normalize();
+  };
+  const nor = new Float32Array(pos.length), g = V();
+  for (let q = 0; q < pos.length; q += 3) { grad(pos[q], pos[q + 1], pos[q + 2], g); nor[q] = g.x; nor[q + 1] = g.y; nor[q + 2] = g.z; }
+  for (let t = 0; t < tri.length; t += 3) {
+    const a = tri[t] * 3, b = tri[t + 1] * 3, c = tri[t + 2] * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+    if (fx * nor[a] + fy * nor[a + 1] + fz * nor[a + 2] < 0) { const s = tri[t + 1]; tri[t + 1] = tri[t + 2]; tri[t + 2] = s; }
+  }
+  return { pos, nor, tri };
+}
+
+/* ================= SHARED BODY RIG (y up, facing +z, patient's left = +x, 1 unit ≈ 20 cm) ================= */
+const RIG = {
+  headC: V(0, 3.92, 0.0), tmj: V(0, 3.66, -0.08), neck: V(0, 3.28, -0.1),
+  shoulder: V(0.79, 2.85, -0.08), elbow: V(0.97, 1.43, -0.1), wrist: V(1.12, 0.24, 0.0),
+  hip: V(0.36, 0.42, 0.03), knee: V(0.29, -1.68, 0.03), ankle: V(0.26, -3.5, -0.03),
+};
+/* finger layout (left hand, palm facing forward, thumb outward) */
+const FINGERS = [ // [x at knuckle, MCP y, length, radius]
+  { name: 'index', x: 1.215, y: -0.16, len: 0.37, r: 0.034 },
+  { name: 'middle', x: 1.155, y: -0.175, len: 0.41, r: 0.035 },
+  { name: 'ring', x: 1.098, y: -0.165, len: 0.38, r: 0.032 },
+  { name: 'little', x: 1.045, y: -0.135, len: 0.3, r: 0.028 },
+];
+const THUMB = [V(1.2, 0.13, 0.03), V(1.275, 0.02, 0.075), V(1.31, -0.09, 0.1), V(1.325, -0.18, 0.11)];
+const fingerPts = f => { const a = V(f.x, f.y, 0.035), l = f.len, out = [a]; let y = f.y, z = 0.035; for (const k of [0.46, 0.29, 0.25]) { y -= l * k; z += 0.012; out.push(V(f.x + (f.x - 1.13) * 0.06, y, z)); } return out; };
+const TOES = [ // [x, base z, length, radius] left foot, big toe medial
+  { x: 0.205, z: 0.37, len: 0.17, r: 0.042 }, { x: 0.262, z: 0.375, len: 0.13, r: 0.027 }, { x: 0.307, z: 0.36, len: 0.115, r: 0.025 },
+  { x: 0.345, z: 0.34, len: 0.1, r: 0.023 }, { x: 0.378, z: 0.31, len: 0.085, r: 0.021 }];
+const sdEll = (x, y, z, cx, cy, cz, rx, ry, rz) => { const qx = (x - cx) / rx, qy = (y - cy) / ry, qz = (z - cz) / rz; return (Math.sqrt(qx * qx + qy * qy + qz * qz) - 1) * Math.min(rx, ry, rz); };
+function sdCap(x, y, z, ax, ay, az, bx, by, bz, ra, rb) {
+  const px = x - ax, py = y - ay, pz = z - az, ex = bx - ax, ey = by - ay, ez = bz - az;
+  const t = clamp01((px * ex + py * ey + pz * ez) / (ex * ex + ey * ey + ez * ez)), dx = px - ex * t, dy = py - ey * t, dz = pz - ez * t;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) - lerp(ra, rb, t);
+}
+const capV = (x, y, z, a, b, ra, rb) => sdCap(x, y, z, a.x, a.y, a.z, b.x, b.y, b.z, ra, rb);
+const smin = (a, b, k) => { const h = clamp01(0.5 + 0.5 * (b - a) / k); return lerp(b, a, h) - k * h * (1 - h); };
+const smax = (a, b, k) => -smin(-a, -b, k);
+function handSDF(X, y, z) {
+  let d = sdEll(X, y, z, 1.14, -0.02, 0.025, 0.125, 0.165, 0.048);
+  d = smin(d, sdEll(X, y, z, 1.215, 0.06, 0.04, 0.055, 0.08, 0.045), 0.04);       // thenar (thumb) pad
+  d = smin(d, sdEll(X, y, z, 1.07, 0.02, 0.03, 0.045, 0.1, 0.04), 0.04);          // hypothenar
+  for (const f of FINGERS) { const p = fingerPts(f); for (let i = 0; i < 3; i++) d = smin(d, capV(X, y, z, p[i], p[i + 1], f.r * (1 - i * 0.08), f.r * (0.9 - i * 0.1)), 0.018); }
+  for (let i = 0; i < 3; i++) d = smin(d, capV(X, y, z, THUMB[i], THUMB[i + 1], 0.048 - i * 0.006, 0.042 - i * 0.008), 0.025);
+  return d;
+}
+function footSDF(X, y, z) {
+  const A = RIG.ankle;
+  let d = sdEll(X, y, z, 0.275, -3.715, 0.1, 0.115, 0.075, 0.3);
+  d = smin(d, sdEll(X, y, z, 0.255, -3.7, -0.15, 0.08, 0.085, 0.1), 0.06);
+  d = smin(d, sdCap(X, y, z, A.x, A.y + 0.05, A.z, 0.28, -3.67, 0.2, 0.085, 0.07), 0.07);
+  for (const t of TOES) d = smin(d, sdCap(X, y, z, t.x, -3.76, t.z - 0.04, t.x + 0.004, -3.775, t.z + t.len, t.r, t.r * 0.85), 0.02);
+  return smax(d, -3.8 - y, 0.02);   // flat sole
+}
+function bodySDF(x, y, z) {
+  const X = Math.abs(x), R = RIG;
+  let d = 1e9;
+  if (y > 2.75) { // head & neck
+    let h = sdEll(x, y, z, 0, 3.97, -0.03, 0.355, 0.43, 0.41);
+    h = smin(h, sdEll(x, y, z, 0, 3.66, 0.14, 0.28, 0.33, 0.27), 0.12);
+    h = smin(h, sdEll(x, y, z, 0, 3.44, 0.21, 0.15, 0.1, 0.12), 0.08);                               // chin
+    h = smin(h, sdCap(X, y, z, 0.23, 3.56, -0.02, 0.1, 3.41, 0.22, 0.07, 0.06), 0.06);               // jaw line
+    h = smin(h, sdEll(X, y, z, 0.19, 3.72, 0.22, 0.09, 0.06, 0.07), 0.05);                           // cheekbones
+    h = smin(h, sdCap(x, y, z, 0, 3.84, 0.4, 0, 3.69, 0.47, 0.03, 0.05), 0.04);                      // nose
+    h = smin(h, sdEll(X, y, z, 0.035, 3.67, 0.43, 0.035, 0.03, 0.035), 0.02);
+    h = smin(h, sdCap(x, y, z, -0.17, 3.87, 0.36, 0.17, 3.87, 0.36, 0.035, 0.035), 0.05);           // brow
+    h = smax(h, -sdEll(X, y, z, 0.12, 3.79, 0.42, 0.075, 0.045, 0.05), 0.03);                        // eye sockets
+    h = smin(h, sdEll(X, y, z, 0.12, 3.79, 0.37, 0.05, 0.035, 0.05), 0.01);                          // eyes
+    h = smin(h, sdEll(x, y, z, 0, 3.535, 0.37, 0.085, 0.028, 0.04), 0.03);                           // lips
+    h = smin(h, sdEll(X, y, z, 0.36, 3.77, -0.03, 0.035, 0.1, 0.065), 0.03);                         // ears
+    let n = sdCap(x, y, z, 0, 3.0, -0.07, 0, 3.55, -0.04, 0.17, 0.155);
+    n = smin(n, sdCap(X, y, z, 0.13, 3.55, -0.02, 0.05, 3.06, 0.13, 0.05, 0.045), 0.05);             // neck muscles
+    d = smin(h, n, 0.1);
+  }
+  if (y > -0.1 && y < 3.35) { // torso
+    let t = sdEll(x, y, z, 0, 2.45, -0.03, 0.68, 0.75, 0.5);
+    t = smin(t, sdCap(X, y, z, 0.1, 3.2, -0.13, 0.72, 2.97, -0.09, 0.1, 0.09), 0.18);                 // trapezius slope
+    t = smin(t, sdEll(X, y, z, 0.32, 2.6, 0.3, 0.3, 0.2, 0.16), 0.12);                              // chest
+    t = smin(t, sdEll(x, y, z, 0, 1.55, 0.0, 0.57, 0.72, 0.4), 0.3);                                // abdomen
+    t = smin(t, sdEll(x, y, z, 0, 0.68, -0.03, 0.63, 0.42, 0.4), 0.25);                             // pelvis
+    t = smin(t, sdEll(X, y, z, 0.41, 0.5, -0.02, 0.29, 0.32, 0.32), 0.15);                           // hips
+    t = smin(t, sdEll(X, y, z, 0.23, 0.42, -0.21, 0.25, 0.3, 0.21), 0.12);                           // buttocks
+    d = smin(d, t, 0.14);
+  }
+  if (X > 0.45 && y > 0.05 && y < 3.15) { // arms
+    let a = sdEll(X, y, z, 0.82, 2.78, -0.07, 0.2, 0.27, 0.2);                                        // deltoid
+    a = smin(a, capV(X, y, z, R.shoulder, R.elbow, 0.155, 0.11), 0.1);
+    a = smin(a, sdEll(X, y, z, 0.9, 2.1, 0.01, 0.085, 0.32, 0.095), 0.06);                           // biceps
+    a = smin(a, sdEll(X, y, z, 0.89, 2.18, -0.16, 0.095, 0.36, 0.09), 0.06);                         // triceps
+    a = smin(a, sdEll(X, y, z, R.elbow.x, R.elbow.y, R.elbow.z, 0.11, 0.1, 0.1), 0.05);
+    a = smin(a, capV(X, y, z, R.elbow, R.wrist, 0.11, 0.065), 0.06);
+    a = smin(a, sdEll(X, y, z, 1.0, 1.12, -0.04, 0.1, 0.32, 0.085), 0.06);                           // forearm muscles
+    a = smin(a, sdEll(X, y, z, R.wrist.x, R.wrist.y, R.wrist.z, 0.075, 0.05, 0.045), 0.04);
+    d = smin(d, a, 0.08);
+  }
+  if (X > 0.85 && y < 0.36 && y > -0.7) d = smin(d, handSDF(X, y, z), 0.04);
+  if (y < 0.75) { // legs
+    let l = sdCap(X, y, z, 0.34, 0.48, 0.0, R.knee.x, R.knee.y + 0.08, R.knee.z, 0.29, 0.155);
+    l = smin(l, sdEll(X, y, z, 0.35, -0.45, 0.09, 0.19, 0.62, 0.17), 0.1);                           // quadriceps
+    l = smin(l, sdEll(X, y, z, 0.33, -0.5, -0.09, 0.18, 0.6, 0.16), 0.1);                            // hamstrings
+    l = smin(l, sdEll(X, y, z, 0.2, -0.05, -0.01, 0.13, 0.45, 0.16), 0.08);                          // adductors
+    l = smin(l, sdEll(X, y, z, R.knee.x, R.knee.y, R.knee.z, 0.14, 0.15, 0.14), 0.06);
+    l = smin(l, sdEll(X, y, z, 0.29, -1.63, 0.15, 0.06, 0.07, 0.035), 0.04);                         // kneecap
+    l = smin(l, capV(X, y, z, R.knee, R.ankle, 0.14, 0.075), 0.06);
+    l = smin(l, sdEll(X, y, z, 0.29, -2.25, -0.09, 0.13, 0.45, 0.13), 0.08);                         // calf
+    l = smin(l, sdEll(X, y, z, R.ankle.x, R.ankle.y, R.ankle.z, 0.085, 0.08, 0.085), 0.04);
+    if (y < -3.3) l = smin(l, footSDF(X, y, z), 0.05);
+    d = smin(d, l, 0.1);
+  }
+  return d;
+}
+function sampleSDF(fn, min, max, h) {
+  const nx = Math.ceil((max.x - min.x) / h) + 1, ny = Math.ceil((max.y - min.y) / h) + 1, nz = Math.ceil((max.z - min.z) / h) + 1, F = new Float32Array(nx * ny * nz);
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) F[i + nx * (j + ny * k)] = fn(min.x + i * h, min.y + j * h, min.z + k * h);
+  return surfaceNets(F, nx, ny, nz, min, h, 0);
+}
+/* body mesh: coarse grid for the body, fine grids for hands and feet, stitched at the wrists and ankles */
+function buildBodyGeometry(hCoarse = 0.034) {
+  const pos = [], nor = [], idx = [];
+  const add = (m, keep) => {
+    const map = new Int32Array(m.pos.length / 3).fill(-1);
+    for (let t = 0; t < m.tri.length; t += 3) {
+      const a = m.tri[t], b = m.tri[t + 1], c = m.tri[t + 2];
+      const cx = (m.pos[a * 3] + m.pos[b * 3] + m.pos[c * 3]) / 3, cy = (m.pos[a * 3 + 1] + m.pos[b * 3 + 1] + m.pos[c * 3 + 1]) / 3;
+      if (!keep(cx, cy)) continue;
+      for (const v of [a, b, c]) { if (map[v] < 0) { map[v] = pos.length / 3; pos.push(m.pos[v * 3], m.pos[v * 3 + 1], m.pos[v * 3 + 2]); nor.push(m.nor[v * 3], m.nor[v * 3 + 1], m.nor[v * 3 + 2]); } idx.push(map[v]); }
+    }
+  };
+  const WY = 0.2, AY = -3.4;
+  const inHand = (x, y) => Math.abs(x) > 0.85 && y < WY, inFoot = y => y < AY;
+  add(sampleSDF(bodySDF, V(-1.45, -3.84, -0.6), V(1.45, 4.45, 0.62), hCoarse), (x, y) => !inHand(x, y) && !inFoot(y));
+  for (const s of [-1, 1]) {
+    const f = (x, y, z) => bodySDF(x, y, z);
+    add(sampleSDF(f, V(s > 0 ? 0.88 : -1.42, -0.66, -0.12), V(s > 0 ? 1.42 : -0.88, WY + 0.05, 0.19), 0.011), (x, y) => y < WY && x * s > 0);
+    add(sampleSDF(f, V(s > 0 ? 0.08 : -0.5, -3.83, -0.3), V(s > 0 ? 0.5 : -0.08, AY + 0.05, 0.6), 0.016), (x, y) => y < AY && x * s > 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx);
+  g.computeBoundingSphere(); return g;
+}
+/* see-through "glass body" shader */
+const SKIN = { time: { value: 0 }, scan: { value: -5 } };
+function skinMaterial(side, k, tint = [0.25, 0.62, 0.95]) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTime: SKIN.time, uScan: SKIN.scan, uK: { value: k }, uDim: { value: 1 }, uTint: { value: new THREE.Vector3(...tint) } },
+    vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vP = wp.xyz; vN = normalize(mat3(modelMatrix)*normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `uniform float uTime, uScan, uK, uDim; uniform vec3 uTint; varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      void main(){
+        float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.3);
+        float scan = exp(-pow((vP.y - uScan) * 5.0, 2.0));
+        vec3 c = mix(uTint, vec3(0.65, 0.9, 1.0), f);
+        float a = (0.03 + 0.5 * f) * uK + scan * 0.12;
+        gl_FragColor = vec4(c * (0.5 + 0.9 * f + 1.0 * scan), a * uDim);
+      }`,
+    transparent: true, depthWrite: false, side
+  });
+}
+
+/* ================= SKELETON GEOMETRY (built on the shared RIG; left side mirrored to the right) ================= */
+function triSDF(a, b, c) { // unsigned distance to a triangle (after Inigo Quilez)
+  const ba = b.clone().sub(a), cb = c.clone().sub(b), ac = a.clone().sub(c), nor = ba.clone().cross(ac);
+  const n1 = ba.clone().cross(nor), n2 = cb.clone().cross(nor), n3 = ac.clone().cross(nor), d2 = v => v.x * v.x + v.y * v.y + v.z * v.z;
+  const lba = d2(ba), lcb = d2(cb), lac = d2(ac), lnor = d2(nor);
+  return (x, y, z) => {
+    const pax = x - a.x, pay = y - a.y, paz = z - a.z, pbx = x - b.x, pby = y - b.y, pbz = z - b.z, pcx = x - c.x, pcy = y - c.y, pcz = z - c.z;
+    const s = Math.sign(n1.x * pax + n1.y * pay + n1.z * paz) + Math.sign(n2.x * pbx + n2.y * pby + n2.z * pbz) + Math.sign(n3.x * pcx + n3.y * pcy + n3.z * pcz);
+    if (s < 2) {
+      const e = (ex, ey, ez, px, py, pz, l) => { const t = clamp01((ex * px + ey * py + ez * pz) / l); const dx = ex * t - px, dy = ey * t - py, dz = ez * t - pz; return dx * dx + dy * dy + dz * dz; };
+      return Math.sqrt(Math.min(e(ba.x, ba.y, ba.z, pax, pay, paz, lba), e(cb.x, cb.y, cb.z, pbx, pby, pbz, lcb), e(ac.x, ac.y, ac.z, pcx, pcy, pcz, lac)));
+    }
+    const q = nor.x * pax + nor.y * pay + nor.z * paz; return Math.sqrt(q * q / lnor);
+  };
+}
+function sdfGeo(fn, min, max, h) {
+  const m = sampleSDF(fn, min, max, h), g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(m.nor, 3));
+  const uv = []; for (let i = 0; i < m.pos.length; i += 3) uv.push(m.pos[i] * 3 + m.pos[i + 2] * 2, m.pos[i + 1] * 3);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(m.tri); return g;
+}
+function mirrorGeo(g) {
+  const m = g.clone(), p = m.attributes.position, n = m.attributes.normal;
+  for (let i = 0; i < p.count; i++) { p.array[i * 3] *= -1; if (n) n.array[i * 3] *= -1; }
+  const ix = m.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+  return m;
+}
+const capsSDF = list => (x, y, z) => { let d = 1e9; for (const [a, b, ra, rb, k] of list) d = smin(d, capV(x, y, z, a, b, ra, rb ?? ra), k ?? 0.02); return d; };
+/* spine curve through the vertebral bodies */
+const SPINE_CURVE = new THREE.CatmullRomCurve3([V(0, 3.62, -0.08), V(0, 3.35, -0.06), V(0, 3.08, -0.14), V(0, 2.7, -0.24), V(0, 2.3, -0.275), V(0, 1.9, -0.25), V(0, 1.56, -0.18), V(0, 1.22, -0.1), V(0, 0.9, -0.12)], false, 'centripetal');
+function spineAtY(y) { let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (SPINE_CURVE.getPointAt(m).y > y) lo = m; else hi = m; } const u = (lo + hi) / 2; return { p: SPINE_CURVE.getPointAt(u), t: SPINE_CURVE.getTangentAt(u).negate() }; }
+const VERT = [];   // vertebra levels
+{
+  const lv = [], push = (name, kind, y0, y1, n) => { for (let i = 0; i < n; i++) lv.push({ name: name + (i + 1), kind, y: lerp(y0, y1, (i + 0.5) / n), h: (y0 - y1) / n }); };
+  push('C', 'C', 3.62, 3.08, 7); push('T', 'T', 3.08, 1.57, 12); push('L', 'L', 1.57, 0.9, 5);
+  for (const v of lv) { const s = spineAtY(v.y); v.p = s.p; v.t = s.t; VERT.push(v); }
+}
+const canalAt = v => { const back = V(0, -v.t.z, v.t.y).normalize().multiplyScalar(-1); if (back.z > 0) back.negate(); const r = v.kind === 'C' ? 0.045 : v.kind === 'T' ? 0.062 : 0.085; return v.p.clone().addScaledVector(back, r + 0.042); };
+function vertebraSDF(v) {
+  const r = v.kind === 'C' ? 0.045 : v.kind === 'T' ? lerp(0.055, 0.075, (VERT.indexOf(v) - 7) / 11) : 0.088, hh = v.h * 0.36;
+  const spL = v.kind === 'C' ? 0.07 : v.kind === 'T' ? 0.13 : 0.1, spD = v.kind === 'T' ? 0.09 : 0.02, tp = v.kind === 'L' ? 0.1 : v.kind === 'T' ? 0.08 : 0.05;
+  const up = v.t.clone(), fw = V(0, -up.z, up.y).normalize(); if (fw.z < 0) fw.negate(); const rt = V(1, 0, 0);
+  const W = (lx, ly, lz) => v.p.clone().addScaledVector(rt, lx).addScaledVector(up, ly).addScaledVector(fw, lz);
+  const C = W(0, 0, 0), cr = 0.042;
+  const caps = [
+    [W(-0.5 * r, 0, -r * 0.8), W(-0.55 * r, 0, -r - cr * 0.6), 0.016], [W(0.5 * r, 0, -r * 0.8), W(0.55 * r, 0, -r - cr * 0.6), 0.016],
+    [W(-0.55 * r, 0, -r - cr * 0.6), W(0, 0, -r - cr * 1.8), 0.015], [W(0.55 * r, 0, -r - cr * 0.6), W(0, 0, -r - cr * 1.8), 0.015],
+    [W(0, 0, -r - cr * 1.8), W(0, -spD, -r - cr * 1.8 - spL), 0.016, 0.012],
+    [W(-0.55 * r, 0, -r - cr * 0.7), W(-r - tp, 0.01, -r - cr * 0.9), 0.014, 0.011], [W(0.55 * r, 0, -r - cr * 0.7), W(r + tp, 0.01, -r - cr * 0.9), 0.014, 0.011],
+    [W(-0.5 * r, hh, -r - cr * 0.9), W(-0.5 * r, -hh, -r - cr * 0.9), 0.012], [W(0.5 * r, hh, -r - cr * 0.9), W(0.5 * r, -hh, -r - cr * 0.9), 0.012],
+  ];
+  const arch = capsSDF(caps.map(c => [c[0], c[1], c[2], c[3], 0.012]));
+  return (x, y, z) => {
+    const px = x - C.x, py = y - C.y, pz = z - C.z, ly = px * up.x + py * up.y + pz * up.z, lx = px, lz = px * fw.x + py * fw.y + pz * fw.z;
+    const rr = Math.sqrt(lx * lx + lz * lz) - r * (1 + 0.08 * (Math.abs(ly) / hh)), body = Math.max(rr, Math.abs(ly) - hh) - 0.006;
+    let d = smin(body, arch(x, y, z), 0.012);
+    return smax(d, -(capV(x, y, z, W(0, 1, -r - cr), W(0, -1, -r - cr), cr, cr)), 0.006);   // spinal canal hole
+  };
+}
+const RIB_W = [0.3, 0.4, 0.48, 0.54, 0.58, 0.61, 0.62, 0.61, 0.58, 0.54, 0.46, 0.37];
+const RIB_ZF = [0.3, 0.34, 0.36, 0.37, 0.37, 0.36, 0.34, 0.3, 0.25, 0.18, 0.02, -0.1];
+const STERNUM_Y = [2.98, 2.82, 2.7, 2.58, 2.46, 2.34, 2.22];
+const RIBS = [];
+function ribPath(i) {
+  const v = VERT[7 + i], y0 = v.p.y, zs = v.p.z, w = RIB_W[i], zf = RIB_ZF[i], drop = 0.24 + i * 0.03;
+  const bone = [V(0.05, y0 + 0.01, zs - 0.02), V(0.14, y0 + 0.02, zs - 0.07), V(w * 0.72, y0 - 0.03, zs - 0.02), V(w * 0.97, y0 - drop * 0.35, -0.08), V(w * 0.9, y0 - drop * 0.65, zf * 0.55), V(w * 0.62, y0 - drop * 0.9, zf * 0.92)];
+  if (i >= 10) bone[5] = V(w * 0.7, y0 - drop * 0.8, zf + 0.06);
+  let cart = null;
+  if (i < 7) cart = [bone[5], V(w * 0.35, lerp(bone[5].y, STERNUM_Y[i], 0.6), zf + 0.03), V(0.07, STERNUM_Y[i], 0.39)];
+  else if (i < 10) cart = [bone[5], V(w * 0.45, bone[5].y + 0.06, zf + 0.06), V(0.26 - (i - 7) * 0.02, 2.06 + (i - 7) * 0.02 - 0.12 * (i - 7), 0.33 - (i - 7) * 0.03)];
+  return { bone, cart };
+}
+/* pivots (left side positions; the right side mirrors x) */
+const PIV = {
+  ROOT: { p: V(0, 0, 0) }, NECK: { p: V(0, 3.3, -0.09), parent: 'ROOT' }, JAW: { p: V(0, 3.665, -0.07), parent: 'NECK' },
+  SH: { p: RIG.shoulder.clone(), parent: 'ROOT', side: 1 }, EL: { p: RIG.elbow.clone(), parent: 'SH', side: 1 }, WR: { p: RIG.wrist.clone(), parent: 'EL', side: 1 },
+  TH: { p: THUMB[0].clone(), parent: 'WR', side: 1 },
+  HIP: { p: RIG.hip.clone(), parent: 'ROOT', side: 1 }, KN: { p: RIG.knee.clone(), parent: 'HIP', side: 1 }, AN: { p: RIG.ankle.clone(), parent: 'KN', side: 1 },
+};
+FINGERS.forEach((f, i) => { const p = fingerPts(f); PIV['F' + i] = { p: p[0].clone(), parent: 'WR', side: 1 }; PIV['G' + i] = { p: p[1].clone(), parent: 'F' + i, side: 1 }; });
+function skeletonGeometry(q = 1) {
+  const H = 0.013 / q, recs = [], add = (part, pivot, geo, side = 'C') => recs.push({ part, pivot, geo, side });
+  const both = (part, pivot, geo) => { add(part, pivot, geo, 'L'); add(part, pivot, mirrorGeo(geo), 'R'); };
+  /* ---- skull ---- */
+  const skull = (x, y, z) => {
+    const X = Math.abs(x);
+    let d = sdEll(x, y, z, 0, 3.98, -0.04, 0.32, 0.37, 0.37);
+    d = smin(d, sdEll(x, y, z, 0, 3.7, 0.16, 0.2, 0.2, 0.17), 0.08);                          // face
+    d = smin(d, sdEll(x, y, z, 0, 3.565, 0.21, 0.15, 0.06, 0.13), 0.05);                       // maxilla / upper jaw
+    d = smin(d, sdCap(X, y, z, 0.2, 3.72, 0.2, 0.3, 3.69, -0.03, 0.026, 0.024), 0.03);        // zygomatic arch
+    d = smin(d, sdEll(X, y, z, 0.17, 3.72, 0.23, 0.07, 0.05, 0.06), 0.04);                     // cheek bone
+    d = smin(d, sdEll(X, y, z, 0.27, 3.66, -0.12, 0.04, 0.06, 0.045), 0.03);                   // mastoid
+    d = smax(d, -sdEll(X, y, z, 0.115, 3.8, 0.34, 0.075, 0.07, 0.08), 0.02);                   // orbits
+    d = smax(d, -sdEll(x, y, z, 0, 3.66, 0.35, 0.04, 0.065, 0.07), 0.015);                     // nasal opening
+    d = smax(d, -sdEll(X, y, z, 0.29, 3.73, -0.01, 0.03, 0.03, 0.05), 0.01);                   // ear canal
+    return d;
+  };
+  add('SKULL', 'NECK', sdfGeo(skull, V(-0.36, 3.5, -0.44), V(0.36, 4.38, 0.42), H * 1.15));
+  const mand = (x, y, z) => {
+    const X = Math.abs(x);
+    let d = sdCap(X, y, z, 0.25, 3.68, -0.08, 0.235, 3.5, -0.05, 0.028, 0.03);                // ramus up to the condyle
+    d = smin(d, sdCap(X, y, z, 0.235, 3.5, -0.05, 0.15, 3.43, 0.14, 0.03, 0.034), 0.03);       // body
+    d = smin(d, sdCap(X, y, z, 0.15, 3.43, 0.14, 0.0, 3.42, 0.26, 0.034, 0.04), 0.03);
+    d = smin(d, sdCap(X, y, z, 0.22, 3.55, -0.02, 0.21, 3.64, 0.04, 0.018, 0.012), 0.02);      // coronoid
+    d = smin(d, sdEll(X, y, z, 0.25, 3.685, -0.08, 0.035, 0.02, 0.025), 0.015);               // condyle
+    return d;
+  };
+  add('MAND', 'JAW', sdfGeo(mand, V(-0.3, 3.36, -0.13), V(0.3, 3.72, 0.32), H));
+  const teethU = [], teethL = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 15 - 0.5) * 2.4, x = Math.sin(a) * 0.12, z = 0.18 + Math.cos(a) * 0.1 - 0.02, w = Math.abs(a) > 0.6 ? 0.017 : 0.012;
+    teethU.push(blob(x, 3.515, z, w, 0.022, 0.014, 0.05, i, 8)); teethL.push(blob(x * 0.95, 3.475, z - 0.008, w, 0.02, 0.013, 0.05, i + 20, 8));
+  }
+  add('TEETH', 'NECK', mergeGeoms(teethU)); add('TEETH', 'JAW', mergeGeoms(teethL));
+  /* ---- spine & discs ---- */
+  VERT.forEach((v, i) => {
+    const r = v.kind === 'L' ? 0.36 : 0.34, b = v.kind === 'C' ? 0.17 : 0.24;
+    const g = sdfGeo(vertebraSDF(v), v.p.clone().add(V(-b, -0.12, -0.32)), v.p.clone().add(V(b, 0.12, 0.13)), H * 0.75);
+    add(v.kind === 'C' ? 'CERV' : v.kind === 'T' ? 'THOR' : 'LUMB', v.kind === 'C' && i < 3 ? 'NECK' : 'ROOT', g);
+    if (i < VERT.length - 1) {
+      const nx = VERT[i + 1], m = v.p.clone().lerp(nx.p, 0.5), rr = v.kind === 'C' ? 0.042 : v.kind === 'T' ? 0.06 : 0.083;
+      const dg = new THREE.CylinderGeometry(rr, rr, (v.y - nx.y) * 0.22, 20, 1); dg.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), v.t.clone().lerp(nx.t, 0.5).normalize())); dg.translate(m.x, m.y, m.z);
+      add('DISC', v.kind === 'C' && i < 2 ? 'NECK' : 'ROOT', dg);
+    }
+  });
+  const sac = (() => { const t1 = triSDF(V(-0.14, 0.86, -0.15), V(0.14, 0.86, -0.15), V(0, 0.42, -0.3)); return (x, y, z) => { const zc = -0.15 - 0.3 * (0.86 - y) + 0.6 * Math.pow(0.86 - y, 2); return smin(t1(x, y, z - (zc + 0.15 + 0.3 * (0.86 - y) * 0.5) * 0) - 0.045, sdEll(x, y, z, 0, 0.84, -0.13, 0.09, 0.05, 0.075), 0.03); }; })();
+  add('SACR', 'ROOT', sdfGeo(sac, V(-0.22, 0.36, -0.4), V(0.22, 0.95, 0.0), H));
+  add('COCC', 'ROOT', mergeGeoms([0, 1, 2, 3].map(i => blob(0, 0.39 - i * 0.04, -0.29 + i * 0.02, 0.024 - i * 0.004, 0.02, 0.018, 0.05, i, 10))));
+  /* ---- ribs, cartilage, sternum ---- */
+  const ribG = [], cartG = [];
+  for (let i = 0; i < 12; i++) {
+    const { bone, cart } = ribPath(i); RIBS.push({ bone, cart });
+    const c = new THREE.CatmullRomCurve3(bone);
+    ribG.push(taperTube(c, 70, 10, u => lerp(0.017, 0.021, Math.sin(u * Math.PI))));
+    if (cart) cartG.push(taperTube(new THREE.CatmullRomCurve3(cart), 30, 8, u => lerp(0.019, 0.014, u)));
+  }
+  const ribGeo = mergeGeoms(ribG); add('RIBS', 'ROOT', ribGeo); add('RIBS', 'ROOT', mirrorGeo(ribGeo));
+  const cg = mergeGeoms(cartG); add('COST', 'ROOT', cg); add('COST', 'ROOT', mirrorGeo(cg));
+  const ster = (x, y, z) => smin(smin(sdEll(x, y, z, 0, 2.88, 0.395, 0.1, 0.11, 0.028), sdEll(x, y, z, 0, 2.47, 0.405, 0.066, 0.31, 0.026), 0.04), sdCap(x, y, z, 0, 2.17, 0.4, 0, 2.06, 0.37, 0.02, 0.01), 0.02);
+  add('STER', 'ROOT', sdfGeo(ster, V(-0.14, 2.0, 0.32), V(0.14, 3.02, 0.46), H * 0.8));
+  /* ---- shoulder girdle ---- */
+  const clav = taperTube(new THREE.CatmullRomCurve3([V(0.06, 2.985, 0.385), V(0.28, 3.02, 0.32), V(0.52, 3.0, 0.14), V(0.74, 2.985, -0.04)]), 50, 10, u => 0.026 + 0.008 * Math.abs(u - 0.5));
+  both('CLAV', 'ROOT', clav);
+  const scap = (() => {
+    const t1 = triSDF(V(0.28, 2.96, -0.38), V(0.36, 2.2, -0.4), V(0.72, 2.84, -0.15)), t2 = triSDF(V(0.28, 2.96, -0.38), V(0.6, 2.98, -0.25), V(0.72, 2.84, -0.15));
+    const extra = capsSDF([[V(0.3, 2.78, -0.41), V(0.8, 2.98, -0.12), 0.022, 0.03], [V(0.8, 2.98, -0.12), V(0.86, 2.99, -0.02), 0.03, 0.025], [V(0.66, 2.88, -0.08), V(0.66, 2.84, 0.06), 0.02, 0.016], [V(0.36, 2.2, -0.4), V(0.7, 2.75, -0.17), 0.018, 0.024]]);
+    return (x, y, z) => smin(smin(Math.min(t1(x, y, z), t2(x, y, z)) - 0.011, extra(x, y, z), 0.02), sdEll(x, y, z, 0.705, 2.845, -0.1, 0.035, 0.06, 0.05), 0.02);
+  })();
+  both('SCAP', 'ROOT', sdfGeo(scap, V(0.22, 2.12, -0.48), V(0.92, 3.06, 0.1), H));
+  /* ---- arm ---- */
+  const S = RIG.shoulder, E = RIG.elbow, Wr = RIG.wrist;
+  const hum = (x, y, z) => {
+    let d = sdEll(x, y, z, S.x - 0.01, S.y, S.z, 0.088, 0.09, 0.088);
+    d = smin(d, sdEll(x, y, z, S.x + 0.07, S.y + 0.01, S.z + 0.02, 0.05, 0.06, 0.05), 0.03);
+    d = smin(d, sdCap(x, y, z, S.x + 0.03, S.y - 0.12, S.z, E.x - 0.01, E.y + 0.1, E.z, 0.042, 0.04), 0.04);
+    d = smin(d, sdEll(x, y, z, E.x, E.y + 0.04, E.z, 0.11, 0.045, 0.05), 0.04);
+    d = smin(d, sdCap(x, y, z, E.x - 0.07, E.y - 0.01, E.z + 0.01, E.x + 0.06, E.y - 0.01, E.z + 0.01, 0.038, 0.035), 0.02);
+    return d;
+  };
+  both('HUM', 'SH', sdfGeo(hum, V(S.x - 0.16, E.y - 0.08, S.z - 0.12), V(S.x + 0.22, S.y + 0.12, S.z + 0.12), H));
+  const uln = capsSDF([[V(E.x - 0.05, E.y + 0.06, E.z - 0.06), V(E.x - 0.05, E.y - 0.06, E.z - 0.02), 0.035, 0.03, 0.03], [V(E.x - 0.05, E.y - 0.05, E.z - 0.01), V(Wr.x - 0.055, Wr.y + 0.04, Wr.z - 0.01), 0.026, 0.016, 0.03], [V(Wr.x - 0.055, Wr.y + 0.04, Wr.z - 0.01), V(Wr.x - 0.06, Wr.y + 0.015, Wr.z - 0.015), 0.022, 0.012, 0.01]]);
+  both('ULN', 'EL', sdfGeo(uln, V(E.x - 0.14, Wr.y - 0.04, E.z - 0.14), V(Wr.x + 0.02, E.y + 0.13, Wr.z + 0.08), H));
+  const rad = capsSDF([[V(E.x + 0.055, E.y - 0.05, E.z + 0.02), V(E.x + 0.055, E.y - 0.08, E.z + 0.02), 0.034, 0.03, 0.01], [V(E.x + 0.055, E.y - 0.08, E.z + 0.02), V(Wr.x + 0.03, Wr.y + 0.06, Wr.z + 0.01), 0.018, 0.03, 0.03], [V(Wr.x + 0.03, Wr.y + 0.06, Wr.z + 0.01), V(Wr.x + 0.065, Wr.y + 0.02, Wr.z + 0.005), 0.03, 0.012, 0.02]]);
+  both('RAD', 'EL', sdfGeo(rad, V(E.x - 0.02, Wr.y - 0.03, E.z - 0.08), V(Wr.x + 0.12, E.y + 0.0, Wr.z + 0.1), H));
+  /* ---- hand ---- */
+  const carp = [];
+  for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) carp.push(blob(lerp(1.06, 1.205, i / 3), Wr.y - 0.06 - r * 0.07, 0.01 + r * 0.008, 0.026, 0.03, 0.022, 0.08, r * 4 + i, 12));
+  both('CARP', 'WR', mergeGeoms(carp));
+  const mc = [];
+  FINGERS.forEach(f => { const p0 = fingerPts(f)[0]; mc.push(taperTube(new THREE.CatmullRomCurve3([V(lerp(1.085, 1.19, (f.x - 1.045) / 0.17), Wr.y - 0.15, 0.02), p0.clone().add(V(0, 0.02, -0.005))]), 20, 8, u => 0.015 + 0.006 * Math.abs(u - 0.45) * 2)); mc.push(blob(p0.x, p0.y + 0.02, p0.z - 0.005, 0.02, 0.018, 0.018, 0.04, f.len * 10, 10)); });
+  both('MCARP', 'WR', mergeGeoms(mc));
+  const thumbG = [taperTube(new THREE.CatmullRomCurve3([THUMB[0], THUMB[1]]), 20, 8, u => 0.017), taperTube(new THREE.CatmullRomCurve3([THUMB[1], THUMB[2]]), 16, 8, u => 0.014), taperTube(new THREE.CatmullRomCurve3([THUMB[2], THUMB[3]]), 14, 8, u => lerp(0.013, 0.009, u))];
+  for (const p of THUMB.slice(1)) thumbG.push(blob(p.x, p.y, p.z, 0.017, 0.016, 0.016, 0.03, p.y * 9, 10));
+  both('HPHAL', 'TH', mergeGeoms(thumbG));
+  FINGERS.forEach((f, i) => {
+    const p = fingerPts(f), seg = (a, b, r0, r1) => taperTube(new THREE.CatmullRomCurve3([a, b]), 14, 8, u => lerp(r0, r1, u));
+    both('HPHAL', 'F' + i, mergeGeoms([seg(p[0], p[1], 0.015, 0.012), blob(p[1].x, p[1].y, p[1].z, 0.015, 0.014, 0.014, 0.03, i, 10)]));
+    both('HPHAL', 'G' + i, mergeGeoms([seg(p[1], p[2], 0.012, 0.011), blob(p[2].x, p[2].y, p[2].z, 0.012, 0.012, 0.012, 0.03, i + 5, 10), seg(p[2], p[3].clone().add(V(0, 0.012, 0)), 0.011, 0.008)]));
+  });
+  /* ---- pelvis ---- */
+  const Hp = RIG.hip;
+  const hipBone = (() => {
+    const t1 = triSDF(V(0.12, 0.8, -0.27), V(0.58, 1.02, -0.06), V(0.34, 0.52, -0.02)), t2 = triSDF(V(0.58, 1.02, -0.06), V(0.56, 0.86, 0.13), V(0.34, 0.52, -0.02));
+    const rim = capsSDF([[V(0.12, 0.8, -0.27), V(0.35, 0.98, -0.2), 0.03, 0.03, 0.03], [V(0.35, 0.98, -0.2), V(0.58, 1.02, -0.06), 0.03, 0.033, 0.03], [V(0.58, 1.02, -0.06), V(0.56, 0.86, 0.13), 0.033, 0.03, 0.03],
+      [V(Hp.x - 0.02, Hp.y + 0.03, Hp.z + 0.05), V(0.06, 0.36, 0.17), 0.035, 0.03, 0.03], [V(0.06, 0.36, 0.17), V(0.06, 0.26, 0.14), 0.03, 0.03, 0.02], [V(0.06, 0.26, 0.14), V(0.24, 0.17, -0.04), 0.024, 0.032, 0.02],
+      [V(Hp.x - 0.04, Hp.y - 0.03, Hp.z - 0.06), V(0.25, 0.17, -0.06), 0.04, 0.045, 0.03], [V(0.12, 0.8, -0.27), V(0.12, 0.66, -0.25), 0.04, 0.04, 0.03]]);
+    return (x, y, z) => {
+      let d = smin(Math.min(t1(x, y, z), t2(x, y, z)) - 0.018, rim(x, y, z), 0.035);
+      d = smin(d, sdEll(x, y, z, Hp.x + 0.01, Hp.y, Hp.z - 0.01, 0.11, 0.11, 0.11), 0.04);
+      return smax(d, -sdEll(x, y, z, Hp.x + 0.05, Hp.y, Hp.z + 0.02, 0.095, 0.095, 0.095), 0.01);   // acetabulum socket
+    };
+  })();
+  both('PELV', 'ROOT', sdfGeo(hipBone, V(0.0, 0.1, -0.36), V(0.68, 1.08, 0.24), H));
+  /* ---- leg ---- */
+  const K = RIG.knee, A = RIG.ankle;
+  const fem = (x, y, z) => {
+    let d = sdEll(x, y, z, Hp.x + 0.02, Hp.y, Hp.z, 0.085, 0.085, 0.085);
+    d = smin(d, sdCap(x, y, z, Hp.x + 0.02, Hp.y, Hp.z, 0.49, 0.34, 0.0, 0.05, 0.055), 0.03);
+    d = smin(d, sdEll(x, y, z, 0.53, 0.37, -0.03, 0.06, 0.085, 0.06), 0.03);
+    d = smin(d, sdEll(x, y, z, 0.44, 0.25, -0.05, 0.03, 0.03, 0.03), 0.02);
+    d = smin(d, sdCap(x, y, z, 0.5, 0.3, 0.0, 0.4, -0.6, 0.04, 0.05, 0.046), 0.05);
+    d = smin(d, sdCap(x, y, z, 0.4, -0.6, 0.04, K.x + 0.01, K.y + 0.12, K.z, 0.046, 0.05), 0.05);
+    d = smin(d, sdEll(x, y, z, K.x - 0.055, K.y + 0.03, K.z - 0.01, 0.055, 0.07, 0.085), 0.04);
+    d = smin(d, sdEll(x, y, z, K.x + 0.06, K.y + 0.03, K.z - 0.01, 0.055, 0.07, 0.085), 0.04);
+    return d;
+  };
+  both('FEM', 'HIP', sdfGeo(fem, V(0.16, K.y - 0.07, -0.14), V(0.64, Hp.y + 0.12, 0.14), H));
+  both('PAT', 'HIP', blob(K.x, K.y + 0.07, 0.115, 0.05, 0.06, 0.022, 0.06, 3, 18));
+  const tib = (x, y, z) => {
+    let d = sdEll(x, y, z, K.x, K.y - 0.06, K.z, 0.12, 0.04, 0.09);
+    d = smin(d, sdCap(x, y, z, K.x, K.y - 0.08, K.z, A.x - 0.01, A.y + 0.06, A.z, 0.05, 0.034), 0.05);
+    d = smin(d, sdEll(x, y, z, K.x, K.y - 0.16, K.z + 0.07, 0.03, 0.04, 0.025), 0.03);
+    d = smin(d, sdEll(x, y, z, A.x - 0.045, A.y - 0.02, A.z, 0.03, 0.05, 0.035), 0.03);
+    d = smin(d, sdEll(x, y, z, A.x, A.y + 0.03, A.z, 0.05, 0.03, 0.05), 0.03);
+    return d;
+  };
+  both('TIB', 'KN', sdfGeo(tib, V(K.x - 0.15, A.y - 0.09, -0.13), V(K.x + 0.15, K.y + 0.0, 0.13), H));
+  const fib = capsSDF([[V(K.x + 0.11, K.y - 0.12, K.z - 0.05), V(K.x + 0.11, K.y - 0.16, K.z - 0.05), 0.028, 0.024, 0.02], [V(K.x + 0.11, K.y - 0.16, K.z - 0.05), V(A.x + 0.085, A.y + 0.06, A.z - 0.03), 0.016, 0.017, 0.02], [V(A.x + 0.085, A.y + 0.06, A.z - 0.03), V(A.x + 0.09, A.y - 0.05, A.z - 0.04), 0.022, 0.02, 0.02]]);
+  both('FIB', 'KN', sdfGeo(fib, V(K.x + 0.03, A.y - 0.09, -0.12), V(K.x + 0.17, K.y - 0.06, 0.03), H));
+  /* ---- foot ---- */
+  const tar = [blob(A.x, A.y - 0.06, A.z + 0.01, 0.055, 0.04, 0.065, 0.06, 1, 16), blob(A.x - 0.005, -3.67, -0.12, 0.05, 0.055, 0.1, 0.07, 2, 18),
+    blob(A.x - 0.035, -3.61, 0.1, 0.035, 0.035, 0.035, 0.06, 3, 12), blob(A.x + 0.055, -3.66, 0.08, 0.04, 0.035, 0.045, 0.06, 4, 12),
+    blob(0.205, -3.66, 0.17, 0.025, 0.03, 0.035, 0.05, 5, 10), blob(0.245, -3.645, 0.165, 0.022, 0.028, 0.03, 0.05, 6, 10), blob(0.282, -3.65, 0.16, 0.022, 0.028, 0.03, 0.05, 7, 10)];
+  both('TARS', 'AN', mergeGeoms(tar));
+  const mt = [], fp = [];
+  TOES.forEach((t, i) => {
+    const b = V(lerp(0.205, 0.34, i / 4), -3.67, 0.19 - i * 0.02), e = V(t.x, -3.745, t.z - 0.03);
+    mt.push(taperTube(new THREE.CatmullRomCurve3([b, e]), 20, 8, u => lerp(0.017, 0.014, u) * (i === 0 ? 1.4 : 1)), blob(e.x, e.y, e.z, i === 0 ? 0.022 : 0.016, 0.016, 0.016, 0.04, i, 10));
+    const n = i === 0 ? 2 : 3; let p = e;
+    for (let k = 0; k < n; k++) { const q2 = p.clone().add(V(0.002, -0.006, t.len / n * 0.95)); fp.push(taperTube(new THREE.CatmullRomCurve3([p, q2]), 10, 8, u => lerp(0.012, 0.009, u) * (i === 0 ? 1.4 : 1))); p = q2; }
+  });
+  both('MTARS', 'AN', mergeGeoms(mt)); both('FPHAL', 'AN', mergeGeoms(fp));
+  /* ---- joints & cartilage ---- */
+  const cap = (c, r, dir, ang) => { const g = new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, ang); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), dir.clone().normalize())); g.translate(c.x, c.y, c.z); return g; };
+  const ring = (c, r, t, dir) => { const g = new THREE.TorusGeometry(r, t, 10, 36); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), dir.clone().normalize())); g.translate(c.x, c.y, c.z); return g; };
+  both('J_SH', 'SH', cap(V(S.x - 0.01, S.y, S.z), 0.093, V(-1, 0.4, 0), 1.25)); both('J_SH', 'ROOT', ring(V(0.715, 2.845, -0.1), 0.05, 0.012, V(1, 0, 0.3)));
+  both('J_EL', 'SH', (() => { const g = new THREE.CylinderGeometry(0.043, 0.043, 0.14, 20, 1, true); g.rotateZ(Math.PI / 2); g.translate(E.x, E.y - 0.01, E.z + 0.01); return g; })());
+  both('J_WR', 'EL', blob(Wr.x, Wr.y + 0.005, Wr.z, 0.085, 0.014, 0.035, 0.03, 4, 16));
+  both('J_HIP', 'HIP', cap(V(Hp.x + 0.02, Hp.y, Hp.z), 0.089, V(-0.6, 0.8, 0), 1.3)); both('J_HIP', 'ROOT', ring(V(Hp.x + 0.07, Hp.y, Hp.z + 0.02), 0.09, 0.012, V(1, 0, 0.25)));
+  both('J_KN', 'KN', mergeGeoms([ring(V(K.x - 0.055, K.y - 0.015, K.z), 0.045, 0.011, V(0, 1, 0)), ring(V(K.x + 0.06, K.y - 0.015, K.z), 0.042, 0.011, V(0, 1, 0)),
+    taperTube(new THREE.CatmullRomCurve3([V(K.x - 0.01, K.y - 0.03, K.z + 0.04), V(K.x + 0.02, K.y + 0.05, K.z - 0.03)]), 8, 6, () => 0.01), taperTube(new THREE.CatmullRomCurve3([V(K.x + 0.01, K.y - 0.03, K.z - 0.05), V(K.x - 0.02, K.y + 0.05, K.z + 0.02)]), 8, 6, () => 0.01)]));
+  both('J_AN', 'AN', cap(V(A.x, A.y - 0.04, A.z + 0.01), 0.05, V(0, 1, 0), 1.0));
+  add('J_SYM', 'ROOT', blob(0, 0.31, 0.16, 0.022, 0.06, 0.03, 0.04, 8, 14));
+  both('J_TMJ', 'NECK', blob(0.25, 3.69, -0.08, 0.025, 0.008, 0.02, 0.03, 9, 10));
+  return recs;
+}
+/* bone & joint catalogue */
+const BONES = {
+  SKULL: ['Skull (cranium)', 'Protects the brain and holds the eyes, ears and teeth — 22 bones locked together by sutures.', V(0, 0.9, 0.2), 'Skull & face'],
+  MAND: ['Mandible (jawbone)', 'The only movable bone of the skull; it hinges at the jaw joint for chewing and speaking.', V(0, 0.2, 0.75), 'Skull & face'],
+  TEETH: ['Teeth', 'The hardest parts of the body — 32 adult teeth cut, tear and grind food.', V(0, 0.15, 1.25), 'Skull & face'],
+  CERV: ['Cervical vertebrae (C1–C7)', 'The seven neck bones; C1 and C2 let the head nod and turn.', V(0, 0.55, -0.9), 'Spine & chest'],
+  THOR: ['Thoracic vertebrae (T1–T12)', 'Twelve middle back bones, each joined to a pair of ribs.', V(0, 0, -1.25), 'Spine & chest'],
+  LUMB: ['Lumbar vertebrae (L1–L5)', 'Five big, strong lower-back bones that carry most of the body’s weight.', V(0, -0.35, -1.1), 'Spine & chest'],
+  SACR: ['Sacrum', 'Five fused vertebrae forming the back of the pelvis.', V(0, -0.6, -1.0), 'Spine & chest'],
+  COCC: ['Coccyx (tailbone)', 'Small fused bones at the bottom of the spine; an anchor for pelvic muscles.', V(0, -1.0, -0.9), 'Spine & chest'],
+  DISC: ['Intervertebral discs', 'Rubbery cartilage cushions between vertebrae that absorb shocks and let the spine bend.', V(0, 0, -1.9), 'Joints & cartilage'],
+  RIBS: ['Ribs (12 pairs)', 'A flexible cage that protects the heart and lungs and moves when you breathe.', V(0, 0, 0.75), 'Spine & chest'],
+  COST: ['Costal cartilage', 'Bendy cartilage joining the ribs to the breastbone, letting the chest expand.', V(0, -0.05, 1.25), 'Joints & cartilage'],
+  STER: ['Sternum (breastbone)', 'A flat bone at the front of the chest that anchors the ribs and shields the heart.', V(0, 0, 1.7), 'Spine & chest'],
+  CLAV: ['Clavicle (collarbone)', 'A strut that holds the shoulder away from the body — the most commonly broken bone.', V(0.55, 0.65, 0.6), 'Shoulders & arms'],
+  SCAP: ['Scapula (shoulder blade)', 'A triangular bone that glides over the back and forms the shoulder socket.', V(0.45, 0.25, -1.0), 'Shoulders & arms'],
+  HUM: ['Humerus', 'The upper-arm bone, from the shoulder ball to the elbow hinge.', V(0.85, 0.1, 0.0), 'Shoulders & arms'],
+  RAD: ['Radius', 'The thumb-side forearm bone; it rolls over the ulna to turn the palm up or down.', V(1.0, -0.2, 0.35), 'Shoulders & arms'],
+  ULN: ['Ulna', 'The little-finger-side forearm bone; its tip forms the point of the elbow.', V(0.9, -0.2, -0.35), 'Shoulders & arms'],
+  CARP: ['Carpals', 'Eight small wrist bones in two rows that make the wrist flexible.', V(0.65, -0.3, 0.35), 'Hands'],
+  MCARP: ['Metacarpals', 'Five bones forming the palm; their heads are your knuckles.', V(0.8, -0.55, 0.55), 'Hands'],
+  HPHAL: ['Phalanges of the hand', '14 finger bones — 3 in each finger, 2 in the thumb — for gripping and fine movement.', V(0.95, -0.85, 0.75), 'Hands'],
+  PELV: ['Hip bones (pelvis)', 'Ilium, ischium and pubis fused together — they carry the upper body onto the legs.', V(0.65, 0.35, 0.1), 'Pelvis & legs'],
+  FEM: ['Femur (thigh bone)', 'The longest and strongest bone — it can support 30 times the body’s weight.', V(0.75, -0.2, 0.25), 'Pelvis & legs'],
+  PAT: ['Patella (kneecap)', 'A bone inside the thigh tendon that protects the knee and boosts leverage.', V(0.3, 0.0, 1.0), 'Pelvis & legs'],
+  TIB: ['Tibia (shin bone)', 'The main weight-bearing bone of the lower leg.', V(0.55, -0.45, 0.45), 'Pelvis & legs'],
+  FIB: ['Fibula', 'A thin bone beside the tibia that anchors muscles and forms the outer ankle.', V(0.95, -0.45, -0.25), 'Pelvis & legs'],
+  TARS: ['Tarsals', 'Seven ankle and heel bones that take the impact of every step.', V(0.6, -0.4, -0.2), 'Feet'],
+  MTARS: ['Metatarsals', 'Five long bones that form the arch of the foot.', V(0.7, -0.55, 0.45), 'Feet'],
+  FPHAL: ['Phalanges of the foot', '14 toe bones that help with balance and push-off when walking.', V(0.8, -0.65, 0.95), 'Feet'],
+  J_SH: ['Shoulder joint', 'A ball-and-socket joint — the most mobile joint in the body, able to swing in almost any direction.', V(0.45, 0.35, 0.45), 'Joints & cartilage'],
+  J_EL: ['Elbow joint', 'A hinge joint that bends and straightens the arm; the radius also pivots here.', V(0.55, 0.0, 0.5), 'Joints & cartilage'],
+  J_WR: ['Wrist joint', 'An ellipsoid joint that tilts the hand up, down and side to side.', V(0.45, -0.1, 0.55), 'Joints & cartilage'],
+  J_HIP: ['Hip joint', 'A deep ball-and-socket joint — very stable, built to carry body weight.', V(0.45, 0.0, 0.55), 'Joints & cartilage'],
+  J_KN: ['Knee joint', 'The largest hinge joint, cushioned by two menisci and held by the cruciate ligaments.', V(0.45, 0.0, 0.7), 'Joints & cartilage'],
+  J_AN: ['Ankle joint', 'A hinge between the shin bones and the talus that points the foot up and down.', V(0.45, -0.1, 0.55), 'Joints & cartilage'],
+  J_SYM: ['Pubic symphysis', 'A cartilage joint joining the two hip bones at the front.', V(0, -0.4, 0.9), 'Joints & cartilage'],
+  J_TMJ: ['Jaw joint (TMJ)', 'A sliding hinge in front of each ear that opens the mouth.', V(0.45, 0.4, 0.2), 'Joints & cartilage'],
+};
+const CARTILAGE = new Set(['DISC', 'COST', 'J_SH', 'J_EL', 'J_WR', 'J_HIP', 'J_KN', 'J_AN', 'J_SYM', 'J_TMJ']);
+
+/* ================= NERVOUS SYSTEM PATHS (left side; mirrored to the right) ================= */
+const mirP = p => V(-p.x, p.y, p.z);
+const mirL = a => a.map(mirP);
+const NV = {};   // named polylines (left side)
+const CORD = [];   // spinal cord centreline, top → conus
+let CONUS_Y = 1.52;
+function cordAt(y) { // point on the cord (or cauda) at height y
+  if (y >= CORD[0].y) return CORD[0].clone();
+  for (let i = 1; i < CORD.length; i++) if (CORD[i].y <= y) { const a = CORD[i - 1], b = CORD[i], t = (a.y - y) / (a.y - b.y); return a.clone().lerp(b, t); }
+  return CORD[CORD.length - 1].clone();
+}
+const LEVELS = [];   // 31 spinal nerve levels
+function buildNervePaths() {
+  // spinal cord through the vertebral canal
+  CORD.push(V(0, 3.66, -0.12));
+  for (const v of VERT) { const c = canalAt(v); if (c.y > CONUS_Y - 0.05) CORD.push(c); }
+  CORD.push(cordAt(CONUS_Y).add(V(0, -0.08, 0)));
+  // spinal nerve levels: C1–C8, T1–T12, L1–L5, S1–S5, Co1
+  const exitOf = (y, z) => V(0.13, y, z + 0.015);
+  for (let i = 0; i < 8; i++) { const v = VERT[Math.min(6, i)], y = i < 7 ? v.p.y + v.h * 0.45 : v.p.y - v.h * 0.5; LEVELS.push({ name: 'C' + (i + 1), y, exit: exitOf(y, canalAt(v).z) }); }
+  for (let i = 0; i < 12; i++) { const v = VERT[7 + i]; LEVELS.push({ name: 'T' + (i + 1), y: v.p.y - v.h * 0.5, exit: exitOf(v.p.y - v.h * 0.5, canalAt(v).z) }); }
+  for (let i = 0; i < 5; i++) { const v = VERT[19 + i]; LEVELS.push({ name: 'L' + (i + 1), y: v.p.y - v.h * 0.5, exit: exitOf(v.p.y - v.h * 0.5, canalAt(v).z) }); }
+  for (let i = 0; i < 5; i++) { const y = 0.8 - i * 0.085, z = -0.2 - 0.06 * i; LEVELS.push({ name: 'S' + (i + 1), y, exit: V(0.08 - i * 0.008, y, z + 0.03), sacral: true }); }
+  LEVELS.push({ name: 'Co1', y: 0.36, exit: V(0.03, 0.36, -0.27), sacral: true });
+  // root: from the cord (where its segment sits) down to the exit — lumbar/sacral roots descend in the cauda equina
+  LEVELS.forEach((L, i) => {
+    const segY = lerp(3.62, CONUS_Y, i / (LEVELS.length - 1)) ;   // cord segments are compressed above the conus
+    const c = cordAt(Math.max(segY, CONUS_Y - 0.06));
+    const pts = [c.clone().add(V(0.02, 0, 0))];
+    if (c.y - L.exit.y > 0.12) { pts.push(V(0.02 + 0.06 * (i - 20) / 11, lerp(c.y, L.exit.y, 0.35), c.z), V(L.exit.x - 0.06, L.exit.y + 0.05, L.exit.z - 0.02)); }
+    pts.push(L.exit.clone());
+    L.root = pts; L.drg = L.exit.clone().add(V(-0.015, 0, -0.01));
+  });
+  const lv = n => LEVELS.find(l => l.name === n).exit;
+  // ---- brachial plexus & arm ----
+  const AX = V(0.72, 2.6, -0.05);
+  NV.brachial = ['C5', 'C6', 'C7', 'C8', 'T1'].map(n => [lv(n), V(0.32, lerp(lv(n).y, 2.95, 0.6), -0.1), V(0.55, 2.84, -0.02), AX]);
+  NV.axillary = [AX, V(0.8, 2.6, -0.17), V(0.9, 2.66, -0.12), V(0.94, 2.72, -0.02)];
+  NV.musculo = [AX, V(0.84, 2.35, 0.05), V(0.9, 1.95, 0.08), V(0.98, 1.45, 0.06), V(1.06, 0.95, 0.08), V(1.12, 0.45, 0.07)];
+  NV.median = [AX, V(0.81, 2.3, 0.0), V(0.9, 1.8, 0.03), V(0.945, 1.45, 0.04), V(1.03, 0.95, 0.05), V(1.1, 0.45, 0.05), V(1.13, 0.2, 0.055), V(1.15, 0.0, 0.065)];
+  NV.ulnar = [AX, V(0.79, 2.25, -0.08), V(0.86, 1.75, -0.13), V(0.885, 1.45, -0.165), V(0.97, 0.9, -0.06), V(1.06, 0.22, 0.035), V(1.07, -0.02, 0.06)];
+  NV.radial = [AX, V(0.8, 2.3, -0.19), V(0.93, 1.92, -0.17), V(1.03, 1.6, -0.08), V(1.07, 1.38, -0.02), V(1.15, 0.8, -0.01), V(1.2, 0.2, -0.02), V(1.24, 0.06, -0.015)];
+  const tip = f => { const p = fingerPts(f); return p.map(q => q.clone().add(V(0, 0, 0.032))); };
+  NV.digits = [[...NV.median.slice(-1), ...THUMB.slice(1).map(p => p.clone().add(V(-0.01, 0, 0.035)))], [NV.median[NV.median.length - 1], ...tip(FINGERS[0])], [NV.median[NV.median.length - 1], ...tip(FINGERS[1])], [NV.median[NV.median.length - 1], ...tip(FINGERS[2])], [NV.ulnar[NV.ulnar.length - 1], ...tip(FINGERS[3])], [NV.ulnar[NV.ulnar.length - 1], ...tip(FINGERS[2]).slice(1).map(p => p.add(V(-0.012, 0, 0)))]];
+  // ---- cervical plexus & phrenic ----
+  NV.cervical = [[lv('C2'), V(0.2, 3.62, -0.15), V(0.28, 3.86, -0.22)], [lv('C2'), V(0.22, 3.5, -0.08), V(0.33, 3.66, 0.0)], [lv('C3'), V(0.18, 3.32, 0.02), V(0.08, 3.25, 0.15)], [lv('C4'), V(0.3, 3.12, -0.08), V(0.5, 3.05, 0.0)]];
+  NV.phrenic = [lv('C4'), V(0.12, 3.15, 0.04), V(0.13, 2.85, 0.12), V(0.2, 2.45, 0.18), V(0.27, 2.05, 0.12), V(0.3, 1.85, 0.0), V(0.2, 1.9, -0.1)];
+  // ---- intercostals ----
+  NV.intercostal = [];
+  for (let i = 0; i < 12; i++) { const r = ribPath(i), L = lv('T' + (i + 1)); const pts = [L, ...r.bone.slice(1).map(p => p.clone().add(V(0, -0.035, 0.0)))]; if (r.cart) pts.push(...r.cart.slice(1).map(p => p.clone().add(V(0, -0.03, 0.01)))); NV.intercostal.push(pts); }
+  // ---- lumbar plexus & leg ----
+  NV.lumbar = ['L1', 'L2', 'L3', 'L4'].map(n => [lv(n), V(0.19, lv(n).y - 0.08, -0.13), V(0.24, 0.92, -0.1)]);
+  NV.ilio = [lv('L1'), V(0.35, 1.25, -0.2), V(0.55, 0.98, -0.05), V(0.45, 0.7, 0.2), V(0.25, 0.5, 0.25)];
+  NV.latcut = [V(0.24, 0.92, -0.1), V(0.5, 0.75, 0.08), V(0.55, 0.35, 0.12), V(0.52, -0.4, 0.12), V(0.45, -1.2, 0.1)];
+  NV.femoral = [V(0.24, 0.92, -0.1), V(0.28, 0.7, 0.02), V(0.32, 0.5, 0.17), V(0.33, 0.25, 0.19), V(0.36, -0.3, 0.2), V(0.33, -1.2, 0.17)];
+  NV.saphenous = [V(0.33, 0.25, 0.19), V(0.22, -0.5, 0.1), V(0.2, -1.6, 0.0), V(0.19, -2.6, 0.03), V(0.19, -3.42, 0.04), V(0.19, -3.7, 0.16)];
+  NV.obturator = [V(0.24, 0.92, -0.1), V(0.14, 0.75, -0.04), V(0.2, 0.3, 0.08), V(0.19, -0.25, 0.04), V(0.2, -0.9, 0.02)];
+  NV.sacral = ['L4', 'L5', 'S1', 'S2', 'S3'].map(n => [lv(n), V(0.16, lerp(lv(n).y, 0.52, 0.6), -0.22), V(0.24, 0.47, -0.22)]);
+  NV.sciatic = [V(0.24, 0.47, -0.22), V(0.32, 0.28, -0.21), V(0.33, -0.5, -0.15), V(0.31, -1.35, -0.1)];
+  NV.tibial = [V(0.31, -1.35, -0.1), V(0.29, -1.72, -0.11), V(0.29, -2.5, -0.11), V(0.23, -3.3, -0.1), V(0.2, -3.5, -0.09), V(0.2, -3.74, 0.02), V(0.21, -3.76, 0.2), V(0.205, -3.77, 0.5)];
+  NV.lplantar = [V(0.2, -3.74, 0.02), V(0.3, -3.76, 0.12), V(0.35, -3.77, 0.33), V(0.378, -3.775, 0.38)];
+  NV.peroneal = [V(0.31, -1.35, -0.1), V(0.38, -1.62, -0.08), V(0.43, -1.86, -0.02), V(0.36, -2.3, 0.08), V(0.33, -2.9, 0.07), V(0.28, -3.45, 0.08), V(0.27, -3.66, 0.22), V(0.262, -3.7, 0.48)];
+  NV.supperoneal = [V(0.43, -1.86, -0.02), V(0.41, -2.6, 0.04), V(0.35, -3.4, 0.07), V(0.34, -3.66, 0.2), V(0.345, -3.7, 0.4)];
+  NV.gluteal = [V(0.24, 0.47, -0.22), V(0.35, 0.55, -0.3), V(0.42, 0.45, -0.28)];
+  // ---- autonomic ----
+  NV.symp = []; for (const L of LEVELS.slice(1, 26)) NV.symp.push(V(0.1, L.y, L.exit.z + 0.075));
+  NV.symp.push(V(0.06, 0.75, -0.15), V(0.035, 0.5, -0.23), V(0.0, 0.36, -0.26));
+  NV.splanch = [[NV.symp[12], V(0.07, 1.95, 0.0), V(0.0, 1.78, 0.02)], [NV.symp[16], V(0.05, 1.7, -0.02), V(0.0, 1.78, 0.02)]];
+  NV.cardiac = [[NV.symp[1], V(0.08, 2.8, 0.06), V(0.08, 2.35, 0.12)]];
+  NV.vagus = [V(0.04, 3.66, -0.09), V(0.09, 3.45, -0.02), V(0.1, 3.1, 0.04), V(0.09, 2.75, -0.02), V(0.07, 2.4, -0.05), V(0.05, 2.0, -0.02), V(0.1, 1.8, 0.07), V(0.2, 1.72, 0.14)];
+  NV.vagusBr = [[V(0.07, 2.4, -0.05), V(0.09, 2.3, 0.08)], [V(0.09, 2.75, -0.02), V(0.25, 2.55, -0.05)], [V(0.05, 2.0, -0.02), V(0.0, 1.78, 0.02), V(-0.05, 1.3, 0.1), V(0.05, 1.0, 0.14)]];
+  // ---- cranial nerves (left) ----
+  NV.cranial = {
+    'I · Olfactory': [[V(0.03, 3.87, 0.2), V(0.03, 3.84, 0.31)], 'Carries smell from the nose to the brain.'],
+    'II · Optic': [[V(0.12, 3.79, 0.33), V(0.07, 3.77, 0.18), V(0.0, 3.75, 0.1), V(-0.05, 3.79, 0.0)], 'Carries vision from the eye; half its fibres cross at the optic chiasm.'],
+    'III · Oculomotor': [[V(0.015, 3.76, -0.04), V(0.07, 3.79, 0.12), V(0.1, 3.8, 0.27)], 'Moves most eye muscles, lifts the eyelid and narrows the pupil.'],
+    'IV · Trochlear': [[V(0.03, 3.74, -0.14), V(0.09, 3.77, 0.0), V(0.08, 3.85, 0.27)], 'Controls the superior oblique muscle to turn the eye down and in.'],
+    'V · Trigeminal': [[V(0.05, 3.7, -0.08), V(0.12, 3.7, 0.0), V(0.12, 3.92, 0.35)], 'Feeling in the face and the chewing muscles — the largest cranial nerve.'],
+    'V2 · Trigeminal (maxillary)': [[V(0.12, 3.7, 0.0), V(0.17, 3.7, 0.33)], 'Feeling in the cheek, upper lip and upper teeth.'],
+    'V3 · Trigeminal (mandibular)': [[V(0.12, 3.7, 0.0), V(0.17, 3.58, 0.08), V(0.14, 3.48, 0.26)], 'Feeling in the jaw and lower teeth, and power for chewing.'],
+    'VI · Abducens': [[V(0.012, 3.68, -0.07), V(0.08, 3.74, 0.1), V(0.14, 3.79, 0.25)], 'Moves the eye outward (lateral rectus).'],
+    'VII · Facial': [[V(0.05, 3.69, -0.1), V(0.26, 3.71, -0.04), V(0.26, 3.6, 0.0), V(0.22, 3.62, 0.18), V(0.2, 3.84, 0.29)], 'Moves the muscles of facial expression and carries taste from the front of the tongue.'],
+    'VII · Facial (lower branches)': [[V(0.26, 3.6, 0.0), V(0.18, 3.52, 0.3), V(0.1, 3.45, 0.3)], 'Controls the lips, chin and smile.'],
+    'VIII · Vestibulocochlear': [[V(0.06, 3.68, -0.11), V(0.23, 3.72, -0.06)], 'Hearing and balance, from the inner ear.'],
+    'IX · Glossopharyngeal': [[V(0.04, 3.64, -0.11), V(0.08, 3.55, 0.05), V(0.04, 3.5, 0.18)], 'Taste from the back of the tongue and the swallowing reflex.'],
+    'XI · Accessory': [[V(0.03, 3.3, -0.12), V(0.06, 3.62, -0.12), V(0.18, 3.42, -0.13), V(0.14, 3.25, 0.06)], 'Moves the neck (sternocleidomastoid) and shrugs the shoulders (trapezius).'],
+    'XI · Accessory (trapezius)': [[V(0.18, 3.42, -0.13), V(0.32, 3.12, -0.26), V(0.45, 3.0, -0.28)], 'Shrugs the shoulders.'],
+    'XII · Hypoglossal': [[V(0.03, 3.62, -0.08), V(0.1, 3.48, 0.04), V(0.03, 3.5, 0.22)], 'Moves the tongue for speaking and swallowing.'],
+  };
+  // keep every nerve just under the skin
+  const pushIn = p => { for (let k = 0; k < 8; k++) { const d = bodySDF(p.x, p.y, p.z); if (d < -0.015) break; const e = 0.01, g = V(bodySDF(p.x + e, p.y, p.z) - bodySDF(p.x - e, p.y, p.z), bodySDF(p.x, p.y + e, p.z) - bodySDF(p.x, p.y - e, p.z), bodySDF(p.x, p.y, p.z + e) - bodySDF(p.x, p.y, p.z - e)).normalize(); p.addScaledVector(g, -(d + 0.018)); } return p; };
+  const walk = v => { if (!v) return; if (v.isVector3 || (v.x !== undefined && v.y !== undefined)) pushIn(v); else if (Array.isArray(v)) v.forEach(walk); };
+  for (const k in NV) { if (k === 'cranial') { for (const key in NV.cranial) walk(NV.cranial[key][0]); } else walk(NV[k]); }
+  for (const L of LEVELS) { walk(L.root); pushIn(L.exit); pushIn(L.drg); }
+  // inner brain tracts
+  NV.motorTract = [V(0.12, 4.27, 0.01), V(0.07, 4.05, -0.03), V(0.035, 3.85, -0.07), V(0.0, 3.68, -0.1)];
+  NV.sensTract = [V(0.0, 3.68, -0.11), V(0.04, 3.85, -0.09), V(0.05, 3.95, -0.07), V(0.13, 4.24, -0.09)];
+}
+/* small twigs from a point toward the skin (sensory endings) */
+function twigsTo(p, n, len, rnd) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const pts = [p.clone()], d = V(rnd() - .5, rnd() - .5, rnd() - .5).normalize(); let q = p.clone();
+    for (let s = 0; s < 6; s++) {
+      const e = 0.01, gx = bodySDF(q.x + e, q.y, q.z) - bodySDF(q.x - e, q.y, q.z), gy = bodySDF(q.x, q.y + e, q.z) - bodySDF(q.x, q.y - e, q.z), gz = bodySDF(q.x, q.y, q.z + e) - bodySDF(q.x, q.y, q.z - e);
+      const g = V(gx, gy, gz).normalize(); d.lerp(g, 0.45).normalize();
+      q = q.clone().addScaledVector(d, len / 6); if (bodySDF(q.x, q.y, q.z) > -0.012) break; pts.push(q);
+    }
+    if (pts.length > 1) out.push(pts);
+  }
+  return out;
+}
+const NERVE_INFO = {
+  axillary: ['Axillary nerve', 'Wraps around the top of the humerus to move the deltoid and lift the arm.'],
+  musculo: ['Musculocutaneous nerve', 'Powers the biceps to bend the elbow, then supplies feeling to the outer forearm.'],
+  median: ['Median nerve', 'Runs down the middle of the arm through the carpal tunnel; controls thumb grip and feeling in most fingers.'],
+  ulnar: ['Ulnar nerve', 'Passes behind the elbow (the “funny bone”) to the little-finger side of the hand.'],
+  radial: ['Radial nerve', 'Spirals around the humerus to straighten the elbow, wrist and fingers.'],
+  digits: ['Digital nerves', 'Fine nerves along each finger carrying touch from the fingertips — among the most sensitive skin in the body.'],
+  phrenic: ['Phrenic nerve', 'From C3–C5 to the diaphragm — every breath depends on it.'],
+  cervical: ['Cervical plexus branches', 'Feeling in the neck, ear and back of the head.'],
+  intercostal: ['Intercostal nerves', 'Run under each rib to the breathing muscles and the skin of the chest and belly.'],
+  ilio: ['Iliohypogastric nerve', 'Feeling in the lower belly and hip; powers the abdominal muscles.'],
+  latcut: ['Lateral cutaneous nerve of thigh', 'Feeling in the outer thigh.'],
+  femoral: ['Femoral nerve', 'Powers the quadriceps to straighten the knee — the nerve behind the knee-jerk reflex.'],
+  saphenous: ['Saphenous nerve', 'The longest sensory branch, carrying feeling from the inner leg and foot.'],
+  obturator: ['Obturator nerve', 'Pulls the thighs together (adductor muscles).'],
+  sciatic: ['Sciatic nerve', 'The thickest nerve in the body — as wide as a thumb — running down the back of the thigh.'],
+  tibial: ['Tibial nerve', 'Powers the calf muscles to point the foot and carries feeling from the sole.'],
+  lplantar: ['Lateral plantar nerve', 'Feeling and small muscles on the outer sole.'],
+  peroneal: ['Common peroneal nerve', 'Wraps around the fibula to lift the foot and toes.'],
+  supperoneal: ['Superficial peroneal nerve', 'Feeling on the top of the foot.'],
+  gluteal: ['Gluteal nerves', 'Power the buttock muscles for standing up and climbing.'],
+};
+/* ================= FLOWS ================= */
+const NS = 160;
+function table(pts) {
+  const p = []; for (const q of pts) if (!p.length || p[p.length - 1].distanceToSquared(q) > 1e-10) p.push(q);
+  if (p.length < 2) p.push(p[0].clone().add(V(0, 0.001, 0)));
+  const cum = [0]; for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + p[i].distanceTo(p[i - 1]));
+  const L = cum[cum.length - 1], tab = new Float32Array((NS + 1) * 3); let k = 1;
+  for (let s = 0; s <= NS; s++) {
+    const d = s / NS * L; while (k < p.length - 1 && cum[k] < d) k++;
+    const t = clamp01((d - cum[k - 1]) / Math.max(1e-9, cum[k] - cum[k - 1]));
+    tab[s * 3] = lerp(p[k - 1].x, p[k].x, t); tab[s * 3 + 1] = lerp(p[k - 1].y, p[k].y, t); tab[s * 3 + 2] = lerp(p[k - 1].z, p[k].z, t);
+  }
+  return { tab, len: L, end: p[p.length - 1].clone() };
+}
+function samp(T, u, out) { const x = clamp01(u) * NS, k = Math.min(NS - 1, Math.floor(x)), t = x - k, a = T.tab; return out.set(lerp(a[k * 3], a[k * 3 + 3], t), lerp(a[k * 3 + 1], a[k * 3 + 4], t), lerp(a[k * 3 + 2], a[k * 3 + 5], t)); }
+const cpts = (pts, n) => { const c = curveOf(pts), o = []; for (let i = 0; i <= n; i++) o.push(c.getPointAt(i / n)); return o; };
+const chain = (n, key) => { const o = []; let q = n; while (q) { o.push(key ? q.p.clone().add(q[key] || V()) : q.p.clone()); q = q.parent; } return o.reverse(); };
+const lift = (pts, dz) => pts.map(p => p.clone().add(V(0, 0, dz)));
+function makePoints(n, parent) {
+  const g = new THREE.BufferGeometry();
+  for (const [k, s] of [['position', 3], ['color', 3], ['alpha', 1], ['size', 1]]) g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(n * s), s));
+  const p = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: 45 }, uOpacity: { value: 1 } },
+    vertexShader: `attribute vec3 color; attribute float alpha; attribute float size; uniform float uScale; varying vec3 vC; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = size*uScale/max(0.1,-mv.z); gl_Position = projectionMatrix*mv; vC=color; vA=alpha; }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vC; varying float vA;
+      void main(){ float d = length(gl_PointCoord-0.5); float a = smoothstep(0.5,0.0,d); float core = smoothstep(0.2,0.0,d);
+        gl_FragColor = vec4(vC*(0.55+0.95*core), a*vA*uOpacity); }`,
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending
+  }));
+  p.frustumCulled = false; p.renderOrder = 30; parent.add(p);
+  return { pts: p, list: Array.from({ length: n }, () => ({ on: false })) };
+}
+/* a particle follows a list of stages: { T, type, from, to, onEnd } */
+function spawn(pool, stages, speed, jitter = 0.03) {
+  for (const q of pool.list) if (!q.on) { Object.assign(q, { on: true, stages, si: 0, u: stages[0].from || 0, sp: speed * (0.8 + rand() * 0.4), j: V(rand() - .5, rand() - .5, rand() - .5).multiplyScalar(jitter * 2), fade: 1 }); return q; }
+  return null;
+}
+
+/* ================= FLOW POOL ================= */
+const FT = { MOT: [2.0, 1.15, 0.35, 0.95], SEN: [0.4, 1.6, 2.0, 0.95], AUT: [0.6, 2.0, 0.7, 0.9], NT: [1.9, 1.9, 0.8, 0.9], ION: [2.0, 1.9, 1.2, 0.9] };
+function updatePool(pool, dt) {
+  const g = pool.pts.geometry, pos = g.attributes.position.array, col = g.attributes.color.array, al = g.attributes.alpha.array, sz = g.attributes.size.array, tmp = V();
+  pool.list.forEach((q, i) => {
+    if (!q.on) { al[i] = 0; return; }
+    if (q.delay > 0) { q.delay -= dt; al[i] = 0; return; }
+    let st = q.stages[q.si]; q.u += dt * q.sp / st.T.len;
+    const to = st.to ?? 1;
+    if (q.u >= to) { if (st.onEnd) st.onEnd(q); q.si++; if (q.si >= q.stages.length) { q.on = false; al[i] = 0; return; } st = q.stages[q.si]; q.u = st.from || 0; }
+    samp(st.T, q.u, tmp).add(q.j); const ft = FT[st.type];
+    pos[i * 3] = tmp.x; pos[i * 3 + 1] = tmp.y; pos[i * 3 + 2] = tmp.z; col[i * 3] = ft[0]; col[i * 3 + 1] = ft[1]; col[i * 3 + 2] = ft[2];
+    const first = q.si === 0 ? ss(0, 0.03, q.u) : 1, lastS = q.si === q.stages.length - 1 ? 1 - ss(to - 0.05, to, q.u) : 1;
+    al[i] = first * lastS * ft[3] * (q.fade ?? 1); sz[i] = (st.size || 1) * (q.big || 1);
+  });
+  g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.attributes.alpha.needsUpdate = true; g.attributes.size.needsUpdate = true;
+}
+
+/* ================= parts (with left/right sub-groups for exploding) ================= */
+const parts = [], pickables = [], P = {};
+const INSET_POS = V(3.7, 1.55, 0.3);
+const root = new THREE.Group(), insetRoot = new THREE.Group(); insetRoot.position.copy(INSET_POS);
+let NM;
+function newPart(key, name, desc, ex, color, opts = {}) {
+  const p = { key, name, desc, ex, color, mats: [], hl: 0, subs: {}, anchor: opts.anchor || null, inset: !!opts.inset, ...opts };
+  parts.push(p); P[key] = p; return p;
+}
+function regMesh(part, mesh, info, pick = true) {
+  mesh.userData.part = part; if (info) mesh.userData.info = info; if (pick) pickables.push(mesh);
+  const m = mesh.material; if (m.emissive && !part.mats.includes(m)) { m.userData.baseEm = m.emissive.clone(); part.mats.push(m); }
+  return mesh;
+}
+function sub(part, side) {
+  if (!part.subs[side]) { const g = new THREE.Group(); (part.inset ? insetRoot : root).add(g); part.subs[side] = { obj: g, ex: side === 'R' ? V(-part.ex.x, part.ex.y, part.ex.z) : part.ex.clone() }; }
+  return part.subs[side].obj;
+}
+function addBoth(part, geo, mat, info) { // geo is the left-side geometry; the right side is mirrored
+  sub(part, 'L').add(regMesh(part, new THREE.Mesh(geo, mat), info));
+  sub(part, 'R').add(regMesh(part, new THREE.Mesh(mirrorGeo(geo), mat), info));
+}
+function addC(part, geo, mat, info) { const m = regMesh(part, new THREE.Mesh(geo, mat), info); sub(part, 'C').add(m); return m; }
+const nerveMat = (hex, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.25, sheen: 0.5, sheenColor: new THREE.Color('#fff8e0'), emissive: new THREE.Color(hex).multiplyScalar(0.18) }, o));
+const nTube = (pts, r0, r1, rad = 8) => { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); return taperTube(c, Math.max(8, Math.round(c.getLength() * 40)), rad, u => lerp(r0, r1, u)); };
+
+/* ================= BUILD ================= */
+let cortexOv = {}, heartGhost, bodyShell, bodyBack, skelGhost, endPlates = [];
+function wrinkledHemi(cx, sd) {
+  const g = new THREE.SphereGeometry(1, 120, 84), p = g.attributes.position, v = V(), col = new Float32Array(p.count * 3), c = new THREE.Color();
+  const lobe = (x, y, z) => z > 0.12 ? '#f4b2c0' : (y < 3.88 && z > -0.2) ? '#e9a6c8' : z < -0.2 ? '#d8a8e0' : '#f0bcb4';
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i); const n = v.clone();
+    let x = cx + v.x * 0.15, y = 4.0 + v.y * 0.24, z = -0.04 + v.z * 0.33;
+    if (cx * v.x < 0) x = cx + v.x * 0.15 * 0.45;   // flat inner (medial) face
+    if (v.y < -0.2 && v.z > -0.1 && v.z < 0.55) y += 0.05 * (1 + v.y);   // temporal lobe tuck
+    const r = 1 - Math.abs(noise(x * 22 + sd, y * 22, z * 22)), r2 = 1 - Math.abs(noise(x * 40, y * 40 + sd, z * 40));
+    const k = 0.014 * (r * r - 0.5) + 0.005 * (r2 * r2 - 0.5);
+    x += n.x * k * 1.4; y += n.y * k; z += n.z * k;
+    p.setXYZ(i, x, y, z); c.set(lobe(x, y, z)).multiplyScalar(0.85 + 0.25 * r * r); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
+}
+function overlayMat(hex) {
+  return new THREE.ShaderMaterial({ uniforms: { uI: { value: 0 }, uC: { value: new THREE.Color(hex) } },
+    vertexShader: 'attribute float mask; varying float vM; void main(){ vM = mask; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: 'uniform float uI; uniform vec3 uC; varying float vM; void main(){ gl_FragColor = vec4(uC * 1.6, vM * uI); }',
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+}
+function buildCNS() {
+  const cer = newPart('CEREB', 'Cerebrum', 'The thinking brain: its folded cortex plans movement, feels touch, sees, hears, speaks and remembers.', V(0, 1.1, 0.4), '#f4b2c0');
+  const cm = nerveMat('#ffffff', { vertexColors: true, roughness: 0.55, clearcoat: 0.3, transparent: true, opacity: 0.78, depthWrite: false, emissive: new THREE.Color('#2a1418') });
+  for (const s of [1, -1]) {
+    const g = wrinkledHemi(0.148 * s, s);
+    const m = new THREE.Mesh(g, cm); m.renderOrder = 3; sub(cer, s > 0 ? 'L' : 'R').add(regMesh(cer, m));
+    // glowing overlays for the motor strip (precentral gyrus) and the touch strip (postcentral gyrus)
+    for (const [key, zc, hex] of [['motor', 0.0, '#ff9a3a'], ['sens', -0.085, '#5ad8ff'], ['vis', -0.33, '#c890ff']]) {
+      const mask = new Float32Array(g.attributes.position.count), pa = g.attributes.position;
+      for (let i = 0; i < mask.length; i++) { const y = pa.getY(i), z = pa.getZ(i); mask[i] = key === 'vis' ? ss(-0.25, -0.36, z) * ss(4.15, 3.85, y) : Math.exp(-(((z - zc + 0.04 * (4.25 - y)) / 0.035) ** 2)) * ss(3.82, 4.05, y); }
+      const og = g.clone(); og.setAttribute('mask', new THREE.BufferAttribute(mask, 1));
+      const om = cortexOv[key + s] = new THREE.Mesh(og, overlayMat(hex)); om.renderOrder = 6; sub(cer, s > 0 ? 'L' : 'R').add(om);
+    }
+  }
+  cer.anchor = V(0.15, 4.3, 0.05);
+  const cbl = newPart('CBL', 'Cerebellum', 'The “little brain” that fine-tunes balance, posture and smooth, accurate movement.', V(0, 0.6, -0.9), '#e09ab8');
+  const cg = new THREE.SphereGeometry(1, 80, 50), cp = cg.attributes.position, v = V();
+  for (let i = 0; i < cp.count; i++) { v.fromBufferAttribute(cp, i); const f = 1 + 0.035 * Math.sin(v.y * 60 + noise(v.x * 3, v.z * 3, 1) * 3); cp.setXYZ(i, v.x * 0.2 * f, 3.73 + v.y * 0.1 * f, -0.27 + v.z * 0.13 * f); }
+  cg.computeVertexNormals(); addC(cbl, cg, nerveMat('#e39ab6', { roughness: 0.5 })); cbl.anchor = V(0.18, 3.73, -0.32);
+  const bst = newPart('BST', 'Brainstem', 'Connects the brain to the spinal cord and runs breathing, heart rate and the cranial nerves.', V(0, 0.4, -0.5), '#f2c0a8');
+  addC(bst, mergeGeoms([nTube([V(0, 3.92, -0.06), V(0, 3.78, -0.09), V(0, 3.66, -0.12)], 0.065, 0.045, 16), blob(0, 3.76, -0.06, 0.07, 0.05, 0.06, 0.04, 2, 24)]), nerveMat('#f0c0a8'));
+  bst.anchor = V(0.06, 3.72, -0.1);
+  const tr = newPart('TRACT', 'Motor & sensory tracts', 'Bundles inside the brain and cord: motor commands run down, touch and pain signals run up — crossing to the other side on the way.', V(0, 0.9, 0.9), '#ffd27a');
+  addBoth(tr, nTube(NV.motorTract, 0.012, 0.016), nerveMat('#ffb070', { emissive: new THREE.Color('#3a1a06') }), { name: 'Corticospinal (motor) tract', desc: 'Carries movement commands from the motor cortex down to the spinal cord; it crosses sides at the base of the brainstem.' });
+  addBoth(tr, nTube(NV.sensTract, 0.012, 0.012), nerveMat('#80d8ff', { emissive: new THREE.Color('#06283a') }), { name: 'Sensory pathway', desc: 'Carries touch and position signals up through the thalamus to the sensory cortex.' });
+  addBoth(tr, blob(0.045, 3.95, -0.06, 0.04, 0.03, 0.05, 0.05, 3, 16), nerveMat('#ffd0a0'), { name: 'Thalamus', desc: 'The relay station that sorts incoming sensations before passing them to the cortex.' });
+  tr.anchor = V(0.07, 4.05, -0.03);
+  // spinal cord, meninges, cauda equina
+  const cord = newPart('CORD', 'Spinal cord', 'A 45 cm cable of nerve tissue inside the spine — the main highway between brain and body, and home of the reflexes.', V(0, 0, -1.1), '#f6e2c0');
+  const cr = u => 0.03 + 0.012 * Math.exp(-(((u - 0.18) / 0.08) ** 2)) + 0.008 * Math.exp(-(((u - 0.86) / 0.06) ** 2));
+  addC(cord, taperTube(new THREE.CatmullRomCurve3(CORD), 220, 14, u => cr(u) * (u > 0.96 ? (1 - u) / 0.04 * 0.7 + 0.3 : 1)), nerveMat('#f4dfbc', { roughness: 0.4 }));
+  cord.anchor = cordAt(2.6).add(V(0, 0, -0.03));
+  const men = newPart('MEN', 'Meninges (dura mater)', 'Three protective membranes and a cushion of fluid wrapped around the brain and spinal cord.', V(0, 0, -1.7), '#bfd8f0');
+  addC(men, taperTube(new THREE.CatmullRomCurve3([...CORD, V(0, 0.75, -0.2), V(0, 0.55, -0.27)]), 240, 16, u => 0.055 + 0.008 * Math.sin(u * 20)), nerveMat('#cfe2f5', { transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, roughness: 0.2 }));
+  men.anchor = cordAt(1.9).add(V(0, 0, -0.06));
+  const cau = newPart('CAUDA', 'Cauda equina', 'The “horse’s tail” — lumbar and sacral nerve roots hanging below the end of the cord.', V(0, -0.6, -1.2), '#f2d8a8');
+  const cg2 = []; for (const L of LEVELS.filter(l => l.root.length > 2)) cg2.push(nTube(L.root, 0.008, 0.012, 6));
+  const caudaGeo = mergeGeoms(cg2); addBoth(cau, caudaGeo, nerveMat('#f2d8a8')); cau.anchor = V(0.03, 1.05, -0.15);
+  const roots = newPart('ROOTS', 'Spinal nerves & ganglia', '31 pairs of nerves leave the cord between the vertebrae; the bump on each (ganglion) holds the sensory cell bodies.', V(0, 0, -0.55), '#f2d27a');
+  const rg = [], dg = [];
+  for (const L of LEVELS) { if (L.root.length <= 2) rg.push(nTube(L.root, 0.011, 0.014, 6)); dg.push(blob(L.drg.x, L.drg.y, L.drg.z, 0.022, 0.018, 0.02, 0.05, L.y * 7, 10)); }
+  addBoth(roots, mergeGeoms(rg), nerveMat('#f2d27a'), { name: 'Spinal nerve roots', desc: 'The front (motor) and back (sensory) roots join to form each spinal nerve.' });
+  addBoth(roots, mergeGeoms(dg), nerveMat('#ffc060', { emissive: new THREE.Color('#3a2006') }), { name: 'Dorsal root ganglia', desc: 'Clusters of sensory nerve cell bodies just outside the spinal cord.' });
+  roots.anchor = LEVELS[14].exit.clone();
+}
+function buildPNS() {
+  const Y = '#f2d27a', ym = nerveMat(Y);
+  const cran = newPart('CRAN', 'Cranial nerves (12 pairs)', 'Nerves that leave the brain directly to serve the eyes, ears, nose, face, mouth and neck.', V(0, 0.5, 1.2), '#ffe08a');
+  const cmat = nerveMat('#ffe08a');
+  for (const [nm, [pts, desc]] of Object.entries(NV.cranial)) addBoth(cran, nTube(pts, 0.009, 0.006, 6), cmat, { name: 'Cranial nerve ' + nm, desc });
+  addBoth(cran, blob(0.12, 3.7, 0.0, 0.03, 0.02, 0.025, 0.05, 1, 12), cmat, { name: 'Trigeminal ganglion', desc: 'Sensory cell bodies for feeling in the face.' });
+  addBoth(cran, blob(0.03, 3.85, 0.3, 0.015, 0.012, 0.035, 0.05, 2, 10), cmat, { name: 'Olfactory bulb', desc: 'Receives smell signals from the nose.' });
+  addC(cran, blob(0, 3.75, 0.1, 0.05, 0.015, 0.03, 0.05, 3, 12), cmat, { name: 'Optic chiasm', desc: 'Where the inner half of each optic nerve crosses to the other side of the brain.' });
+  cran.anchor = V(0.17, 3.7, 0.33);
+  const vag = newPart('VAG', 'Vagus nerve (X)', 'The “wandering” cranial nerve — the main parasympathetic nerve that slows the heart and drives digestion.', V(0, 0, 1.5), '#bff08a');
+  const vm = nerveMat('#c8f090', { emissive: new THREE.Color('#1a3008') });
+  addBoth(vag, mergeGeoms([nTube(NV.vagus, 0.014, 0.01, 8), ...NV.vagusBr.map(b => nTube(b, 0.008, 0.005, 6))]), vm);
+  vag.anchor = NV.vagus[2].clone();
+  const cpl = newPart('CPLX', 'Cervical plexus & phrenic nerve', 'Neck nerves (C1–C4); the phrenic nerve (C3–C5) runs down to the diaphragm to drive breathing.', V(0.4, 0.4, 0.4), '#f2d27a');
+  addBoth(cpl, mergeGeoms(NV.cervical.map(p => nTube(p, 0.01, 0.006, 6))), ym, { name: NERVE_INFO.cervical[0], desc: NERVE_INFO.cervical[1] });
+  addBoth(cpl, nTube(NV.phrenic, 0.011, 0.008, 6), ym, { name: NERVE_INFO.phrenic[0], desc: NERVE_INFO.phrenic[1] });
+  cpl.anchor = NV.phrenic[2].clone();
+  const bp = newPart('BPLX', 'Brachial plexus', 'A tangle of nerves from C5–T1 that sorts signals into the five main nerves of the arm.', V(0.5, 0.3, 0.3), '#f2c070');
+  addBoth(bp, mergeGeoms(NV.brachial.map(p => nTube(p, 0.016, 0.022, 8))), nerveMat('#f2c070'));
+  bp.anchor = V(0.55, 2.84, -0.02);
+  const arm = newPart('ARM', 'Nerves of the arm & hand', 'Five main nerves carry commands to the arm muscles and feeling back from the skin.', V(0.8, -0.1, 0.3), '#f2d27a');
+  for (const k of ['axillary', 'musculo', 'median', 'ulnar', 'radial']) addBoth(arm, nTube(NV[k], 0.019, 0.011, 8), ym, { name: NERVE_INFO[k][0], desc: NERVE_INFO[k][1] });
+  addBoth(arm, mergeGeoms(NV.digits.map(p => nTube(p, 0.009, 0.005, 6))), ym, { name: NERVE_INFO.digits[0], desc: NERVE_INFO.digits[1] });
+  arm.anchor = NV.median[3].clone();
+  const ic = newPart('INTC', 'Intercostal nerves', NERVE_INFO.intercostal[1], V(0.3, 0, 0.6), '#f2d27a');
+  addBoth(ic, mergeGeoms(NV.intercostal.map(p => nTube(p, 0.009, 0.006, 6))), ym);
+  ic.anchor = NV.intercostal[6][3].clone();
+  const lp = newPart('LPLX', 'Lumbar plexus', 'Nerves from L1–L4 that supply the lower belly, groin and front of the thigh.', V(0.5, 0, 0.4), '#f2c070');
+  addBoth(lp, mergeGeoms([...NV.lumbar.map(p => nTube(p, 0.014, 0.018, 8))]), nerveMat('#f2c070'));
+  addBoth(lp, nTube(NV.ilio, 0.01, 0.006, 6), ym, { name: NERVE_INFO.ilio[0], desc: NERVE_INFO.ilio[1] });
+  lp.anchor = V(0.24, 0.92, -0.1);
+  const sp = newPart('SPLX', 'Sacral plexus', 'Nerves from L4–S4 that form the sciatic nerve and supply the buttocks, pelvis and leg.', V(0.5, -0.3, -0.3), '#f2c070');
+  addBoth(sp, mergeGeoms(NV.sacral.map(p => nTube(p, 0.016, 0.024, 8))), nerveMat('#f2c070'));
+  addBoth(sp, nTube(NV.gluteal, 0.012, 0.008, 6), ym, { name: NERVE_INFO.gluteal[0], desc: NERVE_INFO.gluteal[1] });
+  sp.anchor = V(0.22, 0.5, -0.24);
+  const leg = newPart('LEG', 'Nerves of the leg & foot', 'The femoral, sciatic, tibial and peroneal nerves move the leg and carry feeling from the skin.', V(0.7, -0.4, 0.3), '#f2d27a');
+  for (const k of ['latcut', 'femoral', 'saphenous', 'obturator']) addBoth(leg, nTube(NV[k], k === 'femoral' ? 0.022 : 0.012, 0.008, 8), ym, { name: NERVE_INFO[k][0], desc: NERVE_INFO[k][1] });
+  addBoth(leg, nTube(NV.sciatic, 0.032, 0.028, 10), ym, { name: NERVE_INFO.sciatic[0], desc: NERVE_INFO.sciatic[1] });
+  for (const k of ['tibial', 'lplantar', 'peroneal', 'supperoneal']) addBoth(leg, nTube(NV[k], k === 'tibial' || k === 'peroneal' ? 0.02 : 0.01, 0.007, 8), ym, { name: NERVE_INFO[k][0], desc: NERVE_INFO[k][1] });
+  leg.anchor = NV.sciatic[2].clone();
+  // autonomic
+  const sy = newPart('SYMP', 'Sympathetic trunk & ganglia', 'A chain of nerve knots beside the spine that triggers “fight or flight” — faster heart, wider pupils, more blood to muscles.', V(0.35, 0, 0.5), '#7fe08a');
+  const smat = nerveMat('#7fe08a', { emissive: new THREE.Color('#0a3010') });
+  addBoth(sy, mergeGeoms([nTube(NV.symp, 0.008, 0.008, 6), ...NV.symp.slice(0, -1).map((p, i) => blob(p.x, p.y, p.z, 0.017, 0.022, 0.015, 0.05, i, 10)), ...NV.splanch.map(b => nTube(b, 0.007, 0.006, 6)), ...NV.cardiac.map(b => nTube(b, 0.006, 0.005, 6))]), smat);
+  addC(sy, blob(0, 1.78, 0.02, 0.05, 0.025, 0.035, 0.08, 5, 16), smat, { name: 'Celiac ganglion', desc: 'A hub of autonomic nerves that controls the stomach, liver and intestines.' });
+  sy.anchor = NV.symp[14].clone();
+  // targets: ghost organs + motor end plates + skin endings
+  const org = newPart('ORG', 'Organs (autonomic targets)', 'The autonomic nervous system runs the organs without you thinking: heartbeat, breathing, digestion and more.', V(0, 0, 2.0), '#ff6a7a');
+  const gm = hex => nerveMat(hex, { transparent: true, opacity: 0.3, depthWrite: false, roughness: 0.4 });
+  const hg = blob(0, 0, 0, 0.19, 0.24, 0.17, 0.06, 7, 32); hg.rotateZ(0.5); hg.translate(0.1, 2.25, 0.14);
+  heartGhost = addC(org, hg, gm('#ff4a5c'), { name: 'Heart', desc: 'The vagus nerve slows it down; sympathetic nerves speed it up and strengthen each beat.' });
+  addC(org, mergeGeoms([blob(0.33, 2.45, -0.04, 0.26, 0.5, 0.3, 0.06, 1, 28), blob(-0.33, 2.45, -0.04, 0.26, 0.5, 0.3, 0.06, 2, 28)]), gm('#ff9fb0'), { name: 'Lungs', desc: 'Autonomic nerves widen or narrow the airways.' });
+  addC(org, blob(0.28, 1.68, 0.14, 0.2, 0.16, 0.13, 0.08, 3, 24), gm('#ffb48e'), { name: 'Stomach', desc: 'The vagus nerve releases acid and churning; sympathetic nerves pause digestion.' });
+  addC(org, blob(0.0, 0.95, 0.15, 0.42, 0.33, 0.16, 0.12, 4, 28), gm('#f4b8a0'), { name: 'Intestines', desc: 'The gut has its own “second brain” (enteric nervous system), steered by the vagus nerve.' });
+  org.anchor = V(0.15, 2.4, 0.3);
+  const mot = newPart('MOT', 'Motor nerve branches', 'Branches that end on muscle fibres at motor end plates — the signal here makes the muscle contract.', V(0.6, 0, 0.7), '#ff9a4a');
+  const near = (path, t) => path[Math.min(path.length - 1, Math.round(t * (path.length - 1)))].clone();
+  const targets = [[NV.axillary, 1, V(0.9, 2.76, -0.06)], [NV.musculo, 0.35, V(0.9, 2.05, 0.08)], [NV.median, 0.55, V(1.0, 1.15, 0.06)], [NV.radial, 0.55, V(1.07, 1.15, -0.1)], [NV.ulnar, 0.6, V(0.96, 1.05, -0.07)],
+    [NV.femoral, 0.6, V(0.38, -0.35, 0.22)], [NV.femoral, 0.8, V(0.31, -0.75, 0.2)], [NV.sciatic, 0.6, V(0.33, -0.6, -0.2)], [NV.tibial, 0.3, V(0.3, -2.2, -0.18)], [NV.peroneal, 0.45, V(0.36, -2.45, 0.1)], [NV.phrenic, 1, V(0.3, 1.88, -0.05)], [NV.gluteal, 1, V(0.38, 0.5, -0.33)]];
+  const mg = [], ep = [];
+  for (const [path, t, tgt] of targets) { const a = near(path, t); mg.push(nTube([a, a.clone().lerp(tgt, 0.5).add(V(0, 0.03, 0)), tgt], 0.008, 0.005, 6)); for (let k = 0; k < 4; k++) ep.push(blob(tgt.x + (rand() - .5) * 0.05, tgt.y + (rand() - .5) * 0.06, tgt.z + (rand() - .5) * 0.04, 0.012, 0.008, 0.012, 0.1, k, 8)); endPlates.push(tgt); }
+  const motMat = nerveMat('#ff9a4a', { emissive: new THREE.Color('#401804') });
+  addBoth(mot, mergeGeoms(mg), motMat); addBoth(mot, mergeGeoms(ep), motMat, { name: 'Motor end plates', desc: 'Where a nerve touches a muscle fibre and releases acetylcholine to make it contract.' });
+  mot.anchor = V(0.9, 2.05, 0.08);
+  const sen = newPart('SENS', 'Sensory nerve endings', 'Millions of tiny endings in the skin that detect touch, pressure, heat, cold and pain.', V(0.8, 0, 0.9), '#7fdcff');
+  const tw = [], rcp = [], srand = (() => { let s = 7; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
+  const ends = [...NV.digits.map(p => p[p.length - 1]), NV.tibial[NV.tibial.length - 1], NV.lplantar[NV.lplantar.length - 1], NV.peroneal[NV.peroneal.length - 1], NV.supperoneal[NV.supperoneal.length - 1], NV.saphenous[NV.saphenous.length - 1],
+    NV.latcut[2], NV.latcut[4], NV.musculo[4], NV.musculo[5], NV.radial[6], ...NV.cervical.map(p => p[p.length - 1]), NV.cranial['V · Trigeminal'][0][2], NV.cranial['V2 · Trigeminal (maxillary)'][0][1], NV.cranial['V3 · Trigeminal (mandibular)'][0][2],
+    ...NV.intercostal.slice(2, 11).flatMap(p => [p[3], p[p.length - 1]]), NV.ilio[4], NV.saphenous[2], NV.saphenous[3]];
+  for (const e of ends) for (const t of twigsTo(e, 4, 0.12, srand)) { tw.push(nTube(t, 0.004, 0.0025, 5)); const q = t[t.length - 1]; rcp.push(blob(q.x, q.y, q.z, 0.008, 0.008, 0.008, 0.1, rcp.length, 6)); }
+  const senMat = nerveMat('#8fe0ff', { emissive: new THREE.Color('#0a3040') });
+  addBoth(sen, mergeGeoms(tw), senMat); addBoth(sen, mergeGeoms(rcp), senMat, { name: 'Skin receptors', desc: 'Touch, temperature and pain sensors at the ends of sensory nerves.' });
+  sen.anchor = NV.digits[1][NV.digits[1].length - 1].clone();
+}
+
+/* ================= renderer & scene ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.localClippingEnabled = true;
+renderer.domElement.className = 'gl';
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+{
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 220, 20, 256, 256, 420);
+  gr.addColorStop(0, '#1d1a2b'); gr.addColorStop(.5, '#0c0b12'); gr.addColorStop(1, '#050405');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+}
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
+const HOME_T = V(1.0, 0.45, 0);
+const homeDist = () => innerWidth / innerHeight < 0.8 ? 26 : 16;
+const sph = (t, r, th, ph) => V(t.x + r * Math.sin(ph) * Math.sin(th), t.y + r * Math.cos(ph), t.z + r * Math.sin(ph) * Math.cos(th));
+const HOME_TH = 0.32, HOME_PH = 1.5;
+camera.position.copy(sph(HOME_T, homeDist(), HOME_TH, HOME_PH));
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.zoomToCursor = true; controls.zoomSpeed = 0.6; controls.rotateSpeed = 0.8;
+controls.target.copy(HOME_T); controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 2.5; controls.maxDistance = 34; controls.enablePan = false;
+scene.add(new THREE.HemisphereLight(0xfff4ea, 0x1a120e, 0.6));
+const key = new THREE.DirectionalLight(0xfff2e6, 2.3); key.position.set(4, 7, 9); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9ab8ff, 1.3); rim.position.set(-7, 4, -7); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffd8c0, 0.55); fill.position.set(-6, -3, 6); scene.add(fill);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 0.95));
+composer.addPass(new OutputPass());
+scene.add(root); scene.add(insetRoot);
+
+function makeNormalMap(size, fine) {
+  const H = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size, cu = Math.cos(u * Math.PI * 2), su = Math.sin(u * Math.PI * 2), cv = Math.cos(v * Math.PI * 2), sv = Math.sin(v * Math.PI * 2);
+    H[y * size + x] = fbm(cu * 4 + cv * 2, su * 4, sv * 4, 3) * 0.6 + fine * noise(cu * 26 + cv * 9, su * 26, sv * 26);
+  }
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(size, size), d = img.data;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const xl = (x - 1 + size) % size, xr = (x + 1) % size, yu = (y - 1 + size) % size, yd = (y + 1) % size;
+    let nx = -(H[y * size + xr] - H[y * size + xl]) * 2.2, ny = -(H[yd * size + x] - H[yu * size + x]) * 2.2, nz = 1;
+    const l = Math.hypot(nx, ny, nz), i = (y * size + x) * 4;
+    d[i] = (nx / l * .5 + .5) * 255; d[i + 1] = (ny / l * .5 + .5) * 255; d[i + 2] = (nz / l * .5 + .5) * 255; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+
+
+/* ================= NEURON CUTAWAY (inset) ================= */
+const NW = {};
+function buildNeuronInset() {
+  const I = { inset: true }, M = (hex, o = {}) => nerveMat(hex, Object.assign({ roughness: 0.4 }, o));
+  const add = (part, g, mat, info) => sub(part, 'C').add(regMesh(part, new THREE.Mesh(g, mat), info));
+  const S = V(-1.15, 0.45, 0);
+  const soma = newPart('I_SOMA', 'Cell body (soma)', 'The neuron’s control centre, holding the nucleus; it adds up incoming signals and decides whether to fire.', V(-0.3, 0.3, 0.3), '#c890ff', I);
+  add(soma, blob(S.x, S.y, S.z, 0.2, 0.17, 0.16, 0.12, 1, 40), M('#b88af0', { transparent: true, opacity: 0.85 }));
+  add(soma, blob(S.x, S.y, S.z + 0.02, 0.075, 0.07, 0.07, 0.05, 2, 20), M('#5a2a8a'), { name: 'Nucleus', desc: 'Contains the DNA that runs the cell.' });
+  soma.anchor = S.clone().add(V(0, 0.2, 0));
+  const den = newPart('I_DEN', 'Dendrites', 'Branching “antennae” that receive signals from thousands of other neurons.', V(-0.4, 0.3, 0), '#b890f0', I);
+  const dg = [], DT = [];
+  const grow = (p, d, len, r, depth) => { const e = p.clone().addScaledVector(d, len); const mid = p.clone().lerp(e, 0.5).add(V((rand() - .5) * 0.06, (rand() - .5) * 0.06, (rand() - .5) * 0.05)); dg.push(nTube([p, mid, e], r, r * 0.65, 6)); DT.push([p, mid, e]); if (depth < 3) for (const s of [-0.55, 0.5]) { const nd = d.clone().applyAxisAngle(V(0, 0, 1), s + (rand() - .5) * 0.3).applyAxisAngle(V(0, 1, 0), (rand() - .5) * 0.6); grow(e, nd, len * 0.68, r * 0.65, depth + 1); } };
+  for (let k = 0; k < 6; k++) { const a = Math.PI * 0.55 + k / 5 * Math.PI * 0.95; grow(S.clone().add(V(Math.cos(a) * 0.17, Math.sin(a) * 0.14, 0)), V(Math.cos(a), Math.sin(a), (rand() - .5) * 0.5).normalize(), 0.22, 0.03, 0); }
+  add(den, mergeGeoms(dg), M('#b48cf0')); den.anchor = S.clone().add(V(-0.35, 0.3, 0));
+  // axon with myelin and nodes of Ranvier
+  const A0 = S.clone().add(V(0.18, -0.02, 0)), A1 = V(0.85, 0.45, 0);
+  const axn = newPart('I_AXN', 'Axon', 'The long output cable — up to a metre long — that carries the electrical impulse away from the cell body.', V(0, 0.45, 0.2), '#ffd27a', I);
+  add(axn, nTube([A0, A0.clone().lerp(A1, 0.5).add(V(0, 0.04, 0)), A1], 0.026, 0.02, 10), M('#ffd27a'));
+  add(axn, nTube([S.clone().add(V(0.1, -0.01, 0)), A0.clone().add(V(0.05, 0, 0))], 0.07, 0.026, 12), M('#c89af0'), { name: 'Axon hillock', desc: 'The trigger zone where the impulse (action potential) starts.' });
+  axn.anchor = A0.clone().lerp(A1, 0.08).add(V(0, 0.05, 0));
+  const mye = newPart('I_MYE', 'Myelin sheath', 'Fatty insulation wrapped by Schwann cells; it makes impulses jump and travel up to 100× faster.', V(0, 0.55, 0.35), '#f5f0e6', I);
+  const myG = [], NODES = [];
+  const L = A1.x - A0.x, n = 7;
+  for (let i = 0; i < n; i++) { const x0 = A0.x + 0.12 + i * (L - 0.15) / n, x1 = x0 + (L - 0.15) / n - 0.04; const c = new THREE.CylinderGeometry(0.052, 0.052, x1 - x0, 24, 1); c.rotateZ(Math.PI / 2); c.translate((x0 + x1) / 2, lerp(A0.y, A1.y, ((x0 + x1) / 2 - A0.x) / L) + 0.02 * Math.sin(((x0 + x1) / 2 - A0.x) / L * Math.PI), 0); myG.push(c); NODES.push(V(x1 + 0.02, lerp(A0.y, A1.y, (x1 + 0.02 - A0.x) / L) + 0.02 * Math.sin((x1 + 0.02 - A0.x) / L * Math.PI), 0)); }
+  add(mye, mergeGeoms(myG), M('#f6f0e2', { transparent: true, opacity: 0.8, roughness: 0.25, clearcoat: 1 })); mye.anchor = V(A0.x + 0.4, A0.y + 0.08, 0);
+  const nod = newPart('I_NOD', 'Nodes of Ranvier', 'Gaps in the myelin where the impulse is regenerated, jumping from node to node.', V(0.1, 0.65, 0.4), '#ffb040', I);
+  add(nod, mergeGeoms(NODES.map((p, i) => blob(p.x, p.y, p.z, 0.02, 0.03, 0.03, 0.02, i, 10))), M('#ffb040', { emissive: new THREE.Color('#402008') }));
+  nod.anchor = NODES[3].clone().add(V(0, 0.05, 0));
+  const term = newPart('I_TERM', 'Axon terminals', 'The branching ends of the axon; each swelling (bouton) passes the message on at a synapse.', V(0.3, 0.3, 0.2), '#ffc060', I);
+  const TT = [];
+  for (const [dy, dz] of [[0.2, 0.02], [0, -0.05], [-0.2, 0.04]]) TT.push([A1, A1.clone().add(V(0.12, dy * 0.6, dz)), A1.clone().add(V(0.22, dy, dz))]);
+  add(term, mergeGeoms([...TT.map(t => nTube(t, 0.016, 0.01, 6)), ...TT.map((t, i) => blob(t[2].x + 0.02, t[2].y, t[2].z, 0.04, 0.035, 0.035, 0.05, i, 12))]), M('#ffc060'));
+  term.anchor = TT[0][2].clone().add(V(0, 0.06, 0));
+  // synapse zoom
+  const SZ = V(-0.55, -0.75, 0);
+  const syn = newPart('I_SYN', 'Synapse', 'The tiny gap (20 nanometres) between two neurons where the signal is passed on by chemicals.', V(-0.2, -0.3, 0.3), '#ffd27a', I);
+  const bout = new THREE.SphereGeometry(0.32, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.62); bout.rotateX(Math.PI); bout.translate(SZ.x, SZ.y + 0.42, SZ.z);
+  add(syn, bout, M('#ffc870', { transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }), { name: 'Presynaptic bouton', desc: 'The swollen end of the axon, packed with vesicles of neurotransmitter.' });
+  const post = new THREE.SphereGeometry(0.5, 40, 16, 0, Math.PI * 2, 0, Math.PI * 0.3); post.translate(SZ.x, SZ.y - 0.52, SZ.z);
+  add(syn, post, M('#b48cf0', { side: THREE.DoubleSide }), { name: 'Postsynaptic membrane', desc: 'The receiving neuron’s surface, studded with receptors.' });
+  syn.anchor = SZ.clone().add(V(0.3, 0.3, 0));
+  const ves = newPart('I_VES', 'Synaptic vesicles', 'Tiny bubbles of neurotransmitter (such as acetylcholine or dopamine) released when the impulse arrives.', V(-0.3, -0.1, 0.5), '#ffe8a0', I);
+  const vl = []; for (let i = 0; i < 26; i++) { const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * 0.22; vl.push(blob(SZ.x + Math.cos(a) * r, SZ.y + 0.2 + rand() * 0.18, SZ.z + Math.sin(a) * r * 0.6, 0.025, 0.025, 0.025, 0.02, i, 8)); }
+  add(ves, mergeGeoms(vl), M('#fff0b0', { emissive: new THREE.Color('#403010') })); ves.anchor = SZ.clone().add(V(-0.2, 0.32, 0));
+  const rec = newPart('I_REC', 'Receptors', 'Protein locks on the next cell; when neurotransmitter binds, they open and pass the signal on.', V(-0.3, -0.5, 0.4), '#7fdcff', I);
+  const rl = []; for (let i = 0; i < 14; i++) { const x = SZ.x - 0.22 + i * 0.034, z = (i % 3 - 1) * 0.06; const c = new THREE.CylinderGeometry(0.012, 0.012, 0.04, 8); c.translate(x, SZ.y - 0.03 + 0.0, z); rl.push(c); }
+  add(rec, mergeGeoms(rl), M('#7fdcff', { emissive: new THREE.Color('#0a3040') })); rec.anchor = SZ.clone().add(V(0.25, -0.05, 0));
+  // neuromuscular junction
+  const NZ = V(0.75, -0.75, 0);
+  const nmj = newPart('I_NMJ', 'Neuromuscular junction', 'Where a motor nerve meets a muscle fibre — each impulse here makes the fibre twitch.', V(0.3, -0.3, 0.4), '#ff9a4a', I);
+  const nm = [nTube([NZ.clone().add(V(-0.35, 0.45, 0)), NZ.clone().add(V(-0.1, 0.28, 0)), NZ.clone().add(V(0, 0.16, 0))], 0.02, 0.016, 8)];
+  for (const dx of [-0.16, 0, 0.16]) nm.push(nTube([NZ.clone().add(V(0, 0.16, 0)), NZ.clone().add(V(dx * 0.6, 0.15, 0.04)), NZ.clone().add(V(dx, 0.135, 0.06))], 0.012, 0.009, 6), blob(NZ.x + dx, NZ.y + 0.13, NZ.z + 0.06, 0.03, 0.015, 0.03, 0.05, dx * 10, 10));
+  add(nmj, mergeGeoms(nm), M('#ff9a4a', { emissive: new THREE.Color('#401804') })); nmj.anchor = NZ.clone().add(V(-0.25, 0.4, 0));
+  const mus = newPart('I_MUS', 'Muscle fibre', 'A long muscle cell with stripes (sarcomeres) that shorten when the nerve signal arrives.', V(0.4, -0.5, 0.2), '#c8484a', I);
+  const mg = new THREE.CylinderGeometry(0.12, 0.12, 0.9, 32, 30); mg.rotateZ(Math.PI / 2); mg.translate(NZ.x, NZ.y, NZ.z);
+  const mc = new Float32Array(mg.attributes.position.count * 3), cc = new THREE.Color();
+  for (let i = 0; i < mg.attributes.position.count; i++) { const x = mg.attributes.position.getX(i); cc.set('#c4484c').multiplyScalar(0.75 + 0.3 * (0.5 + 0.5 * Math.sin((x - NZ.x) * 90))); mc[i * 3] = cc.r; mc[i * 3 + 1] = cc.g; mc[i * 3 + 2] = cc.b; }
+  mg.setAttribute('color', new THREE.BufferAttribute(mc, 3));
+  NW.musMat = M('#ffffff', { vertexColors: true, emissive: new THREE.Color('#200606') });
+  add(mus, mg, NW.musMat); mus.anchor = NZ.clone().add(V(0.35, -0.12, 0));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.012, 8, 120), new THREE.MeshBasicMaterial({ color: 0xc8a0ff, transparent: true, opacity: 0.35 })); ring.position.set(-0.15, -0.1, 0); insetRoot.add(ring);
+  Object.assign(NW, { S, A0, A1, NODES, TT, DT, SZ, NZ, ring });
+}
+
+/* ================= signal routes ================= */
+const cat = (...a) => a.flat();
+const cordSeg = (y0, y1, x = 0.012, dz = 0) => { const o = []; const n = Math.max(2, Math.ceil(Math.abs(y0 - y1) / 0.08)); for (let i = 0; i <= n; i++) o.push(cordAt(lerp(y0, y1, i / n)).add(V(x, 0, dz))); return o; };
+const segY = name => { const i = LEVELS.findIndex(l => l.name === name); return lerp(3.62, CONUS_Y, i / (LEVELS.length - 1)); };
+const lvl = name => LEVELS.find(l => l.name === name);
+const fromRoot = (name, side) => { const L = lvl(name), r = L.root.map(p => p.clone()); return side < 0 ? mirL(r) : r; };
+function routes() {
+  const R = {};
+  const S = s => p => s < 0 ? mirL(p) : p.map(q => q.clone());
+  // voluntary movement: right motor cortex → cross in the medulla → left cord → C7 → median nerve → index finger
+  R.handMotor = cat(S(-1)(NV.motorTract), [V(0.0, 3.66, -0.11)], cordSeg(3.62, segY('C7'), 0.014), fromRoot('C7', 1).slice(1), NV.brachial[2].slice(1), NV.median.slice(1), NV.digits[1].slice(1));
+  R.legMotor = cat(NV.motorTract, [V(0.0, 3.66, -0.11)], cordSeg(3.62, segY('L5'), -0.014), fromRoot('L5', -1).slice(1), mirL(NV.sacral[1].slice(1)), mirL(NV.sciatic.slice(1)), mirL(NV.tibial.slice(1)));
+  // touch: left fingertip → median → C7 dorsal root → up the cord → cross in the medulla → right thalamus → right sensory cortex
+  R.touch = cat(NV.digits[1].slice().reverse(), NV.median.slice(0, -1).reverse(), NV.brachial[2].slice(0, -1).reverse(), fromRoot('C7', 1).reverse(), cordSeg(segY('C7'), 3.62, 0.008, -0.012), [V(0, 3.68, -0.11)], S(-1)(NV.sensTract).slice(1));
+  R.footTouch = cat(mirL(NV.tibial).reverse(), mirL(NV.sciatic).reverse(), mirL(NV.sacral[2]).reverse(), fromRoot('S1', -1).reverse(), cordSeg(segY('S1'), 3.62, -0.008, -0.012), [V(0, 3.68, -0.11)], NV.sensTract.slice(1));
+  // knee-jerk reflex: tendon tap → femoral (sensory) → L4 → cord → straight back out (motor) → quadriceps
+  const tap = V(0.29, -1.85, 0.13), fem = NV.femoral;
+  R.reflexIn = cat([tap, V(0.3, -1.5, 0.17)], fem.slice(-1).concat(fem.slice(0, -1).reverse()).slice(0), NV.lumbar[3].slice(0, -1).reverse(), fromRoot('L4', 1).reverse());
+  R.reflexOut = cat(fromRoot('L4', 1), NV.lumbar[3].slice(1), fem.slice(1, 5), [V(0.38, -0.35, 0.22)]);
+  R.reflexUp = cat(cordSeg(segY('L4'), 3.62, 0.008, -0.012), [V(0, 3.68, -0.11)], S(-1)(NV.sensTract).slice(1));
+  // autonomic
+  R.vagusL = cat(NV.vagus.slice(0, 5), NV.vagusBr[0].slice(1)); R.vagusR = mirL(R.vagusL);
+  R.vagusGut = cat(NV.vagus.slice(0, 6), NV.vagusBr[2].slice(1));
+  R.symHeart = cat(cordSeg(3.62, segY('T2'), 0.02), fromRoot('T2', 1).slice(1), [NV.symp[1]], NV.cardiac[0].slice(1));
+  R.symGut = cat(cordSeg(3.62, segY('T7'), 0.02), fromRoot('T7', 1).slice(1), NV.symp.slice(7, 13), NV.splanch[0].slice(1));
+  // background traffic
+  R.random = [];
+  for (const k of ['axillary', 'musculo', 'median', 'ulnar', 'radial', 'femoral', 'saphenous', 'tibial', 'peroneal', 'latcut', 'obturator']) R.random.push(NV[k], mirL(NV[k]));
+  for (const p of NV.intercostal) R.random.push(p, mirL(p));
+  for (const [, [pts]] of Object.entries(NV.cranial)) R.random.push(pts, mirL(pts));
+  R.random.push(CORD.map(p => p.clone()), NV.vagus, mirL(NV.vagus), NV.phrenic, mirL(NV.phrenic), NV.sciatic.concat(NV.tibial.slice(1)), mirL(NV.sciatic.concat(NV.peroneal.slice(1))));
+  const T = {}; for (const k in R) T[k] = k === 'random' ? R[k].map(p => table(p)) : table(R[k]);
+  return T;
+}
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+const state = { mode: 'all', explode: false, inset: true, shell: true, paused: false, speed: 1 };
+const G = { hr: 70, hrT: 70, sig: 0, sigC: 0, speed: 0, react: 0, glow: { motor: 0, sens: 0, vis: 0, muscle: 0, reflex: 0 }, beat: 0 };
+const labelsEl = $('labels'), tip = $('tip'), info = $('info');
+let camTween = null, flashStory = 0, selected = null, listHover = null, simT = 0, modeT = 0, TR;
+function tweenCamera(toP, toT, dur = 1.3) { camTween = { fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT, t: 0, dur }; }
+const MODE_TXT = {
+  all: ['All signals', 'Around 86 billion neurons are always busy: commands flow out to muscles (orange), sensations flow in to the brain (blue) and autonomic nerves (green) run the organs.'],
+  hand: ['Move the hand', '<b style="color:#ffb070">Voluntary movement:</b> the motor cortex on the <i>right</i> side of the brain fires; the signal crosses at the brainstem, runs down the cord to C7, out through the brachial plexus and the median nerve to the hand muscles.'],
+  leg: ['Move the leg', '<b style="color:#ffb070">Walking command:</b> the left motor cortex sends the signal down the right side of the cord to L5, then out through the sciatic and tibial nerves to the calf and foot.'],
+  touch: ['Feel touch', '<b style="color:#7fdcff">Touch:</b> skin receptors in the fingertip fire; the signal runs up the median nerve, enters the cord through the dorsal root, climbs to the brainstem, crosses over and reaches the sensory cortex via the thalamus.'],
+  reflex: ['Knee reflex', '<b style="color:#ffd27a">Reflex arc:</b> a tap stretches the tendon; the femoral nerve carries the signal to the cord at L4, which answers straight back to the thigh muscle — no brain needed, in about 30 ms. The brain only hears about it afterwards.'],
+  rest: ['Rest & digest', '<b style="color:#bff08a">Parasympathetic:</b> the vagus nerve slows the heart, steadies breathing and switches on digestion.'],
+  fight: ['Fight or flight', '<b style="color:#7fe08a">Sympathetic:</b> the chain of ganglia beside the spine fires — the heart races, digestion pauses, and blood rushes to the muscles.'],
+};
+const setMode = m => { state.mode = m; modeT = 0; document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m)); flashStory = 2.5; acc.mode = 0.99; };
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$('explode').onclick = () => { state.explode = !state.explode; $('explode').textContent = state.explode ? 'Assemble' : 'Explode'; tweenCamera(state.explode ? sph(HOME_T, homeDist() * 1.3, 0.55, 1.4) : sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone()); };
+$('inset').onclick = () => { state.inset = !state.inset; $('inset').classList.toggle('on', state.inset); };
+$('shell').onclick = () => { state.shell = !state.shell; $('shell').classList.toggle('on', state.shell); };
+$('pause').onclick = () => { state.paused = !state.paused; $('pause').textContent = state.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', state.paused); };
+$('reset').onclick = () => tweenCamera(sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone());
+$('speed').oninput = e => { state.speed = +e.target.value; $('speedTxt').textContent = state.speed.toFixed(2).replace(/0$/, '') + '×'; };
+$('listToggle').onclick = () => $('right').classList.toggle('open');
+controls.addEventListener('start', () => { camTween = null; });
+function showInfo(o) { info.innerHTML = o ? `<b>${o.name}</b>${o.desc}` : '<b>Explore</b>Hover any part of the nervous system, or pick one from this list to highlight it.'; }
+function buildList() {
+  const groups = [['Central nervous system', ['CEREB', 'CBL', 'BST', 'TRACT', 'CORD', 'MEN', 'CAUDA']], ['Peripheral nerves', ['CRAN', 'ROOTS', 'CPLX', 'BPLX', 'ARM', 'INTC', 'LPLX', 'SPLX', 'LEG']], ['Sensory & motor', ['SENS', 'MOT']], ['Autonomic nervous system', ['SYMP', 'VAG', 'ORG']], ['Inside a neuron (magnified)', ['I_DEN', 'I_SOMA', 'I_AXN', 'I_MYE', 'I_NOD', 'I_TERM', 'I_SYN', 'I_VES', 'I_REC', 'I_NMJ', 'I_MUS']]];
+  const list = $('list');
+  for (const [title, keys] of groups) {
+    const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+    for (const k of keys) {
+      const p = P[k]; if (!p) continue;
+      const el = document.createElement('div'); el.className = 'item'; el.innerHTML = `<i style="background:${p.color}"></i>${p.name}`;
+      el.onmouseenter = () => { listHover = p; }; el.onmouseleave = () => { listHover = null; };
+      el.onclick = () => { selected = selected === p ? null : p; showInfo(selected); if (selected?.inset && !state.inset) $('inset').click(); };
+      p.itemEl = el; list.appendChild(el);
+    }
+  }
+}
+const mouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+let mouseIn = false, mouseMoved = false, mx = 0, my = 0, hovered = null, hoveredInfo = null, downAt = null;
+renderer.domElement.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); mouseIn = true; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerleave', () => { mouseIn = false; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => { if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; selected = hovered || null; showInfo(selected ? (hoveredInfo || hovered) : null); });
+function doHover() {
+  let found = null, inf = null;
+  if (mouseIn) {
+    ray.setFromCamera(mouse, camera);
+    for (const h of ray.intersectObjects(pickables, false)) { const part = h.object.userData.part; if (part.inset && !insetRoot.visible) continue; if (part.key === 'MEN' || (part.key === 'ORG' && h.object.material.opacity < 0.2)) continue; found = part; inf = h.object.userData.info || null; break; }
+  }
+  const o = found ? (inf || found) : null;
+  if (found !== hovered || inf !== hoveredInfo) {
+    hovered = found; hoveredInfo = inf;
+    if (o) { tip.innerHTML = `<b>${o.name}</b>${o.desc}`; tip.style.opacity = 1; renderer.domElement.style.cursor = 'pointer'; } else { tip.style.opacity = 0; renderer.domElement.style.cursor = ''; }
+  }
+  if (o) { const w = tip.offsetWidth, h = tip.offsetHeight; let x = mx + 18, y = my + 18; if (x + w > innerWidth - 10) x = mx - w - 18; if (y + h > innerHeight - 10) y = my - h - 18; tip.style.transform = `translate(${x}px,${y}px)`; }
+}
+
+/* ================= impulses ================= */
+const acc = {};
+function rate(key, perSec, dt, fn) { acc[key] = (acc[key] || 0) + perSec * dt; while (acc[key] >= 1) { acc[key] -= 1; fn(); } }
+let pool, wpool;
+const pick = a => a[Math.floor(rand() * a.length)];
+function fire(T, type, speed, onEnd, big = 1.4, trail = 3) { // an impulse with a short glowing trail
+  for (let k = 0; k < trail; k++) { const q = spawn(pool, [{ T, type, size: 1.2 - k * 0.25, onEnd: k === 0 ? onEnd : null }], speed, 0.0); if (q) { q.sp = speed; q.delay = k * 0.035; q.big = big; q.fade = 1 - k * 0.28; } }
+}
+const count = () => { G.sigC++; };
+function emitMain(dt) {
+  const m = state.mode, sp = 2.6;
+  if (m === 'all') {
+    rate('rnd', 14, dt, () => { const T = pick(TR.random); const out = rand() < 0.5; fire(out ? T : table(tableRev(T)), out ? 'MOT' : 'SEN', 1.8 + rand(), count, 1.1, 2); });
+    rate('aut', 2, dt, () => fire(pick([TR.vagusL, TR.vagusR, TR.symHeart, TR.symGut, TR.vagusGut]), 'AUT', 1.4, count, 1.1, 2));
+    rate('mh', 0.4, dt, () => fire(TR.handMotor, 'MOT', sp, () => { G.glow.muscle = 1; count(); }));
+    rate('ts', 0.4, dt, () => fire(TR.touch, 'SEN', sp, () => { G.glow.sens = 1; count(); }));
+  } else if (m === 'hand') rate('mode', 0.8, dt, () => { G.glow.motor = 1; fire(TR.handMotor, 'MOT', sp, () => { G.glow.muscle = 1; count(); }); });
+  else if (m === 'leg') rate('mode', 0.8, dt, () => { G.glow.motor = 1; fire(TR.legMotor, 'MOT', sp, () => { G.glow.muscle = 1; count(); }); });
+  else if (m === 'touch') rate('mode', 0.8, dt, () => fire(rand() < 0.7 ? TR.touch : TR.footTouch, 'SEN', sp, () => { G.glow.sens = 1; count(); }));
+  else if (m === 'reflex') rate('mode', 0.45, dt, () => { G.glow.reflex = 1; fire(TR.reflexIn, 'SEN', sp, () => { count(); fire(TR.reflexOut, 'MOT', sp, () => { G.glow.muscle = 1; count(); }); fire(TR.reflexUp, 'SEN', sp * 0.8, () => { G.glow.sens = 0.6; count(); }, 1, 2); }); });
+  else if (m === 'rest') rate('mode', 2.2, dt, () => fire(pick([TR.vagusL, TR.vagusR, TR.vagusGut]), 'AUT', 1.6, count, 1.2, 3));
+  else if (m === 'fight') rate('mode', 3.2, dt, () => fire(pick([TR.symHeart, TR.symGut, TR.symHeart]), 'AUT', 2.2, count, 1.2, 3));
+}
+function tableRev(T) { const n = T.tab.length / 3, pts = []; for (let i = n - 1; i >= 0; i--) pts.push(V(T.tab[i * 3], T.tab[i * 3 + 1], T.tab[i * 3 + 2])); return pts; }
+/* inset: dendrite → soma → saltatory jumps along the axon → synapse → muscle */
+let wT = 0, wStage = -1, wTimer = 0;
+function emitWall(dt) {
+  wTimer -= dt;
+  if (wTimer <= 0) { wTimer = 2.2; wStage = 0; wT = 0;
+    for (const d of NW.DT.slice(0, 6)) spawn(wpool, [{ T: table(d.slice().reverse()), type: 'ION', size: 0.8 }], 0.6, 0);
+  }
+  if (wStage >= 0) {
+    wT += dt;
+    const nodes = [NW.A0, ...NW.NODES, NW.A1], i = Math.floor(wT / 0.12);
+    if (i < nodes.length && i !== wStage - 1) { const p = nodes[i]; for (let k = 0; k < 3; k++) spawn(wpool, [{ T: table([p, p.clone().add(V((rand() - .5) * 0.08, (rand() - .5) * 0.08, 0.02))]), type: 'ION', size: 1.6 }], 0.25, 0); wStage = i + 1; }
+    if (i >= nodes.length && wStage >= 0) {
+      wStage = -1;
+      for (let k = 0; k < 10; k++) { const s = NW.SZ.clone().add(V((rand() - .5) * 0.3, 0.12, (rand() - .5) * 0.2)); spawn(wpool, [{ T: table([s, s.clone().add(V((rand() - .5) * 0.05, -0.16, 0))]), type: 'NT', size: 0.6 }], 0.25, 0); }
+      for (const t of NW.TT) spawn(wpool, [{ T: table(t), type: 'ION', size: 1.1 }], 0.6, 0);
+      G.glow.nmj = 1;
+    }
+  }
+}
+
+/* ================= loop ================= */
+let last = performance.now(), eAmt = 0, eVel = 0, insVis = 1, shellVis = 1, uiT = 0, insetLabel, hoverT = 0;
+const HLC = new THREE.Color(1.0, 0.8, 0.45), tmpC = new THREE.Color(), tmpV = V();
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  const fdt = state.paused ? 0 : dt * state.speed;
+  simT += fdt; modeT += fdt;
+  if (fdt > 0) { emitMain(fdt); updatePool(pool, fdt); if (insetRoot.visible) { emitWall(fdt); updatePool(wpool, fdt); } }
+  for (const k in G.glow) G.glow[k] *= Math.exp(-fdt * 1.8);
+  G.hrT = state.mode === 'fight' ? 125 : state.mode === 'rest' ? 58 : 70; G.hr = lerp(G.hr, G.hrT, Math.min(1, fdt * 0.8));
+  G.beat = (G.beat + fdt * G.hr / 60) % 1;
+  const pulse = Math.exp(-(((G.beat - 0.1) / 0.06) ** 2));
+  heartGhost.scale.setScalar(1 + 0.06 * pulse); heartGhost.position.copy(V(0.1, 2.25, 0.14)).multiplyScalar(-0.06 * pulse);
+  heartGhost.material.opacity = 0.3 + 0.25 * pulse;
+  const m = state.mode, sideCortex = s => (s < 0 ? 1 : 0.15);
+  for (const s of [1, -1]) {
+    cortexOv['motor' + s].material.uniforms.uI.value = (m === 'hand' ? sideCortex(s) : m === 'leg' ? sideCortex(-s) : 0.35) * G.glow.motor + 0.08;
+    cortexOv['sens' + s].material.uniforms.uI.value = (m === 'touch' || m === 'all' ? sideCortex(s) : m === 'reflex' ? sideCortex(s) * 0.6 : 0.2) * G.glow.sens + 0.06;
+    cortexOv['vis' + s].material.uniforms.uI.value = 0.05 + 0.04 * Math.sin(simT * 2);
+  }
+  for (const mm of P.MOT.mats) mm.emissive.copy(mm.userData.baseEm).add(tmpC.set(1, 0.45, 0.1).multiplyScalar(G.glow.muscle * 0.8));
+  for (const mm of P.SYMP.mats) mm.emissive.copy(mm.userData.baseEm).add(tmpC.set(0.2, 1, 0.3).multiplyScalar(m === 'fight' ? 0.35 + 0.25 * Math.sin(simT * 8) : 0));
+  for (const mm of P.VAG.mats) mm.emissive.copy(mm.userData.baseEm).add(tmpC.set(0.6, 1, 0.3).multiplyScalar(m === 'rest' ? 0.3 + 0.2 * Math.sin(simT * 3) : 0));
+  NW.musMat.emissive.copy(NW.musMat.userData.baseEm).add(tmpC.set(1, 0.3, 0.2).multiplyScalar((G.glow.nmj || 0) * 0.6));
+  eVel += (70 * ((state.explode ? 1 : 0) - eAmt) - 12.5 * eVel) * dt; eAmt += eVel * dt;
+  for (const p of parts) for (const s in p.subs) p.subs[s].obj.position.copy(p.subs[s].ex).multiplyScalar(eAmt);
+  insVis = lerp(insVis, state.inset ? 1 : 0, Math.min(1, dt * 5)); insetRoot.visible = insVis > 0.02; insetRoot.scale.setScalar(0.6 + 0.4 * insVis);
+  shellVis = lerp(shellVis, state.shell ? 1 - 0.6 * ss(0.1, 0.6, eAmt) : 0, Math.min(1, dt * 5));
+  bodyShell.material.uniforms.uDim.value = shellVis; bodyBack.material.uniforms.uDim.value = shellVis; skelGhost.material.opacity = 0.11 * shellVis;
+  bodyShell.visible = bodyBack.visible = skelGhost.visible = shellVis > 0.01;
+  SKIN.time.value = simT; SKIN.scan.value = -4.2 + ((simT * 0.8) % 9.5);
+  NW.ring.rotation.z += dt * 0.08;
+  if (camTween) {
+    camTween.t += dt / camTween.dur; const kk = ss(0, 1, camTween.t);
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, kk);
+    const a = camTween.fromP.clone().sub(camTween.fromT), b = camTween.toP.clone().sub(camTween.toT);
+    const r = lerp(a.length(), b.length(), kk); a.normalize(); b.normalize();
+    camera.position.copy(controls.target).addScaledVector(a.lerp(b, kk).normalize(), r);
+    if (camTween.t >= 1) camTween = null;
+  }
+  pool.pts.material.uniforms.uOpacity.value = 1 - ss(0.05, 0.4, eAmt); wpool.pts.visible = insetRoot.visible;
+  hoverT += dt; if (mouseMoved || hoverT > 0.3 || camTween || Math.abs(eVel) > 0.02) { doHover(); mouseMoved = false; hoverT = 0; }
+  for (const p of parts) {
+    const on = p === hovered || p === selected || p === listHover;
+    p.hl = lerp(p.hl, on ? 1 : 0, Math.min(1, dt * 10));
+    if (['MOT', 'SYMP', 'VAG'].includes(p.key) && p.hl < 0.01) { p.itemEl?.classList.toggle('sel', p === selected); continue; }
+    for (const mm of p.mats) { if (mm === NW.musMat) continue; mm.emissive.copy(mm.userData.baseEm); if (p.hl > 0.002) mm.emissive.add(tmpC.copy(HLC).multiplyScalar(p.hl * 0.35)); }
+    p.itemEl?.classList.toggle('sel', p === selected);
+  }
+  const le = ss(0.45, 0.85, eAmt);
+  for (const p of parts) {
+    const el = p.labelEl; if (!el) continue;
+    const focus = p === selected || p === hovered || p === listHover, vis = (le > 0.01 || focus) && (!p.inset || insetRoot.visible);
+    if (!vis || !p.anchor) { el.style.opacity = 0; continue; }
+    const s0 = p.subs.L || p.subs.C || p.subs.R; tmpV.copy(p.anchor).add(s0 ? s0.obj.position : V());
+    if (p.inset) tmpV.multiplyScalar(insetRoot.scale.x).add(insetRoot.position);
+    tmpV.project(camera);
+    if (tmpV.z > 1) { el.style.opacity = 0; continue; }
+    el.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,calc(-100% - 12px))`;
+    el.style.opacity = Math.max(le, focus ? 1 : 0); el.classList.toggle('hot', focus);
+  }
+  if (insetLabel) {
+    tmpV.copy(insetRoot.position).add(V(-0.15, 1.6 * insetRoot.scale.x, 0)).project(camera);
+    insetLabel.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,-50%)`;
+    insetLabel.style.opacity = insetRoot.visible ? insVis * (1 - le) : 0;
+  }
+  if ((uiT += dt) > 0.15) {
+    G.sig = lerp(G.sig, G.sigC / uiT, 0.25); G.sigC = 0; uiT = 0;
+    const speedV = { all: 70, hand: 70, leg: 70, touch: 65, reflex: 100, rest: 2, fight: 2 }[m] || 60, react = { hand: 200, leg: 230, touch: 150, reflex: 30, rest: 1000, fight: 500, all: 180 }[m];
+    $('spVal').textContent = speedV + ' m/s'; $('spBar').style.width = (speedV / 120 * 100) + '%';
+    $('sgVal').textContent = (G.sig * 1000).toFixed(0) + ' /s'; $('sgBar').style.width = Math.min(100, G.sig * 25) + '%';
+    $('rtVal').textContent = react >= 1000 ? '≈1 s' : react + ' ms'; $('rtBar').style.width = (100 - Math.min(95, react / 10)) + '%';
+    $('hrVal').textContent = Math.round(G.hr) + ' bpm'; $('hrBar').style.width = ((G.hr - 40) / 100 * 100).toFixed(0) + '%';
+    $('modeTxt').textContent = MODE_TXT[m][0]; $('story').innerHTML = MODE_TXT[m][1];
+  }
+  if (flashStory > 0) { flashStory -= dt; $('story').style.borderColor = 'rgba(190,150,255,' + (0.2 + 0.4 * Math.max(0, flashStory / 2.5)) + ')'; }
+  controls.update(); composer.render(); requestAnimationFrame(frame);
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); for (const p of [pool, wpool]) if (p) p.pts.material.uniforms.uScale.value = innerHeight * 0.05; });
+requestAnimationFrame(() => setTimeout(() => {
+  try {
+    NM = makeNormalMap(256, 0.4);
+    buildNervePaths(); buildCNS(); buildPNS(); buildNeuronInset();
+    // context: glass body + faint skeleton
+    const bg = buildBodyGeometry(0.04);
+    bodyBack = new THREE.Mesh(bg, skinMaterial(THREE.BackSide, 0.3, [0.45, 0.4, 0.75])); bodyBack.renderOrder = 8; root.add(bodyBack);
+    bodyShell = new THREE.Mesh(bg, skinMaterial(THREE.FrontSide, 0.8, [0.45, 0.4, 0.75])); bodyShell.renderOrder = 9; root.add(bodyShell);
+    const sk = skeletonGeometry(0.7).filter(r => !r.part.startsWith('J_') && r.part !== 'TEETH').map(r => { const g = r.geo; return g.attributes.uv ? g : (g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)), g); });
+    skelGhost = new THREE.Mesh(mergeGeoms(sk), new THREE.MeshBasicMaterial({ color: 0xf2ead8, transparent: true, opacity: 0.11, depthWrite: false })); skelGhost.renderOrder = 1; root.add(skelGhost);
+    TR = routes();
+    pool = makePoints(1600, root); wpool = makePoints(500, insetRoot);
+    for (const p of [pool, wpool]) p.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+  } catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong while building the model: ' + err.message; return; }
+  for (const p of parts) { const el = document.createElement('div'); el.className = 'label'; el.textContent = p.name; labelsEl.appendChild(el); p.labelEl = el; }
+  insetLabel = document.createElement('div'); insetLabel.className = 'label inset'; insetLabel.textContent = 'Inside a neuron · magnified'; labelsEl.appendChild(insetLabel);
+  buildList(); setMode('all');
+  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
+  last = performance.now(); requestAnimationFrame(frame);
+}, 40));
+</script>
+<a id="homeLink" href="../index.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
+<script>if (window.self === window.top) document.getElementById('homeLink').style.display = 'block';</script>
+</body>
+</html>

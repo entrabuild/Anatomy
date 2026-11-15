@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Human Stomach — Interactive 3D</title>
+<style>
+  :root{--glass:rgba(16,13,14,.66);--line:rgba(255,255,255,.09);--txt:#f4eeeb;--mut:#a89c98;--acc:#ff8a6a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07070a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  canvas.gl{display:block;outline:none;touch-action:none}
+  .panel{position:fixed;background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  #left{top:16px;left:16px;width:304px;padding:16px 16px 14px;max-height:calc(100vh - 32px);overflow:auto}
+  #left h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.2px}
+  #left .sub{font-size:11.5px;color:var(--mut);margin-top:3px}
+  .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 2px 7px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .gl-row{display:flex;align-items:flex-end;gap:10px}
+  .gl-big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .gl-unit{font-size:12px;color:var(--mut);margin-bottom:4px}
+  .chip{margin-left:auto;font-size:11.5px;font-weight:650;padding:4px 10px;border-radius:20px;border:1px solid}
+  .chip.ok{color:#7dffb3;border-color:rgba(125,255,179,.4);background:rgba(125,255,179,.08)}
+  .chip.hi{color:#ffb35c;border-color:rgba(255,179,92,.5);background:rgba(255,179,92,.1)}
+  .chip.lo{color:#ff7b9c;border-color:rgba(255,123,156,.5);background:rgba(255,123,156,.1)}
+  #chart{width:100%;height:92px;margin-top:10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid var(--line);display:block}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .meter{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11px;color:var(--mut)}
+  .meter b{color:var(--txt);font-size:13px;font-weight:600;float:right;font-variant-numeric:tabular-nums}
+  .bar{height:5px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:20%;border-radius:4px;transition:width .2s}
+  #story{font-size:12.2px;line-height:1.45;color:#ddd6cf;margin-top:9px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);min-height:54px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:9px}
+  .ctl{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{font:inherit;font-size:12.4px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s,transform .08s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:active{transform:scale(.97)}
+  button.on{background:rgba(255,138,106,.16);border-color:rgba(255,138,106,.55)}
+  #explode{grid-column:1/3;background:linear-gradient(180deg,#c9503a,#94301f);border-color:#ec7a5f;font-weight:650;font-size:13.5px;padding:11px}
+  #explode:hover{background:linear-gradient(180deg,#d95c45,#a33a26)}
+  .speed{grid-column:1/3;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut);padding:2px 2px 0}
+  .speed input{flex:1;accent-color:var(--acc)}
+  .speed b{color:var(--txt);font-weight:600;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+  .legend{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:11.5px;color:var(--mut)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+  .dist{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;height:84px;align-items:end}
+  .dist>div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px}
+  .dist i{display:block;width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#f2c46a,#c98a3a);height:4%;transition:height .3s;min-height:3px}
+  .dist>div:nth-child(4) i{background:linear-gradient(180deg,#c9925a,#8f5a2e)}
+  .dist>div:nth-child(5) i{background:linear-gradient(180deg,#9a6a40,#6a4220)}
+  .dist span{font-size:10px;color:var(--mut);text-align:center;line-height:1.15}
+  .phases{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px}
+  .phases div{font-size:11.5px;font-weight:600;text-align:center;padding:7px 4px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);transition:all .3s}
+  .phases small{display:block;font-size:9.8px;font-weight:500;opacity:.75;margin-top:2px}
+  .phases div.on{color:#fff;border-color:rgba(255,138,106,.6);background:rgba(255,138,106,.16)}
+  .split{display:flex;height:9px;border-radius:6px;overflow:hidden;margin-top:2px}
+  .splitk{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:5px}
+  .fn{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .fn button{padding:7px 4px;font-size:12px}
+  #right{top:16px;right:16px;width:272px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:12px 10px 10px}
+  #right h2{margin:8px 6px 5px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:600}
+  #list{overflow:auto;flex:1;padding-right:2px}
+  .item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:12.6px;cursor:pointer;border:1px solid transparent}
+  .item:hover{background:rgba(255,255,255,.06)}
+  .item.sel{background:rgba(255,138,106,.13);border-color:rgba(255,138,106,.42)}
+  .item i{width:9px;height:9px;border-radius:50%;flex:none}
+  #info{margin-top:10px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;line-height:1.45;color:#ddd6cf;min-height:74px}
+  #info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--mut);background:var(--glass);border:1px solid var(--line);padding:7px 14px;border-radius:20px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .label{position:absolute;left:0;top:0;font-size:11.8px;font-weight:550;padding:4px 9px;border-radius:7px;background:rgba(14,11,12,.85);border:1px solid rgba(255,255,255,.22);white-space:nowrap;opacity:0;will-change:transform}
+  .label::after{content:"";position:absolute;left:50%;bottom:-10px;width:1px;height:9px;background:rgba(255,255,255,.55)}
+  .label.hot{border-color:var(--acc);background:rgba(70,22,14,.92)}
+  .label.inset{background:rgba(255,138,106,.14);border-color:rgba(255,138,106,.45);font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+  .label.inset::after{display:none}
+  #tip{position:fixed;left:0;top:0;pointer-events:none;max-width:300px;padding:9px 12px;border-radius:10px;background:rgba(14,11,12,.95);border:1px solid rgba(255,138,106,.45);font-size:12.8px;line-height:1.42;opacity:0;transition:opacity .12s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #tip b{display:block;font-size:13.5px;margin-bottom:2px;color:#ffc2b0}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13.5px;color:var(--mut);background:#07070a;z-index:20;transition:opacity .6s}
+  #loading .bar2{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  #loading .bar2::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #listToggle{display:none;position:fixed;top:16px;right:16px;z-index:5}
+  @media (max-width:1100px){#right{display:none;top:64px}#right.open{display:flex}#listToggle{display:block}}
+  @media (max-width:680px){
+    #left{top:auto;bottom:12px;left:12px;right:12px;width:auto;padding:12px;max-height:48vh}
+    #left .sub,.legend,.meters,.phases{display:none}
+    #hint{display:none}
+    #right{left:12px;right:12px;width:auto;max-height:45vh}
+  }
+</style>
+</head>
+<body>
+<div id="loading"><div>Building the stomach…</div><div class="bar2"></div></div>
+
+<div id="left" class="panel">
+  <h1>Human Stomach</h1>
+  <div class="sub">Interactive 3D anatomy · churning, acid &amp; emptying</div>
+  <div class="sec"><span>Stomach contents</span><span id="clock">08:00</span></div>
+  <div class="gl-row"><div class="gl-big" id="volBig">60</div><div class="gl-unit">mL</div><div class="chip ok" id="chip">Resting</div></div>
+  <div class="phases"><div id="ph0">Cephalic<small>sight &amp; smell</small></div><div id="ph1">Gastric<small>churn &amp; digest</small></div><div id="ph2">Intestinal<small>emptying</small></div></div>
+  <div class="meters">
+    <div class="meter">Acidity <b id="phVal">pH 1.8</b><div class="bar"><i id="phBar" style="background:linear-gradient(90deg,#ff4a3a,#ffd23a,#7dffb3);width:20%"></i></div></div>
+    <div class="meter">Acid output <b id="acVal">2 mmol/h</b><div class="bar"><i id="acBar" style="background:#d6ff3a;width:5%"></i></div></div>
+    <div class="meter">Emptied <b id="emVal">0 mL</b><div class="bar"><i id="emBar" style="background:#e8d6a8;width:0%"></i></div></div>
+    <div class="meter">Waves <b>3 / min</b><div class="bar"><i id="peBar" style="background:#ff8a6a;width:40%"></i></div></div>
+  </div>
+  <div id="story">Between meals the stomach is nearly empty and quiet, keeping a small pool of acid ready.</div>
+  <div class="row3">
+    <button id="meal">🍽 Eat a meal</button>
+    <button id="water">💧 Drink water</button>
+    <button id="auto">Auto day</button>
+  </div>
+  <div class="ctl">
+    <button id="explode">Explode</button>
+    <button id="cut">Cutaway</button>
+    <button id="flow" class="on">Flows on</button>
+    <button id="pause">Pause</button>
+    <button id="inset" class="on">Wall view</button>
+    <button id="reset">Reset view</button>
+    <div class="speed">Speed <input id="speed" type="range" min="0.25" max="4" step="0.05" value="1.5"><b id="speedTxt">1.5×</b></div>
+  </div>
+  <div class="legend">
+    <div><i style="background:#f2c46a"></i>Food</div>
+    <div><i style="background:#ece6cc"></i>Chyme</div>
+    <div><i style="background:#d6ff3a"></i>Acid (HCl)</div>
+    <div><i style="background:#ff9a3a"></i>Pepsin</div>
+    <div><i style="background:#4fa3ff"></i>Water / bicarbonate</div>
+    <div><i style="background:#ff4a3a"></i>Blood</div>
+  </div>
+</div>
+
+<button id="listToggle">Structures</button>
+<div id="right" class="panel">
+  <div id="list"></div>
+  <div id="info"><b>Explore</b>Hover any structure, or pick one from this list to highlight it.</div>
+</div>
+
+<div id="hint">Drag to rotate · Scroll to zoom · Hover to identify</div>
+<div id="labels"></div>
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ================= math helpers ================= */
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+let seed = 31337;
+const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const PERM = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+function grad(h, x, y, z) { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
+function noise(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const X = fx & 255, Y = fy & 255, Z = fz & 255; x -= fx; y -= fy; z -= fz;
+  const u = fade(x), v = fade(y), w = fade(z), P = PERM;
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z), u), lerp(grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z), u), v),
+              lerp(lerp(grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1), u), lerp(grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1), u), v), w);
+}
+function fbm(x, y, z, o = 3) { let a = .5, f = 1, s = 0; for (let i = 0; i < o; i++) { s += a * noise(x * f, y * f, z * f); f *= 2.03; a *= .5; } return s; }
+function worley3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z); let f1 = 9, f2 = 9;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+    const cx = xi + dx, cy = yi + dy, cz = zi + dz, h = PERM[(PERM[(PERM[cx & 255] + (cy & 255)) & 255] + (cz & 255)) & 255];
+    const d = (cx + PERM[h] / 255 - x) ** 2 + (cy + PERM[h + 1] / 255 - y) ** 2 + (cz + PERM[h + 2] / 255 - z) ** 2;
+    if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+  }
+  return [Math.sqrt(f1), Math.sqrt(f2)];
+}
+
+
+/* ================= stomach centerline (anterior view; patient's left = viewer's right) ================= */
+const CH_PTS = [
+  [0.0, 3.05, -0.35, 0.19], [0.1, 2.25, -0.18, 0.19], [0.22, 1.62, -0.02, 0.24], [0.36, 1.32, 0.05, 0.42],
+  [0.66, 0.85, 0.1, 0.7], [0.88, 0.1, 0.15, 0.8], [0.78, -0.66, 0.2, 0.78], [0.25, -1.1, 0.24, 0.72],
+  [-0.5, -1.0, 0.24, 0.6], [-1.12, -0.66, 0.2, 0.44], [-1.5, -0.45, 0.15, 0.2], [-1.84, -0.42, 0.06, 0.29],
+  [-2.18, -0.6, -0.08, 0.3], [-2.34, -1.2, -0.2, 0.3]];
+const CH_IDX = { cardia: 2, ang: 7, pyl: 10 };
+const FUNDUS = { c: V(0.74, 1.66, 0.02), r: V(0.62, 0.6, 0.56) };
+const NCH = 90;
+const CH = (() => {
+  const curve = new THREE.CatmullRomCurve3(CH_PTS.map(p => V(p[0], p[1], p[2])), false, 'centripetal');
+  const n = CH_PTS.length, P = [], R = [], S = [0];
+  // radius: interpolate control radii by curve parameter
+  for (let i = 0; i <= NCH; i++) {
+    const u = i / NCH; P.push(curve.getPointAt(u));
+  }
+  // map each sample to the nearest control index fraction for radii
+  const cps = CH_PTS.map(p => V(p[0], p[1], p[2])), lens = curve.getLengths(2000), L = lens[2000];
+  const cpU = cps.map((c, k) => { if (k === 0) return 0; if (k === n - 1) return 1; let best = 0, bd = 1e9; for (let j = 0; j <= 400; j++) { const d = curve.getPointAt(j / 400).distanceToSquared(c); if (d < bd) { bd = d; best = j / 400; } } return best; });
+  for (let i = 0; i <= NCH; i++) {
+    const u = i / NCH; let k = 0; while (k < n - 2 && cpU[k + 1] < u) k++;
+    const t = clamp01((u - cpU[k]) / (cpU[k + 1] - cpU[k])), tt = t * t * (3 - 2 * t);
+    R.push(lerp(CH_PTS[k][3], CH_PTS[k + 1][3], tt));
+    if (i) S.push(S[i - 1] + P[i].distanceTo(P[i - 1]));
+  }
+  const T = [], NN = [], BZ = [];
+  for (let i = 0; i <= NCH; i++) {
+    const a = P[Math.max(0, i - 1)], b = P[Math.min(NCH, i + 1)], t = b.clone().sub(a).normalize();
+    const nn = V(-t.y, t.x, 0).normalize(), bz = t.clone().cross(nn).normalize();
+    T.push(t); NN.push(nn); BZ.push(bz);
+  }
+  const sAt = k => S[Math.round(cpU[k] * NCH)];
+  return { P, R, S, T, NN, BZ, L: S[NCH], cpU, s: { cardia: sAt(CH_IDX.cardia), ang: sAt(CH_IDX.ang), pyl: sAt(CH_IDX.pyl), bodyTop: sAt(4) } };
+})();
+const ASYM = 0.27;
+/* signed distance to the stomach wall surface; also returns arc position */
+const _d = V(), _c = V();
+let lastS = 0, lastI = 0;
+function chainDist(x, y, z) {
+  let best = 1e9;
+  for (let i = 0; i < NCH; i++) {
+    const a = CH.P[i], b = CH.P[i + 1];
+    const mx = (a.x + b.x) * .5 - x, my = (a.y + b.y) * .5 - y, mz = (a.z + b.z) * .5 - z;
+    const rough = Math.sqrt(mx * mx + my * my + mz * mz) - 0.1 - Math.max(CH.R[i], CH.R[i + 1]) * (1 + ASYM);
+    if (rough > best) continue;
+    const ex = b.x - a.x, ey = b.y - a.y, ez = b.z - a.z, px = x - a.x, py = y - a.y, pz = z - a.z;
+    const t = clamp01((px * ex + py * ey + pz * ez) / (ex * ex + ey * ey + ez * ez));
+    const dx = px - ex * t, dy = py - ey * t, dz = pz - ez * t, dl = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-9;
+    const nn = CH.NN[i], cosA = (dx * nn.x + dy * nn.y + dz * nn.z) / dl;
+    const r = lerp(CH.R[i], CH.R[i + 1], t) * (1 + ASYM * cosA);
+    const d = dl - r;
+    if (d < best) { best = d; lastS = lerp(CH.S[i], CH.S[i + 1], t); lastI = i + t; }
+  }
+  return best;
+}
+const sminK = (a, b, k) => { const h = clamp01(0.5 + 0.5 * (b - a) / k); return lerp(b, a, h) - k * h * (1 - h); };
+function fundusDist(x, y, z) {
+  const f = FUNDUS, qx = (x - f.c.x) / f.r.x, qy = (y - f.c.y) / f.r.y, qz = (z - f.c.z) / f.r.z, l = Math.sqrt(qx * qx + qy * qy + qz * qz);
+  return (l - 1) * Math.min(f.r.x, f.r.y, f.r.z);
+}
+function stomachSDF(x, y, z) { return sminK(chainDist(x, y, z), fundusDist(x, y, z), 0.32); }
+const WALL_T = 0.075;
+/* rugae: ridged folds of the lining (strongest in the body, absent in esophagus/duodenum) */
+function rugae(x, y, z, s) {
+  const w = ss(CH.s.cardia - 0.1, CH.s.cardia + 0.2, s) * (1 - ss(CH.s.pyl - 0.35, CH.s.pyl - 0.05, s));
+  if (w < 0.01) return 0.012 * (1 - Math.abs(noise(x * 9, y * 2.5, z * 9)));
+  const r = 1 - Math.abs(noise(x * 3.6 + 2, y * 1.6, z * 3.6));
+  return w * 0.05 * ss(0.55, 0.95, r);
+}
+/* surface nets: smooth iso-surface mesh from a sampled field */
+function surfaceNets(F, nx, ny, nz, o, h, iso) {
+  const idx = (i, j, k) => i + nx * (j + ny * k), cell = new Int32Array(nx * ny * nz).fill(-1), pos = [];
+  const cx = [0, 1, 0, 1, 0, 1, 0, 1], cy = [0, 0, 1, 1, 0, 0, 1, 1], cz = [0, 0, 0, 0, 1, 1, 1, 1];
+  const E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]], v = new Float32Array(8);
+  for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    let m = 0; for (let c = 0; c < 8; c++) { v[c] = F[idx(i + cx[c], j + cy[c], k + cz[c])] - iso; if (v[c] < 0) m |= 1 << c; }
+    if (m === 0 || m === 255) continue;
+    let sx = 0, sy = 0, sz = 0, n = 0;
+    for (const [a, b] of E) { if ((v[a] < 0) === (v[b] < 0)) continue; const t = v[a] / (v[a] - v[b]); sx += cx[a] + (cx[b] - cx[a]) * t; sy += cy[a] + (cy[b] - cy[a]) * t; sz += cz[a] + (cz[b] - cz[a]) * t; n++; }
+    cell[idx(i, j, k)] = pos.length / 3; pos.push(o.x + (i + sx / n) * h, o.y + (j + sy / n) * h, o.z + (k + sz / n) * h);
+  }
+  const tri = [];
+  const quad = (a, b, c, d) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; tri.push(a, b, c, a, c, d); };
+  for (let k = 1; k < nz - 1; k++) for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) {
+    const s0 = F[idx(i, j, k)] < iso;
+    if ((F[idx(i + 1, j, k)] < iso) !== s0 && i < nx - 1) quad(cell[idx(i, j - 1, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i, j - 1, k)]);
+    if ((F[idx(i, j + 1, k)] < iso) !== s0) quad(cell[idx(i - 1, j, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
+    if ((F[idx(i, j, k + 1)] < iso) !== s0) quad(cell[idx(i - 1, j - 1, k)], cell[idx(i, j - 1, k)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
+  }
+  // gradient normals (trilinear) and winding fix
+  const grad = (x, y, z, out) => {
+    const fx = (x - o.x) / h, fy = (y - o.y) / h, fz = (z - o.z) / h;
+    const g = (a, b, c) => { a = clamp(a, 0, nx - 1.001); b = clamp(b, 0, ny - 1.001); c = clamp(c, 0, nz - 1.001); const i = Math.floor(a), j = Math.floor(b), k = Math.floor(c), u = a - i, w = b - j, t = c - k;
+      const L = (ii, jj, kk) => F[idx(ii, jj, kk)];
+      return lerp(lerp(lerp(L(i, j, k), L(i + 1, j, k), u), lerp(L(i, j + 1, k), L(i + 1, j + 1, k), u), w), lerp(lerp(L(i, j, k + 1), L(i + 1, j, k + 1), u), lerp(L(i, j + 1, k + 1), L(i + 1, j + 1, k + 1), u), w), t); };
+    return out.set(g(fx + .5, fy, fz) - g(fx - .5, fy, fz), g(fx, fy + .5, fz) - g(fx, fy - .5, fz), g(fx, fy, fz + .5) - g(fx, fy, fz - .5)).normalize();
+  };
+  const nor = new Float32Array(pos.length), g = V();
+  for (let q = 0; q < pos.length; q += 3) { grad(pos[q], pos[q + 1], pos[q + 2], g); nor[q] = g.x; nor[q + 1] = g.y; nor[q + 2] = g.z; }
+  for (let t = 0; t < tri.length; t += 3) {
+    const a = tri[t] * 3, b = tri[t + 1] * 3, c = tri[t + 2] * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+    if (fx * nor[a] + fy * nor[a + 1] + fz * nor[a + 2] < 0) { const s = tri[t + 1]; tri[t + 1] = tri[t + 2]; tri[t + 2] = s; }
+  }
+  return { pos, nor, tri };
+}
+/* region of the stomach for a point with arc position s */
+function regionOf(x, y, z, s) {
+  if (s < CH.s.cardia - 0.1 && fundusDist(x, y, z) > 0.12) return 'ESO';
+  if (y > CH.P[Math.round(CH.cpU[CH_IDX.cardia] * NCH)].y - 0.12 && x > 0.42 && s < CH.s.bodyTop + 0.3) return 'FUN';
+  if (s < CH.s.cardia - 0.02) return 'ESO';
+  if (s < CH.s.ang - 0.1) return 'BOD';
+  if (s < CH.s.pyl - 0.3) return 'ANT';
+  if (s < CH.s.pyl + 0.16) return 'PYL';
+  return 'DUO';
+}
+/* one call builds both surfaces (outer wall and inner lining), split into regions */
+function buildStomachSurfaces() {
+  const h = 0.045, o = V(-2.75, -1.38, -1.15), nx = Math.ceil(5.0 / h), ny = Math.ceil(4.25 / h), nz = Math.ceil(2.6 / h);
+  const Fo = new Float32Array(nx * ny * nz), Fi = new Float32Array(nx * ny * nz), Sg = new Float32Array(nx * ny * nz);
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const x = o.x + i * h, y = o.y + j * h, z = o.z + k * h, q = i + nx * (j + ny * k);
+    const dc = chainDist(x, y, z), s = lastS, d = sminK(dc, fundusDist(x, y, z), 0.32);
+    Fo[q] = d; Sg[q] = s;
+    Fi[q] = Math.abs(d + WALL_T) < 0.2 ? d + WALL_T - rugae(x, y, z, s) : d + WALL_T;
+  }
+  // open the two ends of the tube (top of esophagus, end of duodenum) so they read as cut vessels
+  const out = {};
+  for (const [key, F, iso] of [['outer', Fo, 0], ['inner', Fi, 0]]) out[key] = surfaceNets(F, nx, ny, nz, o, h, iso);
+  // per-vertex arc position (nearest grid sample)
+  for (const key in out) {
+    const m = out[key], sArr = new Float32Array(m.pos.length / 3);
+    for (let v = 0; v < sArr.length; v++) { chainDist(m.pos[v * 3], m.pos[v * 3 + 1], m.pos[v * 3 + 2]); sArr[v] = lastS; }
+    m.s = sArr;
+  }
+  return out;
+}
+
+/* ================= geometry helpers ================= */
+const curveOf = pts => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+function taperTube(curve, segs, radial, rFn) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], uv = [], idx = [], P = V(), N = V();
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs; curve.getPointAt(u, P); const r = rFn(u);
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, s = Math.sin(a), c = -Math.cos(a), n = frames.normals[i], b = frames.binormals[i];
+      N.set(c * n.x + s * b.x, c * n.y + s * b.y, c * n.z + s * b.z).normalize();
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(u * 6, j / radial);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+const tube = (pts, r0, r1, radial = 14, segs) => { const c = curveOf(pts); return taperTube(c, segs || Math.max(12, Math.round(c.getLength() * 40)), radial, u => lerp(r0, r1, u)); };
+function mergeGeoms(list) {
+  let nv = 0, ni = 0; for (const g of list) { nv += g.attributes.position.count; ni += g.index.count; }
+  const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), U = new Float32Array(nv * 2), I = new Uint32Array(ni); let ov = 0, oi = 0;
+  for (const g of list) {
+    P.set(g.attributes.position.array, ov * 3); N.set(g.attributes.normal.array, ov * 3); if (g.attributes.uv) U.set(g.attributes.uv.array, ov * 2);
+    const ia = g.index.array; for (let i = 0; i < ia.length; i++) I[oi + i] = ia[i] + ov;
+    ov += g.attributes.position.count; oi += ia.length;
+  }
+  const m = new THREE.BufferGeometry();
+  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(N, 3)); m.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+  m.setIndex(new THREE.BufferAttribute(I, 1)); m.computeBoundingSphere(); return m;
+}
+function blob(cx, cy, cz, rx, ry, rz, amp = 0.04, sd = 0, seg = 28) {
+  const g = new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), p = g.attributes.position, v = V();
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + amp * fbm(v.x * 2 + sd, v.y * 2, v.z * 2, 3); p.setXYZ(i, cx + v.x * rx * n, cy + v.y * ry * n, cz + v.z * rz * n); }
+  g.computeVertexNormals(); return g;
+}
+let NM;
+function phys(o) { return new THREE.MeshPhysicalMaterial(Object.assign({ roughness: 0.42, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.3 }, o)); }
+const tissue = (hex, o = {}) => phys(Object.assign({ color: hex, normalMap: NM, normalScale: new THREE.Vector2(0.22, 0.22), sheen: 0.4, sheenColor: new THREE.Color('#fff0ea'), emissive: new THREE.Color(hex).multiplyScalar(0.05) }, o));
+
+/* ================= parts ================= */
+const INSET_POS = V(4.75, 0.35, 0);
+const root = new THREE.Group(), insetRoot = new THREE.Group(); insetRoot.position.copy(INSET_POS);
+const parts = [], pickables = [];
+function newPart(key, name, desc, explode, color, opts = {}) {
+  const group = new THREE.Group(); (opts.inset ? insetRoot : root).add(group);
+  const p = { key, name, desc, group, explode, color, mats: [], hl: 0, anchor: null, plane: null, sub: [], inset: !!opts.inset, ...opts };
+  parts.push(p); return p;
+}
+function clipOf(part) { if (!part.plane) part.plane = new THREE.Plane(V(0, 0, -1), 99); return [part.plane]; }
+function addMesh(part, mesh, parent, info, pick = true) {
+  (parent || part.group).add(mesh);
+  mesh.userData.part = part; if (info) mesh.userData.info = info; if (pick) pickables.push(mesh);
+  const m = mesh.material;
+  if (m.emissive && !part.mats.includes(m)) { m.userData.baseEm = m.emissive.clone(); part.mats.push(m); }
+  return mesh;
+}
+function instanced(part, geo, mat, list, info) {
+  const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
+  list.forEach((e, i) => { m4.compose(e.p, e.q || q0, e.s); im.setMatrixAt(i, m4); if (e.c) im.setColorAt(i, e.c); });
+  im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere();
+  return addMesh(part, im, null, info);
+}
+
+
+/* ================= peristalsis + pylorus (shader injection) ================= */
+const PERI = { time: { value: 0 }, pyl: { value: 0 } };
+const WAVE = { k: 2 * Math.PI / 1.7, v: 0.28, amp: 0.13 };
+function peristaltic(mat) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = PERI.time; sh.uniforms.uPyl = PERI.pyl;
+    sh.vertexShader = 'attribute float aS; attribute float aW; attribute float aP;\nuniform float uTime, uPyl;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      `#include <begin_vertex>
+  float phP = aS * ${WAVE.k.toFixed(4)} - uTime * ${(WAVE.k * WAVE.v).toFixed(4)};
+  float ring = pow(max(0.0, sin(phP)), 6.0);
+  transformed -= objectNormal * (${WAVE.amp.toFixed(3)} * ring * aW - 0.07 * uPyl * aP);`);
+  };
+  mat.customProgramCacheKey = () => 'stomach-peri';
+  return mat;
+}
+const waveAt = (s, t) => Math.pow(Math.max(0, Math.sin(s * WAVE.k - t * WAVE.k * WAVE.v)), 6);
+const pushAt = (s, t) => Math.pow(Math.max(0, Math.sin(s * WAVE.k - t * WAVE.k * WAVE.v - 0.8)), 2);
+const waveW = s => ss(CH.s.bodyTop + 0.5, CH.s.ang - 0.4, s) * lerp(0.45, 1.15, ss(CH.s.bodyTop + 0.8, CH.s.pyl - 0.4, s)) * (1 - ss(CH.s.pyl - 0.25, CH.s.pyl - 0.02, s));
+const pylW = s => Math.exp(-(((s - CH.s.pyl) / 0.11) ** 2));
+
+/* frame along the centerline at arc position s */
+function frameAt(s) { const x = clamp(s / CH.L, 0, 1) * NCH, i = Math.min(NCH - 1, Math.floor(x)), t = x - i; return { i, t }; }
+function chainPoint(s, a, rf, out) {
+  const { i, t } = frameAt(s), P = CH.P, nn = CH.NN[i], bz = CH.BZ[i];
+  const R = lerp(CH.R[i], CH.R[i + 1], t) * (1 + ASYM * Math.cos(a)) * rf;
+  out.set(lerp(P[i].x, P[i + 1].x, t), lerp(P[i].y, P[i + 1].y, t), lerp(P[i].z, P[i + 1].z, t));
+  return out.addScaledVector(nn, Math.cos(a) * R).addScaledVector(bz, Math.sin(a) * R);
+}
+function sdfGrad(p, out) { const e = 0.01; return out.set(stomachSDF(p.x + e, p.y, p.z) - stomachSDF(p.x - e, p.y, p.z), stomachSDF(p.x, p.y + e, p.z) - stomachSDF(p.x, p.y - e, p.z), stomachSDF(p.x, p.y, p.z + e) - stomachSDF(p.x, p.y, p.z - e)).normalize(); }
+function onSurface(p, off) { const g = V(); for (let k = 0; k < 8; k++) { const d = stomachSDF(p.x, p.y, p.z) - off; if (Math.abs(d) < 0.002) break; sdfGrad(p, g); p.addScaledVector(g, -d); } return p; }
+
+/* ================= STOMACH ================= */
+const REG = {
+  ESO: ['Esophagus', 'A muscular tube that pushes swallowed food down into the stomach in about 8 seconds.', V(-0.15, 1.5, 0.3), '#d9a395'],
+  FUN: ['Fundus', 'The domed top of the stomach — it relaxes to receive the meal and holds swallowed air.', V(1.0, 1.15, 0.5), '#e6998c'],
+  BOD: ['Body', 'The large central part, lined with glands that pour out acid and digestive enzymes.', V(1.45, -0.1, 0.9), '#df8173'],
+  ANT: ['Antrum', 'The muscular lower part that grinds food into a fine paste (chyme) with strong waves.', V(0.1, -1.45, 1.1), '#d86d64'],
+  PYL: ['Pylorus', 'The narrow outlet; its ring of muscle lets only small squirts of chyme into the duodenum.', V(-0.75, -0.75, 1.0), '#b54b47'],
+  DUO: ['Duodenum (1st part)', 'The start of the small intestine, where chyme meets bile and pancreatic juice.', V(-1.6, -0.6, 0.4), '#e2ae86'],
+};
+const wallMeshes = [];
+let SURF;
+function subGeometry(m, keepTri, colorFn) {
+  const map = new Int32Array(m.pos.length / 3).fill(-1), pos = [], nor = [], col = [], aS = [], aW = [], aP = [], idx = [], c = new THREE.Color();
+  for (const t of keepTri) for (let q = 0; q < 3; q++) {
+    const v = m.tri[t * 3 + q];
+    if (map[v] < 0) {
+      map[v] = pos.length / 3; const x = m.pos[v * 3], y = m.pos[v * 3 + 1], z = m.pos[v * 3 + 2], s = m.s[v];
+      pos.push(x, y, z); nor.push(m.nor[v * 3], m.nor[v * 3 + 1], m.nor[v * 3 + 2]); aS.push(s); aW.push(waveW(s)); aP.push(pylW(s));
+      colorFn(x, y, z, s, c); col.push(c.r, c.g, c.b);
+    }
+    idx.push(map[v]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('aS', new THREE.Float32BufferAttribute(aS, 1));
+  g.setAttribute('aW', new THREE.Float32BufferAttribute(aW, 1)); g.setAttribute('aP', new THREE.Float32BufferAttribute(aP, 1));
+  const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push(pos[i] * 1.4 + pos[i + 2] * 0.7, pos[i + 1] * 1.4);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+function buildStomach() {
+  SURF = buildStomachSurfaces();
+  const tri = { outer: {}, inner: {} };
+  for (const key of ['outer', 'inner']) {
+    const m = SURF[key];
+    for (let t = 0; t < m.tri.length / 3; t++) {
+      let x = 0, y = 0, z = 0, s = 0; for (let q = 0; q < 3; q++) { const v = m.tri[t * 3 + q]; x += m.pos[v * 3]; y += m.pos[v * 3 + 1]; z += m.pos[v * 3 + 2]; s += m.s[v]; }
+      const r = regionOf(x / 3, y / 3, z / 3, s / 3); (tri[key][r] = tri[key][r] || []).push(t);
+    }
+  }
+  for (const k in REG) {
+    const [name, desc, ex, colr] = REG[k], part = newPart(k, name, desc, ex, colr), base = new THREE.Color(colr), deep = new THREE.Color('#b8483f');
+    const outerCol = (x, y, z, s, c) => { const n = noise(x * 3, y * 3, z * 3) * .5 + .5, v = noise(x * 11, y * 11, z * 11); c.copy(base).multiplyScalar(0.88 + 0.18 * n + 0.05 * v).lerp(deep, 0.15 * ss(0.3, 0.9, -z + 0.2)); };
+    const lum = new THREE.Color(k === 'ESO' ? '#c98a84' : k === 'DUO' ? '#d08870' : '#c4505a'), ridge = new THREE.Color('#f08a86');
+    const innerCol = (x, y, z, s, c) => { const r = rugae(x, y, z, s) / 0.05; c.copy(lum).multiplyScalar(0.85 + 0.15 * (noise(x * 8, y * 8, z * 8) * .5 + .5)).lerp(ridge, clamp01(r) * 0.55); };
+    const wall = peristaltic(phys({ color: 0xffffff, vertexColors: true, roughness: 0.36, clearcoat: 0.65, clearcoatRoughness: 0.25, sheen: 0.6, sheenColor: new THREE.Color('#ffd4cc'), normalMap: NM, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide, clippingPlanes: clipOf(part), emissive: new THREE.Color('#160605') }));
+    const lining = peristaltic(phys({ color: 0xffffff, vertexColors: true, roughness: 0.5, clearcoat: 0.55, clearcoatRoughness: 0.2, sheen: 1, sheenColor: new THREE.Color('#ffb3ad'), normalMap: NM, normalScale: new THREE.Vector2(0.8, 0.8), side: THREE.BackSide, clippingPlanes: clipOf(part), emissive: new THREE.Color('#1c0507') }));
+    if (tri.outer[k]) wallMeshes.push(addMesh(part, new THREE.Mesh(subGeometry(SURF.outer, tri.outer[k], outerCol), wall)));
+    if (tri.inner[k]) addMesh(part, new THREE.Mesh(subGeometry(SURF.inner, tri.inner[k], innerCol), lining), null,
+      k === 'ESO' || k === 'DUO' ? { name: name + ' — lining', desc: k === 'ESO' ? 'Tough, layered lining that resists scraping by swallowed food.' : 'Velvety lining with villi; glands here make alkaline mucus that shields it from stomach acid.' }
+        : { name: 'Rugae (gastric folds)', desc: 'Deep folds of the lining that flatten out as the stomach fills, letting it stretch to hold over a litre.' });
+    let cx = 0, cy = 0, cz = 0, n = 0; const m = SURF.outer; for (const t of tri.outer[k] || []) { const v = m.tri[t * 3]; cx += m.pos[v * 3]; cy += m.pos[v * 3 + 1]; cz += m.pos[v * 3 + 2]; n++; }
+    part.anchor = n ? onSurface(V(cx / n, cy / n, cz / n + 0.6), 0.02) : V();
+  }
+  // sphincters
+  const ring = (s, r, tube) => { const { i } = frameAt(s), P = chainPoint(s, 0, 0, V()), g = new THREE.TorusGeometry(r, tube, 14, 48), q = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), CH.T[i]); g.applyQuaternion(q); g.translate(P.x, P.y, P.z); return g; };
+  const les = newPart('LES', 'Lower esophageal sphincter', 'A ring of muscle that stays shut between swallows so stomach acid can’t splash up (heartburn).', V(-0.6, 0.9, 0.9), '#c96b63');
+  addMesh(les, new THREE.Mesh(ring(CH.s.cardia - 0.14, 0.215, 0.055), tissue('#c76a62', { clippingPlanes: clipOf(les) })));
+  les.anchor = chainPoint(CH.s.cardia - 0.14, 0, 0, V()).add(V(-0.25, 0, 0.1));
+  const P = parts.find(p => p.key === 'PYL');
+  P.sphincter = addMesh(P, new THREE.Mesh(ring(CH.s.pyl, 0.2, 0.075), tissue('#a8423e', { clippingPlanes: clipOf(P) })), null, { name: 'Pyloric sphincter', desc: 'A thick muscle ring that opens briefly with each wave, releasing about 3 mL of chyme at a time.' });
+  P.sphincterPos = chainPoint(CH.s.pyl, 0, 0, V());
+}
+
+/* ================= GASTRIC BLOOD SUPPLY ================= */
+const ART_ROUTES = [], VEN_ROUTES = [];
+function arcade(s0, s1, dir, step, off) { const o = []; for (let s = s0; s <= s1 + 1e-6; s += step) o.push(onSurface(chainPoint(s, dir, 1.1, V()), off)); return o; }
+function buildVessels() {
+  const ar = newPart('ART', 'Gastric arteries', 'Branches of the celiac trunk that ring the stomach along both curvatures and feed its wall.', V(0, 0.2, -2.2), '#d1262c');
+  const ve = newPart('VEN', 'Gastric veins', 'Drain the stomach into the portal vein, which carries the blood to the liver.', V(0, 0, -3.1), '#3e56b8');
+  const am = tissue('#c8252c', { roughness: 0.3, clearcoat: 0.85 }), vm = tissue('#3a52b2', { roughness: 0.3, clearcoat: 0.85 });
+  const AO = [V(0.15, 2.9, -1.3), V(0.15, 0.6, -1.3), V(0.15, -1.4, -1.3)];
+  addMesh(ar, new THREE.Mesh(tube(AO, 0.22, 0.2, 20), am), null, { name: 'Abdominal aorta', desc: 'The body’s main artery, running down behind the stomach.' });
+  const CEL = [V(0.15, 0.62, -1.15), V(0.1, 0.66, -0.95)], C = CEL[1];
+  // lesser curvature (left & right gastric) and greater curvature (gastro-epiploic) arcades
+  const less = arcade(CH.s.cardia + 0.12, CH.s.pyl - 0.08, Math.PI, 0.2, 0.05), great = arcade(CH.s.bodyTop + 0.15, CH.s.pyl - 0.1, 0, 0.22, 0.05);
+  const lessV = less.map(p => onSurface(p.clone().add(V(0, 0, -0.07)), 0.07)), greatV = great.map(p => onSurface(p.clone().add(V(0, 0, -0.08)), 0.07));
+  const HEP = [C, V(-0.5, 0.55, -0.85), V(-1.1, 0.4, -0.7)], GDA = [V(-1.1, 0.4, -0.7), V(-1.45, -0.05, -0.5), V(-1.6, -0.75, -0.25)], PHA = [V(-1.1, 0.4, -0.7), V(-1.3, 1.2, -0.75), V(-1.35, 2.0, -0.8)];
+  const SPL = [C, V(0.8, 0.75, -1.0), V(1.6, 0.9, -0.95), V(2.2, 1.15, -0.75)];
+  const LGA = [C, V(0.0, 1.05, -0.75), less[0]];
+  const RGA = [V(-1.15, 0.5, -0.65), V(-1.2, 0.0, -0.2), less[less.length - 1]];
+  const RGEA = [GDA[2], great[great.length - 1]];
+  const LGEA = [SPL[3], V(2.0, 0.4, -0.3), great[0]];
+  const aG = [tube(CEL, 0.09, 0.08, 12), tube(HEP, 0.07, 0.06, 12), tube(GDA, 0.055, 0.05, 10), tube(PHA, 0.06, 0.055, 10), tube(SPL, 0.075, 0.065, 12), tube(LGA, 0.05, 0.04, 10), tube(RGA, 0.04, 0.035, 10), tube(RGEA, 0.045, 0.04, 10), tube(LGEA, 0.045, 0.04, 10),
+    tube(less, 0.035, 0.035, 8, 120), tube(great, 0.04, 0.04, 8, 160)];
+  // short gastric arteries to the fundus, and small branches across the front wall
+  const fundTargets = [V(1.25, 1.95, 0.0), V(1.33, 1.6, -0.15), V(1.28, 1.25, -0.25)].map(p => onSurface(p, 0.04));
+  for (const t of fundTargets) aG.push(tube([SPL[3], SPL[3].clone().lerp(t, 0.5).add(V(0, 0.15, 0)), t], 0.025, 0.02, 8, 16));
+  const br = [], brV = [];
+  for (let s = CH.s.cardia + 0.4; s < CH.s.pyl - 0.2; s += 0.32) for (const [a0, a1] of [[Math.PI, Math.PI * 0.45], [0, Math.PI * 0.55]]) {
+    const pts = []; for (let k = 0; k <= 6; k++) pts.push(onSurface(chainPoint(s + (k - 3) * 0.015, lerp(a0, a1, k / 6), 1.05, V()), 0.025));
+    br.push(tube(pts, 0.018, 0.009, 6, 18)); brV.push(tube(pts.map(p => onSurface(p.clone().add(V(0.04, -0.04, 0)), 0.026)), 0.016, 0.009, 6, 18));
+  }
+  addMesh(ar, new THREE.Mesh(mergeGeoms(aG), am), null, { name: 'Celiac trunk & gastric arteries', desc: 'The celiac trunk splits into the left gastric, hepatic and splenic arteries, which encircle the stomach.' });
+  addMesh(ar, new THREE.Mesh(mergeGeoms(br), am), null, { name: 'Wall arteries', desc: 'Small branches that dive into the wall to feed the acid-making glands.' });
+  // veins (parallel, draining to the portal vein)
+  const PV = [V(-0.85, -0.6, -0.9), V(-0.95, 0.5, -0.85), V(-1.05, 1.4, -0.9), V(-1.1, 2.1, -0.95)];
+  const SV = [V(2.25, 1.0, -0.85), V(1.55, 0.75, -1.05), V(0.6, 0.5, -1.05), V(-0.9, 0.3, -0.87)];
+  const LGV = [lessV[0], V(-0.1, 1.0, -0.85), V(-0.9, 0.6, -0.86)];
+  const RGV = [lessV[lessV.length - 1], V(-1.05, 0.0, -0.4), V(-0.95, 0.1, -0.85)];
+  const RGEV = [greatV[greatV.length - 1], V(-1.3, -0.95, -0.4), V(-0.88, -0.55, -0.9)];
+  const LGEV = [greatV[0], V(2.1, 0.3, -0.45), SV[0]];
+  const vG = [tube(PV, 0.11, 0.13, 14), tube(SV, 0.07, 0.085, 12), tube(LGV, 0.04, 0.05, 10), tube(RGV, 0.035, 0.045, 10), tube(RGEV, 0.04, 0.05, 10), tube(LGEV, 0.04, 0.05, 10), tube(lessV, 0.035, 0.035, 8, 120), tube(greatV, 0.04, 0.04, 8, 160)];
+  addMesh(ve, new THREE.Mesh(mergeGeoms(vG), vm), null, { name: 'Gastric & portal veins', desc: 'Gastric veins join the splenic and portal veins, taking blood to the liver for processing.' });
+  addMesh(ve, new THREE.Mesh(mergeGeoms(brV), vm), null, { name: 'Wall veins', desc: 'Collect blood from the stomach wall; it is slightly alkaline after the glands make acid (the “alkaline tide”).' });
+  ar.anchor = V(0.1, 0.66, -0.95); ve.anchor = PV[2].clone();
+  // blood routes for particles
+  const join = (...a) => a.flat();
+  ART_ROUTES.push(join(AO.slice(0, 2), CEL, LGA.slice(1), less), join(AO.slice(0, 2), CEL, HEP.slice(1), GDA.slice(1), RGEA.slice(1), great.slice().reverse()), join(AO.slice(0, 2), CEL, SPL.slice(1), LGEA.slice(1), great));
+  VEN_ROUTES.push(join(lessV.slice().reverse(), LGV.slice(1), PV.slice(1)), join(greatV.slice().reverse(), RGEV.slice(1), PV), join(greatV, LGEV.slice(1), SV.slice(1), PV.slice(2)));
+}
+
+/* ================= MAGNIFIED STOMACH WALL ================= */
+const WALL = {};
+function layerBox(part, y0, y1, colorFn, info, o = {}) {
+  const g = new THREE.BoxGeometry(2.3, y1 - y0, 0.84, 60, 6, 24); g.translate(-0.2, (y0 + y1) / 2, 0);
+  const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) { colorFn(p.getX(i), p.getY(i), p.getZ(i), c); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return addMesh(part, new THREE.Mesh(g, phys(Object.assign({ color: 0xffffff, vertexColors: true, roughness: 0.5, clearcoat: 0.35, emissive: new THREE.Color('#120605') }, o))), null, info);
+}
+function buildWall() {
+  const I = { inset: true };
+  const ser = newPart('I_SER', 'Serosa', 'The thin slippery outer coat of the stomach.', V(0, -0.6, 0), '#f1e2d8', I);
+  layerBox(ser, -1.2, -1.14, (x, y, z, c) => c.set('#efdfd3'));
+  const lon = newPart('I_LON', 'Longitudinal muscle', 'Outer muscle layer running along the stomach’s length.', V(0, -0.47, 0.15), '#b9534c', I);
+  layerBox(lon, -1.14, -1.0, (x, y, z, c) => c.set('#b5514b').multiplyScalar(0.85 + 0.2 * (0.5 + 0.5 * Math.sin(z * 70 + y * 30))));
+  const cir = newPart('I_CIR', 'Circular muscle', 'Middle ring of muscle; it thickens at the pylorus to form the pyloric sphincter.', V(0, -0.34, 0.3), '#a8443f', I);
+  layerBox(cir, -1.0, -0.84, (x, y, z, c) => c.set('#a9463f').multiplyScalar(0.85 + 0.2 * (0.5 + 0.5 * Math.sin(x * 60))));
+  const obl = newPart('I_OBL', 'Oblique muscle', 'An extra inner muscle layer found only in the stomach — it lets the stomach twist and churn.', V(0, -0.2, 0.45), '#9c3d3c', I);
+  layerBox(obl, -0.84, -0.7, (x, y, z, c) => c.set('#9a3d3b').multiplyScalar(0.85 + 0.2 * (0.5 + 0.5 * Math.sin((x + z) * 50))));
+  const sub = newPart('I_SUB', 'Submucosa', 'Loose tissue carrying blood vessels, lymphatics and nerves to the lining.', V(0, -0.05, 0.6), '#f0c9b4', I);
+  layerBox(sub, -0.7, -0.5, (x, y, z, c) => c.set('#efcab4').multiplyScalar(0.92 + 0.12 * noise(x * 12, y * 12, z * 12)));
+  const muc = newPart('I_MUC', 'Mucosa', 'The lining, packed with millions of gastric glands that make about 2 litres of gastric juice a day.', V(0, 0.15, 0.75), '#d9767a', I);
+  const mucMesh = layerBox(muc, -0.5, 0.22, (x, y, z, c) => c.set('#de8a8c').multiplyScalar(0.92 + 0.12 * noise(x * 14, y * 14, z * 14)), null, { transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+  mucMesh.renderOrder = 3;
+  const mus = newPart('I_MUS', 'Mucus barrier', 'A thick gel full of bicarbonate that coats the lining so the stomach doesn’t digest itself.', V(0, 0.4, 0.9), '#dfe8ff', I);
+  const mg = new THREE.BoxGeometry(2.3, 0.12, 0.84, 40, 2, 16); mg.translate(-0.2, 0.28, 0);
+  { const p = mg.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) > 0.3) p.setY(i, p.getY(i) + 0.025 * noise(p.getX(i) * 4, 0, p.getZ(i) * 4)); mg.computeVertexNormals(); }
+  addMesh(mus, new THREE.Mesh(mg, phys({ color: '#e6eeff', roughness: 0.08, clearcoat: 1, transmission: 0, transparent: true, opacity: 0.32, depthWrite: false, emissive: new THREE.Color('#141a26') }))).renderOrder = 5;
+  mus.anchor = V(0.6, 0.36, 0.3);
+  // gastric pits and glands (a front row and a back row)
+  const pit = newPart('I_PIT', 'Gastric pits', 'Tiny openings in the lining — each pit drains 3–5 gastric glands.', V(0.3, 0.5, 0.6), '#5a1822', I);
+  const par = newPart('I_PAR', 'Parietal cells', 'Make hydrochloric acid (pH 1–2) that kills germs and unfolds proteins; they also make intrinsic factor for vitamin B12.', V(0.75, 0.2, 0.5), '#f08a9a', I);
+  const chi = newPart('I_CHI', 'Chief cells', 'At the base of the glands; they release pepsinogen, which acid turns into the protein-cutting enzyme pepsin.', V(0.75, -0.25, 0.5), '#6c6fe0', I);
+  const neck = newPart('I_NCK', 'Mucous neck cells', 'Line the neck of each gland and make protective mucus; stem cells here renew the lining every few days.', V(-0.75, 0.25, 0.5), '#f5ead8', I);
+  const glands = [], pitG = [], glandG = [], parL = [], chiL = [], neckL = [];
+  for (const z of [-0.18, 0.24]) for (let x = -1.15; x <= 0.85; x += 0.4) {
+    const gx = x + (z > 0 ? 0 : 0.2), top = 0.22, pitBot = 0.05, base = -0.44;
+    glands.push({ x: gx, z, top, pitBot, base });
+    pitG.push(tube([V(gx, top + 0.01, z), V(gx, pitBot, z)], 0.06, 0.04, 14, 6));
+    glandG.push(tube([V(gx, pitBot, z), V(gx + 0.02, -0.15, z), V(gx - 0.015, base, z)], 0.028, 0.025, 8, 14));
+    for (let k = 0; k < 9; k++) {
+      const y = lerp(pitBot - 0.03, base + 0.03, k / 8), ang = k * 2.4;
+      const p = V(gx + Math.cos(ang) * 0.065, y, z + Math.sin(ang) * 0.065);
+      if (k < 2) neckL.push({ p, s: V(0.035, 0.03, 0.035) });
+      else if (k < 6) parL.push({ p, s: V(0.05, 0.048, 0.05) });
+      else chiL.push({ p, s: V(0.04, 0.035, 0.04) });
+    }
+  }
+  addMesh(pit, new THREE.Mesh(mergeGeoms(pitG), phys({ color: '#5a1822', roughness: 0.6, emissive: new THREE.Color('#14030a') })));
+  addMesh(pit, new THREE.Mesh(mergeGeoms(glandG), phys({ color: '#8a3040', roughness: 0.6, emissive: new THREE.Color('#1a050a') })), null, { name: 'Gastric glands', desc: 'Tubes below each pit lined with the cells that make acid, enzymes and mucus.' });
+  pit.anchor = V(glands[8].x, 0.24, glands[8].z);
+  instanced(par, new THREE.SphereGeometry(1, 14, 10), phys({ color: '#f28c9b', roughness: 0.35, clearcoat: 0.6, emissive: new THREE.Color('#2a0a10') }), parL);
+  instanced(chi, new THREE.SphereGeometry(1, 12, 8), phys({ color: '#6a6fe0', roughness: 0.4, clearcoat: 0.5, emissive: new THREE.Color('#0c0c2a') }), chiL);
+  instanced(neck, new THREE.SphereGeometry(1, 10, 8), phys({ color: '#f5ead8', roughness: 0.4, emissive: new THREE.Color('#1a1814') }), neckL);
+  par.anchor = parL[parL.length - 8].p.clone(); chi.anchor = chiL[chiL.length - 5].p.clone(); neck.anchor = neckL[neckL.length - 4].p.clone();
+  muc.anchor = V(0.9, -0.1, 0.42);
+  // submucosal vessels + capillaries rising beside each gland
+  const cap = newPart('I_CAP', 'Mucosal capillaries', 'A dense blood network that feeds the glands and carries away bicarbonate to the surface.', V(0.3, -0.05, -0.5), '#d23a44', I);
+  const capG = [], capPaths = [], vA = [], vV = [];
+  for (const z of [-0.18, 0.24]) { vA.push(tube([V(-1.4, -0.55, z - 0.1), V(1.05, -0.55, z - 0.1)], 0.03, 0.03, 10, 10)); vV.push(tube([V(-1.4, -0.64, z + 0.1), V(1.05, -0.64, z + 0.1)], 0.036, 0.036, 10, 10)); }
+  for (const gl of glands) {
+    const pts = [V(gl.x - 0.12, -0.55, gl.z - 0.1), V(gl.x - 0.12, -0.2, gl.z - 0.05), V(gl.x - 0.11, 0.14, gl.z), V(gl.x, 0.19, gl.z + 0.09), V(gl.x + 0.11, 0.14, gl.z), V(gl.x + 0.12, -0.2, gl.z + 0.05), V(gl.x + 0.12, -0.64, gl.z + 0.1)];
+    const g = tube(pts, 0.011, 0.011, 6, 40), n = g.attributes.position.count, col = new Float32Array(n * 3), cc = new THREE.Color();
+    for (let i = 0; i < n; i++) { cc.set('#d6262f').lerp(new THREE.Color('#4a55c8'), ss(0.4, 0.75, Math.floor(i / 7) / 40)); col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); capG.push(g); capPaths.push(pts);
+  }
+  const capGeo = mergeGeoms(capG), cc2 = []; for (const g of capG) cc2.push(...g.attributes.color.array); capGeo.setAttribute('color', new THREE.Float32BufferAttribute(cc2, 3));
+  addMesh(cap, new THREE.Mesh(capGeo, phys({ color: 0xffffff, vertexColors: true, roughness: 0.3, clearcoat: 0.8, emissive: new THREE.Color('#200608') })));
+  addMesh(sub, new THREE.Mesh(mergeGeoms(vA), tissue('#d8262c')), null, { name: 'Submucosal arteriole', desc: 'Brings oxygen-rich blood to the busy glands.' });
+  addMesh(sub, new THREE.Mesh(mergeGeoms(vV), tissue('#3f5fd0')), null, { name: 'Submucosal venule', desc: 'Drains blood from the lining toward the gastric veins.' });
+  cap.anchor = capPaths[9][3].clone(); sub.anchor = V(0.95, -0.6, 0.3);
+  ser.anchor = V(1.0, -1.17, 0.42); lon.anchor = V(1.0, -1.07, 0.42); cir.anchor = V(1.0, -0.92, 0.42); obl.anchor = V(1.0, -0.77, 0.42);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.012, 8, 120), new THREE.MeshBasicMaterial({ color: 0xff8a8f, transparent: true, opacity: 0.4 })); ring.position.set(-0.2, -0.45, 0); insetRoot.add(ring);
+  Object.assign(WALL, { glands, capPaths, ring });
+}
+/* ================= FLOWS ================= */
+const NS = 160;
+function table(pts) {
+  const p = []; for (const q of pts) if (!p.length || p[p.length - 1].distanceToSquared(q) > 1e-10) p.push(q);
+  if (p.length < 2) p.push(p[0].clone().add(V(0, 0.001, 0)));
+  const cum = [0]; for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + p[i].distanceTo(p[i - 1]));
+  const L = cum[cum.length - 1], tab = new Float32Array((NS + 1) * 3); let k = 1;
+  for (let s = 0; s <= NS; s++) {
+    const d = s / NS * L; while (k < p.length - 1 && cum[k] < d) k++;
+    const t = clamp01((d - cum[k - 1]) / Math.max(1e-9, cum[k] - cum[k - 1]));
+    tab[s * 3] = lerp(p[k - 1].x, p[k].x, t); tab[s * 3 + 1] = lerp(p[k - 1].y, p[k].y, t); tab[s * 3 + 2] = lerp(p[k - 1].z, p[k].z, t);
+  }
+  return { tab, len: L, end: p[p.length - 1].clone() };
+}
+function samp(T, u, out) { const x = clamp01(u) * NS, k = Math.min(NS - 1, Math.floor(x)), t = x - k, a = T.tab; return out.set(lerp(a[k * 3], a[k * 3 + 3], t), lerp(a[k * 3 + 1], a[k * 3 + 4], t), lerp(a[k * 3 + 2], a[k * 3 + 5], t)); }
+const cpts = (pts, n) => { const c = curveOf(pts), o = []; for (let i = 0; i <= n; i++) o.push(c.getPointAt(i / n)); return o; };
+const chain = (n, key) => { const o = []; let q = n; while (q) { o.push(key ? q.p.clone().add(q[key] || V()) : q.p.clone()); q = q.parent; } return o.reverse(); };
+const lift = (pts, dz) => pts.map(p => p.clone().add(V(0, 0, dz)));
+function makePoints(n, parent) {
+  const g = new THREE.BufferGeometry();
+  for (const [k, s] of [['position', 3], ['color', 3], ['alpha', 1], ['size', 1]]) g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(n * s), s));
+  const p = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: 45 }, uOpacity: { value: 1 } },
+    vertexShader: `attribute vec3 color; attribute float alpha; attribute float size; uniform float uScale; varying vec3 vC; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = size*uScale/max(0.1,-mv.z); gl_Position = projectionMatrix*mv; vC=color; vA=alpha; }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vC; varying float vA;
+      void main(){ float d = length(gl_PointCoord-0.5); float a = smoothstep(0.5,0.0,d); float core = smoothstep(0.2,0.0,d);
+        gl_FragColor = vec4(vC*(0.55+0.95*core), a*vA*uOpacity); }`,
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending
+  }));
+  p.frustumCulled = false; p.renderOrder = 30; parent.add(p);
+  return { pts: p, list: Array.from({ length: n }, () => ({ on: false })) };
+}
+/* a particle follows a list of stages: { T, type, from, to, onEnd } */
+function spawn(pool, stages, speed, jitter = 0.03) {
+  for (const q of pool.list) if (!q.on) { Object.assign(q, { on: true, stages, si: 0, u: stages[0].from || 0, sp: speed * (0.8 + rand() * 0.4), j: V(rand() - .5, rand() - .5, rand() - .5).multiplyScalar(jitter * 2), fade: 1 }); return q; }
+  return null;
+}
+
+/* ================= renderer & scene ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.localClippingEnabled = true;
+renderer.domElement.className = 'gl';
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+{
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 220, 20, 256, 256, 420);
+  gr.addColorStop(0, '#2b1c1b'); gr.addColorStop(.5, '#120c0d'); gr.addColorStop(1, '#050405');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+}
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
+const HOME_T = V(1.15, 0.55, 0);
+const homeDist = () => innerWidth / innerHeight < 0.8 ? 25 : 14.2;
+const sph = (t, r, th, ph) => V(t.x + r * Math.sin(ph) * Math.sin(th), t.y + r * Math.cos(ph), t.z + r * Math.sin(ph) * Math.cos(th));
+const HOME_TH = 0.1, HOME_PH = 1.45;
+camera.position.copy(sph(HOME_T, homeDist(), HOME_TH, HOME_PH));
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.zoomToCursor = true; controls.zoomSpeed = 0.6; controls.rotateSpeed = 0.8;
+controls.target.copy(HOME_T); controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 2.5; controls.maxDistance = 34; controls.enablePan = false;
+scene.add(new THREE.HemisphereLight(0xfff4ea, 0x1a120e, 0.6));
+const key = new THREE.DirectionalLight(0xfff2e6, 2.3); key.position.set(4, 7, 9); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9ab8ff, 1.3); rim.position.set(-7, 4, -7); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffd8c0, 0.55); fill.position.set(-6, -3, 6); scene.add(fill);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 0.95));
+composer.addPass(new OutputPass());
+scene.add(root); scene.add(insetRoot);
+
+function makeNormalMap(size, fine) {
+  const H = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size, cu = Math.cos(u * Math.PI * 2), su = Math.sin(u * Math.PI * 2), cv = Math.cos(v * Math.PI * 2), sv = Math.sin(v * Math.PI * 2);
+    H[y * size + x] = fbm(cu * 4 + cv * 2, su * 4, sv * 4, 3) * 0.6 + fine * noise(cu * 26 + cv * 9, su * 26, sv * 26);
+  }
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(size, size), d = img.data;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const xl = (x - 1 + size) % size, xr = (x + 1) % size, yu = (y - 1 + size) % size, yd = (y + 1) % size;
+    let nx = -(H[y * size + xr] - H[y * size + xl]) * 2.2, ny = -(H[yd * size + x] - H[yu * size + x]) * 2.2, nz = 1;
+    const l = Math.hypot(nx, ny, nz), i = (y * size + x) * 4;
+    d[i] = (nx / l * .5 + .5) * 255; d[i + 1] = (ny / l * .5 + .5) * 255; d[i + 2] = (nz / l * .5 + .5) * 255; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+
+
+/* ================= FLOW TYPES & POOLS ================= */
+const FT = {
+  ACID: [1.5, 1.9, 0.25, 0.85], PEP: [1.9, 1.0, 0.25, 0.85], BIC: [0.35, 0.85, 2.0, 0.85], ART: [1.9, 0.3, 0.22, 0.85], VEN: [0.35, 0.55, 1.9, 0.8],
+};
+function updatePool(pool, dt) {
+  const g = pool.pts.geometry, pos = g.attributes.position.array, col = g.attributes.color.array, al = g.attributes.alpha.array, sz = g.attributes.size.array, tmp = V();
+  pool.list.forEach((q, i) => {
+    if (!q.on) { al[i] = 0; return; }
+    let st = q.stages[q.si]; q.u += dt * q.sp / st.T.len;
+    const to = st.to ?? 1;
+    if (q.u >= to) { if (st.onEnd) st.onEnd(q); q.si++; if (q.si >= q.stages.length) { q.on = false; al[i] = 0; return; } st = q.stages[q.si]; q.u = st.from || 0; }
+    samp(st.T, q.u, tmp).add(q.j);
+    const ft = FT[st.type];
+    pos[i * 3] = tmp.x; pos[i * 3 + 1] = tmp.y; pos[i * 3 + 2] = tmp.z; col[i * 3] = ft[0]; col[i * 3 + 1] = ft[1]; col[i * 3 + 2] = ft[2];
+    const first = q.si === 0 ? ss(0, 0.05, q.u) : 1, lastS = q.si === q.stages.length - 1 ? 1 - ss(to - 0.08, to, q.u) : 1;
+    al[i] = first * lastS * ft[3]; sz[i] = st.size || 0.8;
+  });
+  g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.attributes.alpha.needsUpdate = true; g.attributes.size.needsUpdate = true;
+}
+let FL;
+function buildFlows() {
+  const W = WALL;
+  FL = {
+    art: ART_ROUTES.map(r => table(r)), ven: VEN_ROUTES.map(r => table(r)),
+    wAcid: [], wPep: [], wCap: W.capPaths.map(p => table(p)),
+  };
+  for (const g of W.glands) {
+    const up = [V(g.x, -0.12, g.z), V(g.x, g.pitBot, g.z), V(g.x, g.top, g.z), V(g.x + (rand() - .5) * 0.2, 0.7, g.z + (rand() - .5) * 0.1)];
+    FL.wAcid.push(table([V(g.x + 0.06, -0.12, g.z), ...up])); FL.wPep.push(table([V(g.x + 0.05, -0.36, g.z), V(g.x, -0.36, g.z), ...up]));
+  }
+}
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+const state = { explode: false, cut: false, flow: true, paused: false, inset: true, speed: 1.5, auto: false };
+const G = { t: 0, feed: 0, drink: 0, ceph: 0, emptied: 0, acidRate: 2, stim: 0, nextMeal: 4, nextWater: 30, wave: -1, quota: 0, pylOpen: 0, lastEmpty: -99 };
+const labelsEl = $('labels'), tip = $('tip'), info = $('info');
+let camTween = null, flashStory = 0;
+function tweenCamera(toP, toT, dur = 1.3) { camTween = { fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT, t: 0, dur }; }
+$('explode').onclick = () => { state.explode = !state.explode; $('explode').textContent = state.explode ? 'Assemble' : 'Explode'; tweenCamera(state.explode ? sph(HOME_T, homeDist() * 1.3, 0.6, 1.25) : sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone()); };
+$('cut').onclick = () => { state.cut = !state.cut; $('cut').classList.toggle('on', state.cut); $('cut').textContent = state.cut ? 'Close cutaway' : 'Cutaway'; };
+$('flow').onclick = () => { state.flow = !state.flow; $('flow').classList.toggle('on', state.flow); $('flow').textContent = state.flow ? 'Flows on' : 'Flows off'; };
+$('pause').onclick = () => { state.paused = !state.paused; $('pause').textContent = state.paused ? 'Resume' : 'Pause'; $('pause').classList.toggle('on', state.paused); };
+$('inset').onclick = () => { state.inset = !state.inset; $('inset').classList.toggle('on', state.inset); };
+$('reset').onclick = () => tweenCamera(sph(HOME_T, homeDist(), HOME_TH, HOME_PH), HOME_T.clone());
+$('speed').oninput = e => { state.speed = +e.target.value; $('speedTxt').textContent = state.speed.toFixed(2).replace(/0$/, '') + '×'; };
+const eat = () => { G.ceph = 2.5; G.feed += 80; flashStory = 2.5; };
+$('meal').onclick = eat;
+$('water').onclick = () => { G.drink += 40; flashStory = 2.5; };
+$('auto').onclick = () => { state.auto = !state.auto; $('auto').classList.toggle('on', state.auto); G.nextMeal = G.t + 1; G.nextWater = G.t + 30; };
+$('listToggle').onclick = () => $('right').classList.toggle('open');
+controls.addEventListener('start', () => { camTween = null; });
+let selected = null, listHover = null;
+function showInfo(o) { info.innerHTML = o ? `<b>${o.name}</b>${o.desc}` : '<b>Explore</b>Hover any structure, or pick one from this list to highlight it.'; }
+function buildList() {
+  const groups = [['Stomach regions', ['ESO', 'LES', 'FUN', 'BOD', 'ANT', 'PYL', 'DUO']], ['Blood supply', ['ART', 'VEN']], ['Stomach wall (magnified)', ['I_MUS', 'I_PIT', 'I_PAR', 'I_CHI', 'I_NCK', 'I_CAP', 'I_MUC', 'I_SUB', 'I_OBL', 'I_CIR', 'I_LON', 'I_SER']]];
+  const list = $('list');
+  for (const [title, keys] of groups) {
+    const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+    for (const k of keys) {
+      const p = parts.find(q => q.key === k); if (!p) continue;
+      const el = document.createElement('div'); el.className = 'item'; el.innerHTML = `<i style="background:${p.color}"></i>${p.name}`;
+      el.onmouseenter = () => { listHover = p; }; el.onmouseleave = () => { listHover = null; };
+      el.onclick = () => { selected = selected === p ? null : p; showInfo(selected); if (selected?.inset && !state.inset) $('inset').click(); };
+      p.itemEl = el; list.appendChild(el);
+    }
+  }
+}
+const mouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+let mouseIn = false, mouseMoved = false, mx = 0, my = 0, hovered = null, hoveredInfo = null, downAt = null;
+renderer.domElement.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); mouseIn = true; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerleave', () => { mouseIn = false; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => { if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; selected = hovered || null; showInfo(selected ? (hoveredInfo || hovered) : null); });
+function doHover() {
+  let found = null, inf = null;
+  if (mouseIn) {
+    ray.setFromCamera(mouse, camera);
+    for (const h of ray.intersectObjects(pickables, false)) {
+      const o = h.object, m = o.material, part = o.userData.part;
+      if (part.inset && !insetRoot.visible) continue;
+      if (m.clippingPlanes && m.clippingPlanes[0].distanceToPoint(h.point) < 0) continue;
+      if (m.transparent && m.opacity < 0.3 && part.key === 'I_MUC') continue;
+      found = part; inf = o.userData.info || null; break;
+    }
+  }
+  const o = found ? (inf || found) : null;
+  if (found !== hovered || inf !== hoveredInfo) {
+    hovered = found; hoveredInfo = inf;
+    if (o) { tip.innerHTML = `<b>${o.name}</b>${o.desc}`; tip.style.opacity = 1; renderer.domElement.style.cursor = 'pointer'; }
+    else { tip.style.opacity = 0; renderer.domElement.style.cursor = ''; }
+  }
+  if (o) { const w = tip.offsetWidth, h = tip.offsetHeight; let x = mx + 18, y = my + 18; if (x + w > innerWidth - 10) x = mx - w - 18; if (y + h > innerHeight - 10) y = my - h - 18; tip.style.transform = `translate(${x}px,${y}px)`; }
+}
+
+/* ================= digestion ================= */
+const pickOne = a => a[Math.floor(rand() * a.length)];
+const acc = {};
+function rate(key, perSec, dt, fn) { acc[key] = (acc[key] || 0) + perSec * dt; while (acc[key] >= 1) { acc[key] -= 1; fn(); } }
+let foodPool, flowPool, wallPool;
+const tmpP = V();
+function addFood(st, s, water = false) {
+  for (const q of foodPool.list) if (!q.on) {
+    Object.assign(q, { on: true, st, s, water, a: rand() * Math.PI * 2, rf: Math.sqrt(rand()) * 0.78, v: 0, ac: 0, sz: 1, da: (rand() - .5) * 0.6, fun: !water && rand() < 0.45 });
+    if (water) { q.a = Math.PI + (rand() - .5) * 0.6; q.rf = 0.55 + rand() * 0.3; }
+    return q;
+  }
+  return null;
+}
+const FUN_DIR = () => V(rand() - .5, rand() - .5, rand() - .5).normalize().multiplyScalar(Math.cbrt(rand()) * 0.75);
+function updateFood(dt, time) {
+  const g = foodPool.pts.geometry, pos = g.attributes.position.array, col = g.attributes.color.array, al = g.attributes.alpha.array, sz = g.attributes.size.array;
+  const sC = CH.s.cardia, sP = CH.s.pyl;
+  // pylorus opens as each wave approaches, then clamps shut when the wave arrives
+  const ph = (sP - 0.75) * WAVE.k - time * WAVE.k * WAVE.v, waveN = Math.floor(-ph / (2 * Math.PI));
+  if (waveN !== G.wave) { G.wave = waveN; G.quota = 4; }
+  G.pylOpen = Math.pow(Math.max(0, Math.sin(ph)), 3) * (1 - 0.0);
+  let nIn = 0, acSum = 0, foodIn = 0;
+  foodPool.list.forEach((q, i) => {
+    if (!q.on) { al[i] = 0; return; }
+    let r = 1;
+    if (q.st === 'ESO') {
+      q.s += dt * 1.6; chainPoint(q.s, q.a, 0.25, tmpP);
+      if (q.s >= sC - 0.05) { q.st = 'ST'; q.s = sC + 0.05 + rand() * 0.5; if (q.fun) q.f = FUN_DIR(); }
+    } else if (q.st === 'ST') {
+      nIn++;
+      const w = waveW(q.s), push = pushAt(q.s, time) * w;
+      if (q.f) { // food first settles in the fundus and upper body, then slides down
+        q.fl = (q.fl || 0) + dt * (0.05 + 0.05 * rand()); if (q.fl >= 1) q.f = null;
+      }
+      q.s += dt * (q.water ? 0.45 : 0.035 + 0.55 * push + q.v); q.v *= Math.exp(-dt * 2.2);
+      q.a += dt * q.da * (0.3 + push * 2); q.rf = clamp(q.rf + dt * (rand() - .5) * 0.3, 0.05, 0.82);
+      if (!q.water) { q.ac = Math.min(1, q.ac + dt * 0.012 * (0.4 + G.stim)); if (q.s > CH.s.ang - 0.6) q.sz = Math.max(0.25, q.sz - dt * (0.012 + 0.08 * push)); acSum += q.ac; foodIn++; }
+      if (q.s > sP - 0.32) {
+        const ready = q.water || (q.ac > 0.5 && q.sz < 0.5);
+        if (G.pylOpen > 0.35 && ready && G.quota > 0) { G.quota--; q.st = 'DUO'; q.s = sP - 0.05; G.lastEmpty = time; }
+        else if (q.s > sP - 0.14) { q.v = -(0.6 + rand() * 0.8); q.rf *= 0.5; q.s = sP - 0.15; } // retropulsion jet
+      }
+      q.s = Math.max(sC + 0.02, q.s);
+      chainPoint(q.s, q.a, q.rf, tmpP);
+      if (q.f) tmpP.lerp(V(FUNDUS.c.x, FUNDUS.c.y, FUNDUS.c.z).add(q.f), (1 - ss(0.5, 1, q.fl)) * 0.85);
+    } else {
+      q.s += dt * 0.55; chainPoint(q.s, q.a, 0.3, tmpP);
+      if (q.s >= CH.L - 0.08) { q.on = false; al[i] = 0; G.emptied += 5; return; }
+    }
+    pos[i * 3] = tmpP.x; pos[i * 3 + 1] = tmpP.y; pos[i * 3 + 2] = tmpP.z;
+    const c = q.water ? [0.35, 0.9, 2.0] : [lerp(1.9, 1.7, q.ac), lerp(1.4, 1.62, q.ac), lerp(0.55, 1.3, q.ac)];
+    col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+    al[i] = (q.water ? 0.75 : 0.95) * (q.st === 'DUO' ? 1 - ss(CH.L - 0.4, CH.L - 0.08, q.s) : 1);
+    sz[i] = q.water ? 0.8 : 0.8 + 0.85 * q.sz;
+  });
+  G.nIn = nIn; G.avgAc = foodIn ? acSum / foodIn : 1; G.foodIn = foodIn;
+  g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.attributes.alpha.needsUpdate = true; g.attributes.size.needsUpdate = true;
+}
+function emitMain(dt) {
+  rate('acid', 3 + 26 * G.stim, dt, () => { const s = lerp(CH.s.cardia + 0.3, CH.s.ang, rand()), a = rand() * Math.PI * 2; spawn(flowPool, [{ T: table([chainPoint(s, a, 0.92, V()), chainPoint(s, a, 0.5, V())]), type: 'ACID', size: 0.6 }], 0.35, 0.01); });
+  rate('art', 7, dt, () => spawn(flowPool, [{ T: pickOne(FL.art), type: 'ART', size: 0.7 }], 1.3, 0.025));
+  rate('ven', 6, dt, () => spawn(flowPool, [{ T: pickOne(FL.ven), type: 'VEN', size: 0.7 }], 1.1, 0.025));
+}
+function emitWall(dt) {
+  rate('wacid', 6 + 26 * G.stim, dt, () => spawn(wallPool, [{ T: pickOne(FL.wAcid), type: 'ACID', size: 0.75 }], 0.32, 0.012));
+  rate('wpep', 2 + 12 * G.stim, dt, () => spawn(wallPool, [{ T: pickOne(FL.wPep), type: 'PEP', size: 0.8 }], 0.3, 0.012));
+  rate('wbic', 7, dt, () => { const z = (rand() - .5) * 0.7, y = 0.25 + rand() * 0.05; spawn(wallPool, [{ T: table([V(-1.32, y, z), V(0.92, y + 0.02, z)]), type: 'BIC', size: 0.55 }], 0.25, 0.01); });
+  rate('wblood', 10, dt, () => { const T = pickOne(FL.wCap); spawn(wallPool, [{ T, type: 'ART', to: 0.5, size: 0.65 }, { T, type: 'VEN', from: 0.5, size: 0.65 }], 0.35, 0.006); });
+}
+
+/* ================= loop ================= */
+let last = performance.now(), eAmt = 0, eVel = 0, cutAmt = 0, insVis = 1, uiT = 0, flowVis = 1, insetLabel, simT = 0, pylVis = 0;
+const HLC = new THREE.Color(1.0, 0.6, 0.45), tmpC = new THREE.Color(), tmpV = V();
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  const run = state.paused ? 0 : state.speed, fdt = dt * run;
+  if (run > 0) {
+    simT += fdt; G.t += fdt; PERI.time.value = simT;
+    if (state.auto) { if (G.t >= G.nextMeal) { eat(); G.nextMeal = G.t + 75; } if (G.t >= G.nextWater) { G.drink += 30; G.nextWater = G.t + 75; } }
+    if (G.ceph > 0) G.ceph -= fdt;
+    rate('feed', G.feed > 0 && G.ceph <= 0 ? 16 : 0, fdt, () => { if (G.feed > 0) { G.feed--; addFood('ESO', 0); } });
+    rate('drink', G.drink > 0 ? 18 : 0, fdt, () => { if (G.drink > 0) { G.drink--; addFood('ESO', 0, true); } });
+    // secretion stimulus: cephalic phase + food (stretch & protein) in the stomach
+    const target = clamp01((G.ceph > 0 ? 0.45 : 0) + (G.foodIn || 0) / 60);
+    G.stim = lerp(G.stim, target, Math.min(1, fdt * 0.6));
+  }
+  pylVis = lerp(pylVis, G.pylOpen, Math.min(1, dt * 8)); PERI.pyl.value = pylVis;
+  const PY = parts.find(p => p.key === 'PYL'); if (PY?.sphincter) { const sc = 1 + 0.45 * pylVis; PY.sphincter.scale.setScalar(sc); PY.sphincter.position.copy(PY.sphincterPos).multiplyScalar(1 - sc); }
+  eVel += (70 * ((state.explode ? 1 : 0) - eAmt) - 12.5 * eVel) * dt; eAmt += eVel * dt;
+  for (const p of parts) { p.group.position.copy(p.explode).multiplyScalar(eAmt); for (const s of p.sub) s.obj.position.copy(s.v).multiplyScalar(eAmt); }
+  cutAmt = lerp(cutAmt, state.cut ? 1 : 0, Math.min(1, dt * 2.6)); if (Math.abs(cutAmt - (state.cut ? 1 : 0)) < 0.002) cutAmt = state.cut ? 1 : 0;
+  const cutZ = cutAmt > 0.002 ? lerp(1.5, 0.12, ss(0, 1, cutAmt)) : 99;
+  for (const p of parts) if (p.plane) p.plane.constant = cutZ + p.group.position.z;
+  insVis = lerp(insVis, state.inset ? 1 : 0, Math.min(1, dt * 5)); insetRoot.visible = insVis > 0.02; insetRoot.scale.setScalar(0.6 + 0.4 * insVis);
+  WALL.ring.rotation.z += dt * 0.08;
+  if (camTween) {
+    camTween.t += dt / camTween.dur; const k = ss(0, 1, camTween.t);
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, k);
+    const a = camTween.fromP.clone().sub(camTween.fromT), b = camTween.toP.clone().sub(camTween.toT);
+    const r = lerp(a.length(), b.length(), k); a.normalize(); b.normalize();
+    camera.position.copy(controls.target).addScaledVector(a.lerp(b, k).normalize(), r);
+    if (camTween.t >= 1) camTween = null;
+  }
+  flowVis = lerp(flowVis, state.flow ? 1 - ss(0.02, 0.3, Math.abs(eAmt)) : 0, Math.min(1, dt * 6));
+  foodPool.pts.material.uniforms.uOpacity.value = flowVis * (0.65 + 0.35 * cutAmt); flowPool.pts.material.uniforms.uOpacity.value = flowVis * (0.6 + 0.4 * cutAmt); wallPool.pts.material.uniforms.uOpacity.value = flowVis;
+  foodPool.pts.visible = flowPool.pts.visible = flowVis > 0.01; wallPool.pts.visible = flowVis > 0.01 && insetRoot.visible;
+  if (fdt > 0) { updateFood(fdt, simT); emitMain(fdt); updatePool(flowPool, fdt); if (insetRoot.visible) { emitWall(fdt); updatePool(wallPool, fdt); } }
+  if (mouseMoved || Math.abs(eVel) > 0.02 || camTween) { doHover(); mouseMoved = false; }
+  for (const p of parts) {
+    const on = p === hovered || p === selected || p === listHover;
+    p.hl = lerp(p.hl, on ? 1 : 0, Math.min(1, dt * 10));
+    for (const m of p.mats) { m.emissive.copy(m.userData.baseEm); if (p.hl > 0.002) m.emissive.add(tmpC.copy(HLC).multiplyScalar(p.hl * 0.33)); }
+    p.itemEl?.classList.toggle('sel', p === selected);
+  }
+  const le = ss(0.45, 0.85, eAmt);
+  for (const p of parts) {
+    const el = p.labelEl; if (!el) continue;
+    const vis = (le > 0.01 || p === selected || p === hovered || p === listHover) && (!p.inset || insetRoot.visible);
+    if (!vis) { el.style.opacity = 0; continue; }
+    tmpV.copy(p.anchor).add(p.group.position);
+    if (p.inset) tmpV.multiplyScalar(insetRoot.scale.x).add(insetRoot.position);
+    tmpV.project(camera);
+    if (tmpV.z > 1) { el.style.opacity = 0; continue; }
+    el.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,calc(-100% - 12px))`;
+    el.style.opacity = Math.max(le, (p === selected || p === hovered || p === listHover) ? 1 : 0);
+    el.classList.toggle('hot', p === hovered || p === selected);
+  }
+  if (insetLabel) {
+    tmpV.copy(insetRoot.position).add(V(-0.2, 1.4 * insetRoot.scale.x, 0)).project(camera);
+    insetLabel.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,-50%)`;
+    insetLabel.style.opacity = insetRoot.visible ? insVis * (1 - le) : 0;
+  }
+  if ((uiT += dt) > 0.15) { uiT = 0; updateDash(); }
+  if (flashStory > 0) { flashStory -= dt; $('story').style.borderColor = 'rgba(255,138,106,' + (0.2 + 0.4 * Math.max(0, flashStory / 2.5)) + ')'; }
+  controls.update();
+  composer.render();
+  requestAnimationFrame(frame);
+}
+function updateDash() {
+  const water = foodPool.list.filter(q => q.on && q.water && q.st !== 'DUO').length, vol = 50 + (G.nIn || 0) * 5 + water * 0;
+  $('volBig').textContent = Math.round(vol);
+  const chip = $('chip'), emptying = simT - G.lastEmpty < 8;
+  const c = vol < 120 ? ['ok', 'Resting'] : G.feed > 0 ? ['hi', 'Filling'] : emptying ? ['ok', 'Emptying'] : ['hi', 'Digesting'];
+  chip.className = 'chip ' + c[0]; chip.textContent = c[1];
+  const pH = G.foodIn ? lerp(1.8, 4.8, 1 - G.avgAc) : 1.8 + 0.4 * (water > 5 ? 1 : 0);
+  $('phVal').textContent = 'pH ' + pH.toFixed(1); $('phBar').style.width = (pH / 7 * 100).toFixed(0) + '%';
+  const acid = 2 + 23 * G.stim; $('acVal').textContent = acid.toFixed(0) + ' mmol/h'; $('acBar').style.width = (acid / 25 * 100).toFixed(0) + '%';
+  $('emVal').textContent = G.emptied >= 1000 ? (G.emptied / 1000).toFixed(2) + ' L' : G.emptied + ' mL'; $('emBar').style.width = Math.min(100, G.emptied / 5).toFixed(0) + '%';
+  $('peBar').style.width = (25 + 70 * waveAt(CH.s.pyl - 0.6, simT)).toFixed(0) + '%';
+  const tm = 8 * 60 + G.t * 3, hh = Math.floor(tm / 60) % 24, mm = Math.floor(tm % 60); $('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  const p0 = G.ceph > 0, p1 = !p0 && (G.foodIn || 0) > 4, p2 = emptying && (G.foodIn || 0) > 0;
+  $('ph0').classList.toggle('on', p0); $('ph1').classList.toggle('on', p1); $('ph2').classList.toggle('on', p2);
+  const eso = foodPool.list.some(q => q.on && q.st === 'ESO' && !q.water);
+  let st;
+  if (p0) st = '<b style="color:#ffc2b0">Cephalic phase:</b> just seeing and smelling food makes the brain signal the stomach (via the vagus nerve) to start making acid.';
+  else if (eso) st = '<b style="color:#f2c46a">Swallowing:</b> food slides down the esophagus, the lower sphincter opens, and the fundus relaxes to make room.';
+  else if (G.drink > 0 || water > 3) st = '<b style="color:#4fa3ff">Drinking:</b> liquids run along the inner curve of the stomach (the “stomach road”) and leave within minutes.';
+  else if (p2 && G.pylOpen > 0.3) st = '<b style="color:#ece6cc">Emptying:</b> the pylorus opens for a moment and squirts a little smooth chyme into the duodenum.';
+  else if (p1) st = G.avgAc < 0.5 ? '<b style="color:#d6ff3a">Gastric phase:</b> stretching and protein trigger gastrin; parietal cells pour out acid and chief cells release pepsin to start digesting protein.'
+    : '<b style="color:#ff8a6a">Churning:</b> waves grind food against the closed pylorus and throw it back (retropulsion) until it is a fine paste called chyme.';
+  else st = 'Between meals the stomach is nearly empty and quiet, keeping a small pool of acid ready. Slow “housekeeping” waves sweep away leftovers.';
+  $('story').innerHTML = st;
+}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  for (const p of [foodPool, flowPool, wallPool]) if (p) p.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+});
+requestAnimationFrame(() => setTimeout(() => {
+  try {
+    NM = makeNormalMap(512, 0.45);
+    buildStomach(); buildVessels(); buildWall(); buildFlows();
+    root.updateMatrixWorld(true); insetRoot.updateMatrixWorld(true);
+    for (const p of parts) if (!p.anchor) { const b = new THREE.Box3().setFromObject(p.group); p.anchor = b.getCenter(V()); if (p.inset) p.anchor.sub(INSET_POS); }
+    foodPool = makePoints(400, root); flowPool = makePoints(1400, root); wallPool = makePoints(900, insetRoot);
+    for (const p of [foodPool, flowPool, wallPool]) p.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+    for (let i = 0; i < 10; i++) { const q = addFood('ST', lerp(CH.s.ang - 0.5, CH.s.pyl - 0.4, rand())); q.ac = 0.8; q.sz = 0.4; }
+  } catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong while building the model: ' + err.message; return; }
+  for (const p of parts) { const el = document.createElement('div'); el.className = 'label'; el.textContent = p.name; labelsEl.appendChild(el); p.labelEl = el; }
+  insetLabel = document.createElement('div'); insetLabel.className = 'label inset'; insetLabel.textContent = 'Stomach wall · magnified'; labelsEl.appendChild(insetLabel);
+  buildList();
+  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
+  last = performance.now(); requestAnimationFrame(frame);
+}, 40));
+</script>
+<a id="homeLink" href="../index.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
+<script>if (window.self === window.top) document.getElementById('homeLink').style.display = 'block';</script>
+</body>
+</html>

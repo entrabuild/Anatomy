@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Human Kidney — Interactive 3D</title>
+<style>
+  :root{--glass:rgba(16,14,20,.64);--line:rgba(255,255,255,.09);--txt:#f2eeee;--mut:#a59ca0;--acc:#ff8a5c;--blood:#ff4236;--vein:#5a7cff;--use:#47e6b4;--waste:#ffd23a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07060a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  canvas.gl{display:block;outline:none;touch-action:none}
+  .panel{position:fixed;background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  #left{top:16px;left:16px;width:292px;padding:16px 16px 14px;max-height:calc(100vh - 32px);overflow:auto}
+  #left h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.2px}
+  #left .sub{font-size:11.5px;color:var(--mut);margin-top:3px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .stat .k{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  .stat .v{font-size:16px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:11px;color:var(--mut);font-weight:500}
+  .steps{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .step{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:12.3px;transition:background .25s,border-color .25s}
+  .step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:rgba(255,255,255,.08);flex:none}
+  .step .c{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--mut);font-size:12px}
+  .step.flash{background:rgba(255,138,92,.16);border-color:rgba(255,138,92,.55)}
+  .ctl{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{font:inherit;font-size:12.5px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s,transform .08s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:active{transform:scale(.97)}
+  button.on{background:rgba(255,138,92,.16);border-color:rgba(255,138,92,.55)}
+  #explode{grid-column:1/3;background:linear-gradient(180deg,#d4543a,#a3341f);border-color:#ef7a5c;font-weight:650;font-size:13.5px;padding:11px}
+  #explode:hover{background:linear-gradient(180deg,#e2623f,#b33c24)}
+  .speed{grid-column:1/3;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut);padding:2px 2px 0}
+  .speed input{flex:1;accent-color:var(--acc)}
+  .speed b{color:var(--txt);font-weight:600;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+  .legend{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:11.5px;color:var(--mut)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+  #right{top:16px;right:16px;width:272px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:14px 10px 10px}
+  #right h2{margin:6px 6px 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:600}
+  #list{overflow:auto;flex:1;padding-right:2px}
+  .item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:12.6px;cursor:pointer;border:1px solid transparent}
+  .item:hover{background:rgba(255,255,255,.06)}
+  .item.sel{background:rgba(255,138,92,.13);border-color:rgba(255,138,92,.4)}
+  .item i{width:9px;height:9px;border-radius:50%;flex:none}
+  #info{margin-top:10px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;line-height:1.45;color:#ddd5d6;min-height:74px}
+  #info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--mut);background:var(--glass);border:1px solid var(--line);padding:7px 14px;border-radius:20px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .label{position:absolute;left:0;top:0;font-size:11.8px;font-weight:550;padding:4px 9px;border-radius:7px;background:rgba(12,9,14,.84);border:1px solid rgba(255,255,255,.22);white-space:nowrap;opacity:0;will-change:transform}
+  .label::after{content:"";position:absolute;left:50%;bottom:-10px;width:1px;height:9px;background:rgba(255,255,255,.55)}
+  .label.hot{border-color:var(--acc);background:rgba(70,24,12,.92)}
+  .label.inset{background:rgba(255,138,92,.14);border-color:rgba(255,138,92,.45);font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+  .label.inset::after{display:none}
+  #tip{position:fixed;left:0;top:0;pointer-events:none;max-width:300px;padding:9px 12px;border-radius:10px;background:rgba(12,9,14,.95);border:1px solid rgba(255,138,92,.45);font-size:12.8px;line-height:1.42;opacity:0;transition:opacity .12s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #tip b{display:block;font-size:13.5px;margin-bottom:2px;color:#ffc4a8}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13.5px;color:var(--mut);background:#07060a;z-index:20;transition:opacity .6s}
+  #loading .bar{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  #loading .bar::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #listToggle{display:none;position:fixed;top:16px;right:16px;z-index:5}
+  @media (max-width:1100px){#right{display:none;top:64px}#right.open{display:flex}#listToggle{display:block}}
+  @media (max-width:680px){
+    #left{top:auto;bottom:12px;left:12px;right:12px;width:auto;padding:12px;max-height:46vh}
+    #left .sub,.legend,.steps{display:none}
+    .stats{margin-top:8px}
+    #hint{display:none}
+    #right{left:12px;right:12px;width:auto;max-height:45vh}
+  }
+</style>
+</head>
+<body>
+<div id="loading"><div>Building the kidney…</div><div class="bar"></div></div>
+
+<div id="left" class="panel">
+  <h1>Human Kidney</h1>
+  <div class="sub">Interactive 3D anatomy · coronal section + nephron</div>
+  <div class="stats">
+    <div class="stat"><div class="k">Renal blood flow</div><div class="v" id="sRBF">1.20 <small>L/min</small></div></div>
+    <div class="stat"><div class="k">Filtration (GFR)</div><div class="v" id="sGFR">125 <small>mL/min</small></div></div>
+    <div class="stat"><div class="k">Reabsorbed</div><div class="v" id="sReab">99 <small>%</small></div></div>
+    <div class="stat"><div class="k">Urine output</div><div class="v" id="sUrine">1.0 <small>mL/min</small></div></div>
+  </div>
+  <div class="steps">
+    <div class="step" id="st1"><span class="n">1</span>Filtration · glomerulus<span class="c" id="c1">0</span></div>
+    <div class="step" id="st2"><span class="n">2</span>Reabsorption · tubules<span class="c" id="c2">0</span></div>
+    <div class="step" id="st3"><span class="n">3</span>Secretion · tubules<span class="c" id="c3">0</span></div>
+    <div class="step" id="st4"><span class="n">4</span>Excretion · urine<span class="c" id="c4">0</span></div>
+  </div>
+  <div class="ctl">
+    <button id="explode">Explode</button>
+    <button id="cut" class="on">Cutaway on</button>
+    <button id="pause">Pause flow</button>
+    <button id="neph" class="on">Nephron view</button>
+    <button id="reset">Reset view</button>
+    <div class="speed">Flow speed <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"><b id="speedTxt">1.0×</b></div>
+  </div>
+  <div class="legend">
+    <div><i style="background:#ff4236"></i>Arterial blood</div>
+    <div><i style="background:#5a7cff"></i>Venous blood</div>
+    <div><i style="background:#47e6b4"></i>Useful filtrate</div>
+    <div><i style="background:#ffd23a"></i>Waste / urine</div>
+  </div>
+</div>
+
+<button id="listToggle">Structures</button>
+<div id="right" class="panel">
+  <div id="list"></div>
+  <div id="info"><b>Explore</b>Hover any structure, or pick one from this list to highlight it.</div>
+</div>
+
+<div id="hint">Drag to rotate · Scroll to zoom · Hover to identify</div>
+<div id="labels"></div>
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* ================= math helpers ================= */
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const wrapPi = a => ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+let seed = 4242;
+const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const PERM = new Uint8Array(512);
+{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+function grad(h, x, y, z) { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
+function noise(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const X = fx & 255, Y = fy & 255, Z = fz & 255; x -= fx; y -= fy; z -= fz;
+  const u = fade(x), v = fade(y), w = fade(z), P = PERM;
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z), u), lerp(grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z), u), v),
+              lerp(lerp(grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1), u), lerp(grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1), u), v), w);
+}
+function fbm(x, y, z, o = 3) { let a = .5, f = 1, s = 0; for (let i = 0; i < o; i++) { s += a * noise(x * f, y * f, z * f); f *= 2.03; a *= .5; } return s; }
+function worley2(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y); let f1 = 9, f2 = 9;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+    const cx = xi + dx, cy = yi + dy, h = PERM[(PERM[cx & 255] + (cy & 255)) & 255];
+    const d = (cx + PERM[h] / 255 - x) ** 2 + (cy + PERM[h + 1] / 255 - y) ** 2;
+    if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+  }
+  return [Math.sqrt(f1), Math.sqrt(f2)];
+}
+
+/* ================= 2D KIDNEY LAYOUT (coronal plane, z = 0) =================
+   S = centre of the renal sinus. Every internal structure is laid out in polar
+   coordinates (angle th, radius r) around S. */
+const SX = -0.45, SY = 0, KX = 0.15, KY = 0;          // sinus centre, body centre
+const CORTEX_T = 0.36;
+function outlineP(t) {
+  const wt = wrapPi(t - Math.PI), s = Math.sin(t);
+  return [1.05 * Math.cos(t) + 0.5 * Math.exp(-((wt / 0.6) ** 2)) - 0.16 * s * s + 0.05 * s, 2.0 * s];
+}
+const OUT_A = [], OUT_R = [];
+{
+  const N = 4096, arr = [];
+  for (let i = 0; i < N; i++) { const [x, y] = outlineP(i / N * Math.PI * 2); arr.push([Math.atan2(y - SY, x - SX), Math.hypot(x - SX, y - SY)]); }
+  arr.sort((a, b) => a[0] - b[0]);
+  for (const [a, r] of arr) { OUT_A.push(a); OUT_R.push(r); }
+}
+function rOut(th) {
+  th = wrapPi(th); const A = OUT_A, n = A.length;
+  if (th <= A[0] || th >= A[n - 1]) { const a0 = A[n - 1] - 2 * Math.PI, a1 = A[0]; let x = th; if (x > A[n - 1]) x -= 2 * Math.PI; return lerp(OUT_R[n - 1], OUT_R[0], clamp01((x - a0) / (a1 - a0))); }
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (A[m] <= th) lo = m; else hi = m; }
+  return lerp(OUT_R[lo], OUT_R[hi], (th - A[lo]) / Math.max(1e-9, A[hi] - A[lo]));
+}
+const rSin = th => 1 / Math.sqrt(Math.cos(th) ** 2 / (0.62 * 0.62) + Math.sin(th) ** 2 / (1.15 * 1.15));
+const rCm = th => Math.max(rSin(th) + 0.02, rOut(th) - CORTEX_T);
+const polar = (th, r, z = 0) => V(SX + r * Math.cos(th), SY + r * Math.sin(th), z);
+let TH_A, TH_B;                                       // tissue range (outside it is the hilum)
+{ let t = 0; while (t < Math.PI && rOut(t) - rSin(t) > 0.06) t += 0.002; TH_B = t; t = 0; while (t > -Math.PI && rOut(t) - rSin(t) > 0.06) t -= 0.002; TH_A = t; }
+const inTissue = th => th >= TH_A && th <= TH_B;
+const rimR = th => inTissue(wrapPi(th)) ? rSin(wrapPi(th)) : rOut(th);
+
+/* pyramids */
+const PYR = [];
+{
+  let a = 0; while (a < TH_B && rCm(a) - rSin(a) > 0.3) a += 0.002; const pb = a;
+  a = 0; while (a > TH_A && rCm(a) - rSin(a) > 0.3) a -= 0.002; const pa = a;
+  const M = 600, cum = [0];
+  for (let i = 1; i <= M; i++) { const t0 = lerp(pa, pb, (i - 1) / M), t1 = lerp(pa, pb, i / M), rm = (rSin(t0) + rCm(t0)) / 2; cum.push(cum[i - 1] + rm * (t1 - t0)); }
+  const N = 8, tot = cum[M];
+  for (let k = 0; k < N; k++) {
+    const target = (k + 0.5) / N * tot; let i = 1; while (cum[i] < target) i++;
+    const th = lerp(pa, pb, (i - 1 + (target - cum[i - 1]) / (cum[i] - cum[i - 1])) / M);
+    const w = 0.56 * (tot / N) / rCm(th);
+    PYR.push({ th, w, rp: rSin(th) - 0.1, idx: k });
+  }
+}
+const PEXP = 0.68;
+function pyrAt(P, t, s) { const th = P.th + t * P.w * Math.pow(s, PEXP); const r = lerp(P.rp, rCm(th), s); return [th, r]; }
+function sStar(P, sign) { let lo = 0, hi = 1; for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2, [th, r] = pyrAt(P, sign, m); if (r < rSin(th)) lo = m; else hi = m; } return hi; }
+/* column boundaries: each returns (v in 0..1) => [th, r] from the sinus edge up to the corticomedullary junction */
+function edgeOfPyr(P, sign) { const s0 = sStar(P, sign); return v => pyrAt(P, sign, lerp(s0, 1, v)); }
+function radialEdge(th) { return v => [th, lerp(rSin(th), rCm(th), v)]; }
+const COLS = [];
+{
+  const edges = [radialEdge(TH_A)];
+  for (const P of PYR) { edges.push(edgeOfPyr(P, -1)); edges.push(edgeOfPyr(P, 1)); }
+  edges.push(radialEdge(TH_B));
+  for (let k = 0; k < edges.length; k += 2) COLS.push({ L: edges[k], R: edges[k + 1], idx: k / 2 });
+}
+function colAt(C, u, v) {
+  const [t0, r0] = C.L(v), [t1, r1] = C.R(v);
+  const h0 = (r0 - rSin(t0)) / (rCm(t0) - rSin(t0)), h1 = (r1 - rSin(t1)) / (rCm(t1) - rSin(t1));
+  const th = lerp(t0, t1, u), h = clamp01(lerp(h0, h1, u));
+  return [th, lerp(rSin(th), rCm(th), h)];
+}
+
+/* collecting system & vessel layout */
+const PE0 = V(-0.12, -0.08, 0), J_U = V(-0.1, 0.62, 0), J_L = V(-0.08, -0.68, 0);
+const PELVIS_PTS = [PE0, V(-0.38, -0.3, 0), V(-0.62, -0.5, 0), V(-0.8, -0.78, 0)];
+const URETER_PTS = [V(-0.8, -0.78, 0), V(-0.98, -1.3, 0), V(-1.02, -2.2, 0), V(-0.92, -3.25, 0)];
+const MAJ_U_PTS = [J_U, V(-0.13, 0.32, 0), V(-0.12, 0.02, 0)];
+const MAJ_L_PTS = [J_L, V(-0.11, -0.42, 0), V(-0.12, -0.16, 0)];
+function calyxGroup(P) { return P.th > 0.55 ? 'U' : P.th < -0.5 ? 'L' : 'M'; }
+function minorCalyxPts(P) {
+  const d = V(Math.cos(P.th), Math.sin(P.th), 0), rs = rSin(P.th), g = calyxGroup(P);
+  const end = g === 'U' ? J_U : g === 'L' ? J_L : PE0.clone().add(d.clone().multiplyScalar(0.18));
+  const a = polar(P.th, rs + 0.03), b = polar(P.th, rs - 0.1), c = polar(P.th, rs - 0.22);
+  if (c.distanceTo(end) < 0.08) return [a, b, end];
+  return [a, b, c, end];
+}
+const ART_MAIN = [V(-2.95, 0.88, 0), V(-1.8, 0.66, 0), V(-0.95, 0.44, 0), V(-0.5, 0.34, 0.08)];
+const VEN_MAIN = [V(-2.95, 0.14, 0), V(-1.8, 0.1, 0), V(-0.95, 0.07, 0), V(-0.5, 0.06, 0.08)];
+const HUB_A = { U: V(-0.24, 0.78, 0.12), M: V(-0.02, 0.22, 0.13), L: V(-0.22, -0.9, 0.12) };
+const HUB_V = { U: V(-0.32, 0.64, 0.2), M: V(-0.1, 0.08, 0.21), L: V(-0.3, -1.02, 0.2) };
+const colGroup = C => { const [th] = colAt(C, 0.5, 0.5); return th > 0.6 ? 'U' : th < -0.55 ? 'L' : 'M'; };
+
+/* ================= renderer & scene ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.localClippingEnabled = true;
+renderer.domElement.className = 'gl';
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+{
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 220, 20, 256, 256, 420);
+  gr.addColorStop(0, '#2a1a1e'); gr.addColorStop(.5, '#130d11'); gr.addColorStop(1, '#060407');
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+}
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
+const HOME_T = V(0.75, -0.35, 0);
+const homeDist = () => innerWidth / innerHeight < 0.8 ? 19 : 12.5;
+camera.position.set(0.9, 0.2, homeDist());
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.zoomToCursor = true; controls.zoomSpeed = 0.6; controls.rotateSpeed = 0.8;
+controls.target.copy(HOME_T); controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 2.5; controls.maxDistance = 34; controls.enablePan = false;
+scene.add(new THREE.HemisphereLight(0xfff0f0, 0x180c0c, 0.6));
+const key = new THREE.DirectionalLight(0xfff4ea, 2.4); key.position.set(4, 6, 9); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9ab8ff, 1.3); rim.position.set(-7, 4, -6); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffc8b8, 0.55); fill.position.set(-6, -3, 6); scene.add(fill);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 0.95));
+composer.addPass(new OutputPass());
+
+/* ================= textures (generated) ================= */
+function makeNormalMap(size, fine, cell) {
+  const H = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size, v = y / size, cu = Math.cos(u * Math.PI * 2), su = Math.sin(u * Math.PI * 2);
+    let h = fbm(cu * 5, su * 5, v * 12, 3) * 0.6 + fine * noise(cu * 30, su * 30, v * 60);
+    if (cell) { const cv = Math.cos(v * Math.PI * 2), sv = Math.sin(v * Math.PI * 2); h += cell * Math.abs(noise(cu * 12 + cv * 3, su * 12, sv * 12)); }
+    H[y * size + x] = h;
+  }
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(size, size), d = img.data;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const xl = (x - 1 + size) % size, xr = (x + 1) % size, yu = (y - 1 + size) % size, yd = (y + 1) % size;
+    let nx = -(H[y * size + xr] - H[y * size + xl]) * 2.4, ny = -(H[yd * size + x] - H[yu * size + x]) * 2.4, nz = 1;
+    const l = Math.hypot(nx, ny, nz), i = (y * size + x) * 4;
+    d[i] = (nx / l * .5 + .5) * 255; d[i + 1] = (ny / l * .5 + .5) * 255; d[i + 2] = (nz / l * .5 + .5) * 255; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+let NM_ORGAN, NM_TISSUE, NM_FAT;
+
+/* ================= geometry helpers ================= */
+function taperTube(curve, segs, radial, rFn) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], uv = [], idx = [], P = V(), N = V();
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs; curve.getPointAt(u, P); const r = rFn(u);
+    for (let j = 0; j <= radial; j++) {
+      const a = j / radial * Math.PI * 2, s = Math.sin(a), c = -Math.cos(a), n = frames.normals[i], b = frames.binormals[i];
+      N.set(c * n.x + s * b.x, c * n.y + s * b.y, c * n.z + s * b.z).normalize();
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(u * 6, j / radial);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+const curveOf = pts => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+const tube = (pts, r0, r1, radial = 14, segs) => { const c = curveOf(pts); return taperTube(c, segs || Math.max(16, Math.round(c.getLength() * 40)), radial, u => lerp(r0, r1, u)); };
+/* flat grid in the cut plane: fn(i/nu, j/nv) => [x, y]; colorFn(x,y) => Color */
+function planeGrid(nu, nv, fn, colorFn, z = 0) {
+  const pos = [], nor = [], col = [], uv = [], idx = [], c = new THREE.Color();
+  for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+    const [x, y] = fn(i / nu, j / nv); pos.push(x, y, z); nor.push(0, 0, 1); uv.push(x * 0.7, y * 0.7);
+    colorFn(x, y, c, i / nu, j / nv); col.push(c.r, c.g, c.b);
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * (nu + 1) + i, b = a + nu + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeBoundingSphere(); return g;
+}
+function gridSurface(nu, nv, fn, colorFn, wrapU = false) {
+  const pos = [], col = [], uv = [], idx = [], c = new THREE.Color(), p = V();
+  const cols = wrapU ? nu : nu + 1;
+  for (let j = 0; j <= nv; j++) for (let i = 0; i < cols; i++) {
+    fn(i / nu, j / nv, p); pos.push(p.x, p.y, p.z); uv.push(i / nu * 4, j / nv * 2);
+    if (colorFn) { colorFn(p, c, i / nu, j / nv); col.push(c.r, c.g, c.b); }
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const i1 = wrapU ? (i + 1) % nu : i + 1, a = j * cols + i, b = j * cols + i1, cc = (j + 1) * cols + i, d = (j + 1) * cols + i1;
+    idx.push(a, b, cc, b, d, cc);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  if (colorFn) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
+}
+
+/* ================= materials ================= */
+function phys(o) { return new THREE.MeshPhysicalMaterial(Object.assign({ roughness: 0.4, metalness: 0, clearcoat: 0.5, clearcoatRoughness: 0.3, side: THREE.DoubleSide }, o)); }
+function withEm(m, hex, k = 0.06) { m.emissive = new THREE.Color(hex).multiplyScalar(k); return m; }
+
+/* ================= parts ================= */
+const root = new THREE.Group(); scene.add(root);
+const nephronRoot = new THREE.Group(); nephronRoot.position.set(3.55, 0.2, 0); scene.add(nephronRoot);
+const parts = [], pickables = [];
+function newPart(key, name, desc, explode, color, opts = {}) {
+  const group = new THREE.Group(); (opts.parent || root).add(group);
+  const p = { key, name, desc, group, explode, color, mats: [], hl: 0, anchor: null, plane: null, sub: [], nephron: !!opts.parent, ...opts };
+  parts.push(p); return p;
+}
+function clipFor(part) { if (!part.plane) part.plane = new THREE.Plane(V(0, 0, -1), 0); return [part.plane]; }
+function addMesh(part, mesh, parent, info) {
+  (parent || part.group).add(mesh);
+  mesh.userData.part = part; if (info) mesh.userData.info = info; pickables.push(mesh);
+  const m = mesh.material;
+  if (m.emissive && !part.mats.includes(m)) { m.userData.baseEm = m.emissive.clone(); part.mats.push(m); }
+  return mesh;
+}
+
+/* ================= BUILD ================= */
+const lid = new THREE.Group(); root.add(lid);
+const lidPlane = new THREE.Plane(V(0, 0, 1), 0);
+const lidMats = [];
+function lidMat(m) { const c = m.clone(); c.clippingPlanes = [lidPlane]; c.transparent = true; c.userData = {}; lidMats.push(c); return c; }
+const P = {};      // parts by key
+const routes = { art: [], ven: [], urine: [] };
+
+function shellPoint(t, ph, out) {
+  const [x, y] = outlineP(t), c = Math.pow(Math.max(0, Math.cos(ph)), 0.55);
+  const zh = 0.6 + 0.05 * Math.cos(t) ** 2 * Math.cos(ph);
+  out.set(KX + (x - KX) * c, KY + (y - KY) * c, zh * Math.sin(ph));
+  const n = 0.014 * fbm(out.x * 2.3, out.y * 2.3, out.z * 2.3 + 5, 3);
+  const dx = out.x - KX, dy = out.y - KY, dz = out.z, l = Math.hypot(dx, dy, dz) || 1;
+  return out.set(out.x + dx / l * n, out.y + dy / l * n, out.z + dz / l * n);
+}
+function buildShell() {
+  const NU = 260, NV = 96, pos = [], nor = [], col = [], uv = [], idx = [], p = V(), a = V(), b = V(), c = new THREE.Color();
+  const base = new THREE.Color('#6d2a22');
+  for (let j = 0; j <= NV; j++) for (let i = 0; i < NU; i++) {
+    const t = i / NU * Math.PI * 2, ph = lerp(-Math.PI / 2 + 0.002, Math.PI / 2 - 0.002, j / NV);
+    shellPoint(t, ph, p);
+    shellPoint(t + 0.003, ph, a).sub(shellPoint(t - 0.003, ph, b));
+    const tp = a.clone(); shellPoint(t, ph + 0.003, a).sub(shellPoint(t, ph - 0.003, b));
+    const n = tp.cross(a).normalize(); if (n.dot(V(p.x - KX, p.y - KY, p.z)) < 0) n.negate();
+    pos.push(p.x, p.y, p.z); nor.push(n.x, n.y, n.z); uv.push(i / NU * 6, j / NV * 3);
+    const m = noise(p.x * 3, p.y * 3, p.z * 3) * .5 + .5, [f1, f2] = worley2(p.x * 7 + p.z * 3, p.y * 7);
+    c.copy(base).multiplyScalar(0.82 + 0.3 * m).lerp(new THREE.Color('#4a1712'), (1 - ss(0, 0.07, f2 - f1)) * 0.35);
+    col.push(c.r, c.g, c.b);
+  }
+  for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const i1 = (i + 1) % NU, A = j * NU + i, B = j * NU + i1, C = (j + 1) * NU + i, D = (j + 1) * NU + i1; idx.push(A, B, C, B, D, C); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeBoundingSphere();
+  const cap = g.clone(), cp = cap.attributes.position, cn = cap.attributes.normal;
+  for (let i = 0; i < cp.count; i++) cp.setXYZ(i, cp.getX(i) + cn.getX(i) * 0.024, cp.getY(i) + cn.getY(i) * 0.024, cp.getZ(i) + cn.getZ(i) * 0.024);
+  cap.deleteAttribute('color');
+  return { shell: g, capsule: cap };
+}
+
+function cortexColor(x, y, c) {
+  const n = noise(x * 6, y * 6, 1) * .5 + .5, g = noise(x * 38, y * 38, 2);
+  c.setRGB(0.6, 0.24, 0.2).multiplyScalar(0.85 + 0.25 * n);
+  if (g > 0.35) c.lerp(new THREE.Color(0.38, 0.08, 0.08), 0.5);
+  return c;
+}
+function columnColor(x, y, c) { cortexColor(x, y, c); return c.multiplyScalar(1.06).lerp(new THREE.Color(0.66, 0.3, 0.25), 0.25); }
+function medullaColor(P) {
+  return (x, y, c, u) => {
+    const t = u * 2 - 1, st = 0.5 + 0.5 * Math.sin(t * Math.PI * 11 + noise(x * 4, y * 4, 3) * 2);
+    c.setRGB(0.47, 0.13, 0.13).lerp(new THREE.Color(0.66, 0.3, 0.27), st * 0.55).multiplyScalar(0.9 + 0.15 * noise(x * 9, y * 9, 4));
+    return c;
+  };
+}
+
+function build() {
+  NM_ORGAN = makeNormalMap(512, 0.35, 0.35); NM_TISSUE = makeNormalMap(256, 0.25, 0); NM_FAT = makeNormalMap(256, 0.2, 1.2);
+  const { shell, capsule } = buildShell();
+
+  /* ---------- capsule ---------- */
+  const cap = P.CAP = newPart('CAP', 'Renal capsule', 'A tough, glossy fibrous coat that wraps and protects the kidney.', V(0, 0.1, -2.6), '#f0d6cf');
+  const capMat = phys({ color: '#f6dcd2', roughness: 0.18, clearcoat: 1, transparent: true, opacity: 0.32, depthWrite: false, clippingPlanes: clipFor(cap), emissive: new THREE.Color('#200a08') });
+  addMesh(cap, new THREE.Mesh(capsule, capMat)).renderOrder = 3;
+  cap.anchor = V(1.15, 1.2, -0.2);
+
+  /* ---------- cortex: outer surface + cut face ---------- */
+  const ctx = P.CTX = newPart('CTX', 'Renal cortex', 'The outer layer, packed with about a million filtering units (nephrons) and their glomeruli.', V(0, 0, -0.9), '#9b3b2e');
+  const shellMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.34, clearcoat: 0.75, clearcoatRoughness: 0.2, sheen: 0.5, sheenColor: new THREE.Color('#ff9a86'), normalMap: NM_ORGAN, normalScale: new THREE.Vector2(0.4, 0.4), clippingPlanes: clipFor(ctx), emissive: new THREE.Color('#160403') });
+  addMesh(ctx, new THREE.Mesh(shell, shellMat), null, { name: 'Renal cortex — outer surface', desc: 'The smooth reddish-brown surface of the kidney, just beneath the capsule.' });
+  const cutMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.62, clearcoat: 0.25, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.5, 0.5), emissive: new THREE.Color('#120302') });
+  const ctxGeo = planeGrid(520, 10, (u, v) => { const th = lerp(TH_A, TH_B, u), r = lerp(rCm(th), rOut(th), v); return [SX + r * Math.cos(th), SY + r * Math.sin(th)]; }, cortexColor);
+  addMesh(ctx, new THREE.Mesh(ctxGeo, cutMat));
+  ctx.anchor = polar(0.2, rOut(0.2) - 0.15);
+
+  /* ---------- renal columns ---------- */
+  const col = P.COL = newPart('COL', 'Renal columns', 'Bands of cortex that dip down between the pyramids, carrying the interlobar blood vessels.', V(0, 0, 0.75), '#b0503c');
+  const colMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.6, clearcoat: 0.25, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.5, 0.5), emissive: new THREE.Color('#140403') });
+  const colGeos = COLS.map(C => planeGrid(8, 50, (u, v) => { const [th, r] = colAt(C, u, v); return [SX + r * Math.cos(th), SY + r * Math.sin(th)]; }, columnColor));
+  addMesh(col, new THREE.Mesh(mergeGeometries(colGeos), colMat));
+  col.anchor = (() => { const [th, r] = colAt(COLS[4], 0.5, 0.5); return polar(th, r); })();
+
+  /* ---------- pyramids, papillae, collecting ducts ---------- */
+  const pyr = P.PYR = newPart('PYR', 'Renal pyramids (medulla)', 'Cone-shaped medulla where loops of Henle and collecting ducts concentrate the urine.', V(0, 0, 1.45), '#7a2423');
+  const pap = P.PAP = newPart('PAP', 'Renal papillae', 'The tips of the pyramids; finished urine drips from them into the minor calyces.', V(0, 0, 2.15), '#c86a5c');
+  const cdp = P.CDK = newPart('CDK', 'Collecting ducts', 'Fine tubes that gather urine from many nephrons and run through each pyramid to its papilla.', V(0, 0, 1.85), '#f1c27a');
+  const pyrSurfMat = phys({ color: '#6f1f1f', roughness: 0.5, clearcoat: 0.35, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.5, 0.5), emissive: new THREE.Color('#140303') });
+  const pyrCapMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.55, clearcoat: 0.3, emissive: new THREE.Color('#120202') });
+  const papSurfMat = phys({ color: '#b65a50', roughness: 0.45, clearcoat: 0.45, emissive: new THREE.Color('#1a0504') });
+  const papCapMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.5, clearcoat: 0.35, emissive: new THREE.Color('#1a0504') });
+  const ductMat = phys({ color: '#f3cf8e', roughness: 0.4, clearcoat: 0.6, emissive: new THREE.Color('#2a1a06'), polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const SPLIT = 0.24, ductGeos = [];
+  for (const Pd of PYR) {
+    const dir = V(Math.cos(Pd.th), Math.sin(Pd.th), 0);
+    const gP = new THREE.Group(), gA = new THREE.Group(), gD = new THREE.Group();
+    pyr.group.add(gP); pap.group.add(gA); cdp.group.add(gD);
+    pyr.sub.push({ obj: gP, v: dir.clone().multiplyScalar(0.4) }); pap.sub.push({ obj: gA, v: dir.clone().multiplyScalar(-0.2) }); cdp.sub.push({ obj: gD, v: dir.clone().multiplyScalar(0.4) });
+    const halfCone = (s0, s1) => gridSurface(28, 40, (u, v, out) => {
+      const ph = u * Math.PI, s = lerp(s0, s1, v), t = Math.cos(ph), [th, r] = pyrAt(Pd, t, s);
+      const half = r * Math.sin(Pd.w * Math.pow(s, PEXP));
+      const tipRound = s0 === 0 ? 1 + 0.6 * Math.max(0, 1 - s / 0.12) : 1;
+      out.set(SX + r * Math.cos(th), SY + r * Math.sin(th), -half * Math.sin(ph) * 0.95 * tipRound);
+    });
+    const capG = (s0, s1, colorFn) => planeGrid(24, 30, (u, v) => { const [th, r] = pyrAt(Pd, u * 2 - 1, lerp(s0, s1, v)); return [SX + r * Math.cos(th), SY + r * Math.sin(th)]; }, colorFn);
+    addMesh(pyr, new THREE.Mesh(halfCone(SPLIT, 1), pyrSurfMat), gP);
+    addMesh(pyr, new THREE.Mesh(capG(SPLIT, 1, medullaColor(Pd)), pyrCapMat), gP);
+    addMesh(pap, new THREE.Mesh(halfCone(0, SPLIT + 0.01), papSurfMat), gA);
+    addMesh(pap, new THREE.Mesh(capG(0, SPLIT + 0.01, (x, y, c) => c.setRGB(0.72, 0.36, 0.31).multiplyScalar(0.9 + 0.15 * noise(x * 9, y * 9, 5))), papCapMat), gA);
+    // collecting ducts: ribbons converging on the papilla
+    const dg = [];
+    for (let k = 0; k < 9; k++) {
+      const t = -0.78 + k * 0.195, pts = [];
+      for (let q = 0; q <= 24; q++) { const s = lerp(1, 0.03, q / 24), [th, r] = pyrAt(Pd, t * (0.35 + 0.65 * s), s); pts.push([SX + r * Math.cos(th), SY + r * Math.sin(th)]); }
+      dg.push(planeGrid(1, 24, (u, v) => { const i = Math.min(23, Math.floor(v * 24)), a = pts[i], b = pts[i + 1], f = v * 24 - i; const x = lerp(a[0], b[0], f), y = lerp(a[1], b[1], f); const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, w = 0.0055 * (0.6 + 0.4 * (1 - v)); return [x - dy / l * w * (u * 2 - 1), y + dx / l * w * (u * 2 - 1)]; }, (x, y, c) => c.setRGB(0.95, 0.8, 0.55), 0.003));
+      routes.urine.push({ pyr: Pd, duct: pts.map(([x, y]) => V(x, y, 0.012)) });
+    }
+    const dm = addMesh(cdp, new THREE.Mesh(mergeGeometries(dg), ductMat), gD); dm.renderOrder = 1;
+  }
+  pyr.anchor = (() => { const [th, r] = pyrAt(PYR[6], 0, 0.65); return polar(th, r); })();
+  pap.anchor = (() => { const [th, r] = pyrAt(PYR[1], 0, 0.1); return polar(th, r); })();
+  cdp.anchor = (() => { const [th, r] = pyrAt(PYR[3], 0.3, 0.6); return polar(th, r); })();
+
+  /* ---------- renal sinus fat ---------- */
+  const fat = P.FAT = newPart('FAT', 'Renal sinus fat', 'Soft fat that cushions the calyces, pelvis and blood vessels inside the renal sinus.', V(0.1, 0, -1.6), '#e7c16b');
+  const fatMat = phys({ color: 0xffffff, vertexColors: true, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.2, normalMap: NM_FAT, normalScale: new THREE.Vector2(0.9, 0.9), emissive: new THREE.Color('#1a1204') });
+  const fatGeo = gridSurface(220, 26, (u, v, out) => {
+    const th = u * Math.PI * 2 - Math.PI, ph = v * Math.PI / 2, rr = rimR(th);
+    const depth = 0.44 * Math.sqrt(Math.min(1, rr / 0.6));
+    const lump = 0.03 * (Math.abs(noise(Math.cos(th) * 3, Math.sin(th) * 3, v * 3)) + Math.abs(noise(th * 5, v * 8, 7)) * 0.6) * Math.sin(ph * 1.6 + 0.3);
+    const r = rr * Math.cos(ph) * (1 - lump);
+    out.set(SX + r * Math.cos(th), SY + r * Math.sin(th), -depth * Math.sin(ph) + lump * 0.5 - 0.004);
+  }, (p, c) => { const [f1, f2] = worley2(p.x * 9, p.y * 9 + p.z * 4); c.setRGB(0.93, 0.76, 0.38).multiplyScalar(0.88 + 0.12 * (1 - ss(0, 0.1, f2 - f1)) * -1 + 0.1 * noise(p.x * 5, p.y * 5, p.z * 5)); return c; }, true);
+  addMesh(fat, new THREE.Mesh(fatGeo, fatMat));
+  fat.anchor = V(-0.25, 0.95, -0.15);
+
+  /* ---------- collecting system (bisected tubes: wall + lumen) ---------- */
+  const halfTube = (part, pts, r0, r1, wallHex, lumenHex, info) => {
+    const wall = phys({ color: wallHex, roughness: 0.38, clearcoat: 0.6, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.3, 0.3), clippingPlanes: clipFor(part), emissive: new THREE.Color(wallHex).multiplyScalar(0.05) });
+    const lum = phys({ color: lumenHex, roughness: 0.5, clearcoat: 0.6, side: THREE.BackSide, clippingPlanes: clipFor(part), emissive: new THREE.Color(lumenHex).multiplyScalar(0.06) });
+    const c = curveOf(pts), segs = Math.max(20, Math.round(c.getLength() * 45));
+    const mW = addMesh(part, new THREE.Mesh(taperTube(c, segs, 28, u => lerp(r0, r1, u)), wall), null, info);
+    const mL = addMesh(part, new THREE.Mesh(taperTube(c, segs, 28, u => lerp(r0, r1, u) * 0.84), lum), null, info);
+    return { c, mW, mL, wall, lum };
+  };
+  const mi = P.MIN = newPart('MIN', 'Minor calyces', 'Small cups that fit around each papilla and catch the urine dripping from it.', V(-0.35, 0, 2.6), '#efd2c6');
+  const mj = P.MAJ = newPart('MAJ', 'Major calyces', 'Wider channels formed where minor calyces merge; they drain into the renal pelvis.', V(-0.75, 0, 3.0), '#ecc8bb');
+  const pe = P.PEL = newPart('PEL', 'Renal pelvis', 'A funnel that collects urine from all the calyces and narrows into the ureter.', V(-1.15, -0.25, 3.35), '#e8c0b2');
+  const ur = P.URE = newPart('URE', 'Ureter', 'A muscular tube that squeezes urine down to the bladder in rhythmic waves.', V(-1.5, -0.5, 3.7), '#e3b6a8');
+  const minorGeoW = [], minorGeoL = [];
+  const minorWall = phys({ color: '#f0d3c8', roughness: 0.38, clearcoat: 0.6, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.3, 0.3), clippingPlanes: clipFor(mi), emissive: new THREE.Color('#1a0e0b') });
+  const minorLum = phys({ color: '#d9a294', roughness: 0.5, clearcoat: 0.6, side: THREE.BackSide, clippingPlanes: clipFor(mi), emissive: new THREE.Color('#160806') });
+  const MINOR = [];
+  for (const Pd of PYR) {
+    const pts = minorCalyxPts(Pd), c = curveOf(pts), segs = 50;
+    const rf = u => u < 0.25 ? lerp(0.14, 0.1, u / 0.25) : u < 0.55 ? lerp(0.1, 0.055, (u - 0.25) / 0.3) : lerp(0.055, 0.075, (u - 0.55) / 0.45);
+    minorGeoW.push(taperTube(c, segs, 26, rf)); minorGeoL.push(taperTube(c, segs, 26, u => rf(u) * 0.82));
+    MINOR.push({ Pd, pts, c, rf });
+  }
+  addMesh(mi, new THREE.Mesh(mergeGeometries(minorGeoW), minorWall)); addMesh(mi, new THREE.Mesh(mergeGeometries(minorGeoL), minorLum));
+  mi.anchor = polar(PYR[5].th, rSin(PYR[5].th) - 0.1);
+  halfTube(mj, MAJ_U_PTS, 0.085, 0.13, '#edcabd', '#d69c8e'); halfTube(mj, MAJ_L_PTS, 0.085, 0.13, '#edcabd', '#d69c8e');
+  mj.anchor = MAJ_U_PTS[1].clone();
+  const pelvis = halfTube(pe, PELVIS_PTS, 0.29, 0.11, '#e9c2b4', '#d0948a');
+  pe.anchor = V(-0.3, -0.22, 0);
+  const ureter = halfTube(ur, URETER_PTS, 0.11, 0.085, '#e4b8aa', '#cc8e84');
+  ur.anchor = V(-1.02, -2.2, 0);
+
+  /* ---------- blood vessels ---------- */
+  const art = P.ART = newPart('ART', 'Renal artery', 'Brings about a fifth of the heart’s output to the kidney to be filtered.', V(-0.4, 1.05, 1.7), '#d1262c');
+  const ven = P.VEN = newPart('VEN', 'Renal vein', 'Carries cleaned, filtered blood out of the kidney to the inferior vena cava.', V(-0.4, -1.25, -1.5), '#3e56b8');
+  const aMat = withEm(phys({ color: '#c8252c', roughness: 0.3, clearcoat: 0.85, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.15, 0.15) }), '#c8252c');
+  const vMat = withEm(phys({ color: '#3a52b2', roughness: 0.3, clearcoat: 0.85, normalMap: NM_TISSUE, normalScale: new THREE.Vector2(0.15, 0.15) }), '#3a52b2');
+  const A = { seg: [], il: [], arc: [], ilob: [] }, Vn = { seg: [], il: [], arc: [], ilob: [] };
+  addMesh(art, new THREE.Mesh(tube(ART_MAIN, 0.14, 0.12, 24), aMat), null, { name: 'Renal artery', desc: 'Branches straight off the aorta and enters the kidney at the hilum.' });
+  addMesh(ven, new THREE.Mesh(tube(VEN_MAIN, 0.19, 0.17, 24), vMat), null, { name: 'Renal vein', desc: 'Leaves the hilum and drains into the inferior vena cava.' });
+  const H_A = ART_MAIN[3], H_V = VEN_MAIN[3];
+  for (const g of ['U', 'M', 'L']) {
+    A.seg.push(tube([H_A, H_A.clone().lerp(HUB_A[g], 0.5).add(V(0, 0, 0.04)), HUB_A[g]], 0.085, 0.065, 14));
+    Vn.seg.push(tube([H_V, H_V.clone().lerp(HUB_V[g], 0.5).add(V(0, 0, 0.06)), HUB_V[g]], 0.11, 0.08, 14));
+  }
+  const colTop = (C, u) => { const [th, r] = colAt(C, u, 0.97); return [th, r]; };
+  const artColRoutes = [], venColRoutes = [];
+  for (const C of COLS) {
+    const g = colGroup(C);
+    const [tb, rb] = colAt(C, 0.38, 0.0), [tv, rv] = colAt(C, 0.62, 0.0);
+    const aPath = [], vPath = [];
+    for (let k = 0; k <= 12; k++) { const v = k / 12 * 0.97; const [ta, ra] = colAt(C, 0.38, v), [tw, rw] = colAt(C, 0.62, v); aPath.push(polar(ta, ra)); vPath.push(polar(tw, rw)); }
+    const aSeg = [HUB_A[g], HUB_A[g].clone().lerp(polar(tb, rb - 0.06, 0.06), 0.6), polar(tb, rb - 0.03, 0.03)];
+    const vSeg = [HUB_V[g], HUB_V[g].clone().lerp(polar(tv, rv - 0.06, 0.08), 0.6), polar(tv, rv - 0.03, 0.03)];
+    A.seg.push(tube(aSeg, 0.05, 0.035, 12)); Vn.seg.push(tube(vSeg, 0.06, 0.042, 12));
+    A.il.push(tube([aSeg[2], ...aPath], 0.03, 0.025, 10)); Vn.il.push(tube([vSeg[2], ...vPath], 0.036, 0.03, 10));
+    artColRoutes.push({ C, g, seg: aSeg, il: aPath }); venColRoutes.push({ C, g, seg: vSeg, il: vPath });
+  }
+  const glomPos = [];
+  PYR.forEach((Pd, i) => {
+    const CL = COLS[i], CR = COLS[i + 1];
+    const [ta0] = colTop(CL, 0.38), [ta1] = colTop(CR, 0.38), [tv0] = colTop(CL, 0.62), [tv1] = colTop(CR, 0.62);
+    const arcA = [], arcV = [];
+    for (let k = 0; k <= 20; k++) { const th = lerp(ta0, ta1, k / 20); arcA.push(polar(th, rCm(th) - 0.022)); const tw = lerp(tv0, tv1, k / 20); arcV.push(polar(tw, rCm(tw) - 0.058)); }
+    A.arc.push(tube(arcA, 0.022, 0.022, 10)); Vn.arc.push(tube(arcV, 0.027, 0.027, 10));
+    const span = Pd.w;
+    for (const f of [-0.78, -0.26, 0.26, 0.78]) {
+      const th = Pd.th + f * span, r0 = rCm(th) - 0.022, r1 = rOut(th) - 0.07;
+      const pts = []; for (let k = 0; k <= 8; k++) { const r = lerp(r0, r1, k / 8), w = 0.012 * Math.sin(k * 1.7 + i); pts.push(polar(th + w / r, r)); }
+      A.ilob.push(tube(pts, 0.013, 0.008, 8));
+      const tv = th + 0.03, vpts = []; for (let k = 0; k <= 8; k++) { const r = lerp(rOut(tv) - 0.09, rCm(tv) - 0.058, k / 8); vpts.push(polar(tv, r)); }
+      Vn.ilob.push(tube(vpts, 0.01, 0.016, 8));
+      for (let k = 1; k <= 4; k++) { const r = lerp(r0, r1, 0.15 + k * 0.19), side = k % 2 ? -1 : 1; glomPos.push(polar(th + side * 0.03 / r, r)); }
+      // particle routes
+      const kStart = 0, kEnd = Math.round(clamp01((th - ta0) / (ta1 - ta0)) * 20);
+      routes.art.push({ col: artColRoutes[i], arc: arcA.slice(kStart, Math.max(kEnd, 1) + 1), ilob: pts });
+      const kv = Math.round(clamp01((tv - tv0) / (tv1 - tv0)) * 20);
+      routes.ven.push({ col: venColRoutes[i], arc: arcV.slice(0, Math.max(kv, 1) + 1).reverse(), ilob: vpts });
+    }
+  });
+  const info = {
+    aSeg: { name: 'Segmental arteries', desc: 'The renal artery splits into segmental branches inside the renal sinus.' },
+    aIl: { name: 'Interlobar arteries', desc: 'Run up through the renal columns between the pyramids.' },
+    aArc: { name: 'Arcuate arteries', desc: 'Arch over the base of each pyramid at the cortex–medulla border.' },
+    aIlob: { name: 'Cortical radiate arteries', desc: 'Climb into the cortex and feed the afferent arterioles of the glomeruli.' },
+    vSeg: { name: 'Segmental veins', desc: 'Merge in the renal sinus to form the renal vein.' },
+    vIl: { name: 'Interlobar veins', desc: 'Drain blood down through the renal columns toward the sinus.' },
+    vArc: { name: 'Arcuate veins', desc: 'Collect blood along the base of the pyramids.' },
+    vIlob: { name: 'Cortical radiate veins', desc: 'Drain filtered blood out of the cortex.' },
+  };
+  addMesh(art, new THREE.Mesh(mergeGeometries(A.seg), aMat), null, info.aSeg);
+  addMesh(art, new THREE.Mesh(mergeGeometries(A.il), aMat), null, info.aIl);
+  addMesh(art, new THREE.Mesh(mergeGeometries(A.arc), aMat), null, info.aArc);
+  addMesh(art, new THREE.Mesh(mergeGeometries(A.ilob), aMat), null, info.aIlob);
+  addMesh(ven, new THREE.Mesh(mergeGeometries(Vn.seg), vMat), null, info.vSeg);
+  addMesh(ven, new THREE.Mesh(mergeGeometries(Vn.il), vMat), null, info.vIl);
+  addMesh(ven, new THREE.Mesh(mergeGeometries(Vn.arc), vMat), null, info.vArc);
+  addMesh(ven, new THREE.Mesh(mergeGeometries(Vn.ilob), vMat), null, info.vIlob);
+  art.anchor = V(-1.8, 0.66, 0); ven.anchor = V(-1.8, 0.1, 0);
+
+  /* ---------- glomeruli dotted through the cortex ---------- */
+  const glo = P.GLO = newPart('GLO', 'Glomeruli', 'Tiny knots of capillaries in the cortex — each one is the filter at the start of a nephron.', V(0.35, 0, 1.05), '#b3141d');
+  for (let i = 0; i < 360; i++) { const th = lerp(TH_A + 0.05, TH_B - 0.05, rand()), r = lerp(rCm(th) + 0.04, rOut(th) - 0.05, rand()); glomPos.push(polar(th, r)); }
+  const gm = withEm(phys({ color: '#a8121b', roughness: 0.35, clearcoat: 0.7 }), '#a8121b', 0.1);
+  const im = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 2), gm, glomPos.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  glomPos.forEach((p, i) => { const s = 0.014 + rand() * 0.01; m4.compose(p, q, V(s, s, s)); im.setMatrixAt(i, m4); });
+  im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+  addMesh(glo, im); glo.anchor = polar(0.55, rOut(0.55) - 0.12);
+
+  /* ---------- anterior half (lid) for the closed view ---------- */
+  const lidShell = new THREE.Mesh(shell, lidMat(shellMat)); lid.add(lidShell);
+  const lidCap = new THREE.Mesh(capsule, lidMat(capMat)); lidCap.renderOrder = 3; lid.add(lidCap);
+  for (const m of [pelvis, ureter]) { lid.add(new THREE.Mesh(m.mW.geometry, lidMat(m.wall))); }
+  { // the lid’s own cut face (seen briefly as it lifts away)
+    const mir = new THREE.Group(); mir.scale.z = -1; lid.add(mir);
+    const cm = cutMat.clone(); cm.transparent = true; lidMats.push(cm);
+    mir.add(new THREE.Mesh(ctxGeo, cm)); const cc = colMat.clone(); cc.transparent = true; lidMats.push(cc); mir.add(new THREE.Mesh(mergeGeometries(colGeos), cc));
+    const fm = fatMat.clone(); fm.transparent = true; lidMats.push(fm); mir.add(new THREE.Mesh(fatGeo, fm));
+    const pm = pyrCapMat.clone(); pm.transparent = true; lidMats.push(pm);
+    for (const Pd of PYR) mir.add(new THREE.Mesh(planeGrid(16, 20, (u, v) => { const [th, r] = pyrAt(Pd, u * 2 - 1, v); return [SX + r * Math.cos(th), SY + r * Math.sin(th)]; }, medullaColor(Pd)), pm));
+  }
+
+  buildNephron();
+  buildParticles();
+
+  root.updateMatrixWorld(true); nephronRoot.updateMatrixWorld(true);
+  for (const p of parts) if (!p.anchor) { const b = new THREE.Box3().setFromObject(p.group); p.anchor = b.getCenter(V()); if (p.nephron) p.anchor.sub(nephronRoot.position); }
+}
+
+/* ================= NEPHRON (magnified) ================= */
+const NEPH = {};
+function buildNephron() {
+  const NR = { parent: nephronRoot };
+  const G = V(0, 1.25, 0);
+  const knot = u => { const r = 0.205 * (0.55 + 0.45 * Math.sin(7 * u)), th = u * 3, ph = Math.acos(Math.cos(5 * u)); return V(G.x + r * Math.sin(ph) * Math.cos(th), G.y + r * Math.cos(ph), G.z + r * Math.sin(ph) * Math.sin(th)); };
+  const knotPts = []; for (let i = 0; i <= 260; i++) knotPts.push(knot(0.02 + i / 260 * (Math.PI * 2 - 0.04)));
+  const AFF = [V(-1.2, 2.3, 0), V(-0.65, 1.98, 0), V(-0.2, 1.62, 0), knotPts[0]];
+  const EFF = [knotPts[knotPts.length - 1], V(0.16, 1.62, 0.04), V(0.3, 1.58, 0.22), V(0.3, 1.45, 0.3)];
+  const PTC = [V(0.3, 1.45, 0.3), V(-0.15, 1.02, 0.32), V(-0.8, 0.97, 0.28), V(-1.02, 0.56, -0.15), V(-0.76, 0.15, 0.26), V(-0.3, -0.05, 0.25),
+    V(-0.25, -0.5, 0.2), V(-0.25, -1.9, 0.18), V(-0.24, -2.38, 0.02), V(-0.02, -2.32, -0.15), V(0.06, -1.9, 0.18), V(0.06, -0.4, 0.18),
+    V(0.35, 0.5, 0.28), V(0.86, 0.66, 0.25), V(1.05, 0.3, -0.2), V(0.76, 0.05, 0.22), V(1.42, 0.38, 0.16), V(1.52, 1.4, 0.1), V(1.62, 2.3, 0)];
+  const BOW = [G.clone().add(V(0, -0.06, 0)), V(0, 0.98, 0), V(0, 0.88, 0)];
+  const PCT = [V(0, 0.88, 0), V(-0.15, 0.75, 0.1), V(-0.45, 0.86, -0.15), V(-0.7, 0.7, 0.12), V(-0.5, 0.5, -0.12), V(-0.86, 0.4, 0.05), V(-0.6, 0.2, 0.1), V(-0.45, 0.05, -0.05)];
+  const LOOP = [V(-0.45, 0.05, -0.05), V(-0.42, -0.4, 0), V(-0.42, -1.6, 0), V(-0.38, -2.05, 0), V(-0.25, -2.22, 0), V(-0.12, -2.05, 0), V(-0.1, -1.6, 0), V(-0.1, -0.2, 0), V(-0.05, 0.35, 0)];
+  const DCT = [V(-0.05, 0.35, 0), V(0.2, 0.6, 0.1), V(0.45, 0.75, -0.12), V(0.7, 0.55, 0.1), V(0.5, 0.35, -0.1), V(0.8, 0.25, 0.05), V(1.0, 0.45, 0)];
+  const CD = [V(1.0, 0.45, 0), V(1.15, 0.6, 0), V(1.2, 0.2, 0), V(1.2, -1.0, 0), V(1.2, -2.75, 0)];
+  Object.assign(NEPH, { G, knotPts, AFF, EFF, PTC, BOW, PCT, LOOP, DCT, CD });
+
+  const glass = (hex, op = 0.42) => phys({ color: hex, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.1, transparent: true, opacity: op, depthWrite: false, emissive: new THREE.Color(hex).multiplyScalar(0.1), sheen: 0.6, sheenColor: new THREE.Color('#ffffff') });
+  const red = withEm(phys({ color: '#c81f28', roughness: 0.3, clearcoat: 0.8 }), '#c81f28', 0.1);
+
+  const pg = newPart('N_GLO', 'Glomerulus', 'A tuft of leaky capillaries; blood pressure pushes water and small molecules out into Bowman’s capsule.', V(0.1, 0.55, 0.9), '#c81f28', NR);
+  addMesh(pg, new THREE.Mesh(taperTube(curveOf(knotPts), 900, 8, () => 0.019), red));
+  pg.anchor = G.clone().add(V(0, 0.05, 0.2));
+  const pb = newPart('N_BOW', 'Bowman’s capsule', 'The double-walled cup around the glomerulus that catches the filtrate.', V(-0.55, 0.65, 0.2), '#f3c9b6', NR);
+  const bm = glass('#f6d3c2', 0.3);
+  const bg = new THREE.SphereGeometry(0.34, 48, 32, 0, Math.PI * 2, 0.42, Math.PI - 0.72); bg.translate(G.x, G.y, G.z);
+  const bmesh = addMesh(pb, new THREE.Mesh(bg, bm)); bmesh.renderOrder = 5;
+  addMesh(pb, new THREE.Mesh(tube(BOW, 0.1, 0.075, 18), glass('#f6d3c2', 0.35))).renderOrder = 5;
+  pb.anchor = G.clone().add(V(-0.3, 0.15, 0));
+  const tubeMat = hex => glass(hex, 0.38);
+  const pp = newPart('N_PCT', 'Proximal convoluted tubule', 'Reabsorbs most of the water and salt and all the glucose and amino acids back into the blood.', V(-0.75, 0.05, 0.4), '#f0a77f', NR);
+  addMesh(pp, new THREE.Mesh(tube(PCT, 0.075, 0.072, 18, 160), tubeMat('#f0a77f'))).renderOrder = 5;
+  const pl = newPart('N_LOH', 'Loop of Henle', 'Dips deep into the medulla and builds the salt gradient that lets the kidney concentrate urine.', V(-0.35, -0.65, 0.6), '#efc06b', NR);
+  addMesh(pl, new THREE.Mesh(taperTube(curveOf(LOOP), 220, 16, u => u < 0.55 ? 0.045 : lerp(0.045, 0.058, ss(0.55, 0.7, u))), tubeMat('#efc06b'))).renderOrder = 5;
+  pl.anchor = V(-0.25, -1.4, 0);
+  const pd = newPart('N_DCT', 'Distal convoluted tubule', 'Fine-tunes salt, potassium and acid balance under hormone control.', V(0.55, 0.3, 0.5), '#9fd27c', NR);
+  addMesh(pd, new THREE.Mesh(tube(DCT, 0.062, 0.062, 16, 140), tubeMat('#9fd27c'))).renderOrder = 5;
+  const pc = newPart('N_CD', 'Collecting duct', 'Makes the final, hormone-controlled water adjustment before urine drains to the papilla.', V(0.85, -0.25, 0.2), '#ffd76a', NR);
+  addMesh(pc, new THREE.Mesh(tube(CD, 0.08, 0.095, 18, 120), tubeMat('#ffd76a'))).renderOrder = 5;
+  addMesh(pc, new THREE.Mesh(tube([V(1.75, 0.15, -0.1), V(1.45, -0.05, -0.05), V(1.22, -0.35, 0)], 0.05, 0.06, 14), tubeMat('#ffd76a'))).renderOrder = 5;
+  pc.anchor = V(1.2, -1.6, 0);
+  const pa = newPart('N_AFF', 'Afferent arteriole', 'Brings blood into the glomerulus; it is wider than the outflow vessel, keeping filtration pressure high.', V(-0.45, 0.55, -0.3), '#e0333a', NR);
+  addMesh(pa, new THREE.Mesh(tube(AFF, 0.06, 0.045, 18), red.clone()));
+  const pe = newPart('N_EFF', 'Efferent arteriole', 'Carries blood out of the glomerulus and on to the peritubular capillaries.', V(0.4, 0.6, -0.3), '#b0262f', NR);
+  addMesh(pe, new THREE.Mesh(tube(EFF, 0.04, 0.035, 14), red.clone()));
+  pe.anchor = V(0.25, 1.62, 0.1);
+  const pt = newPart('N_PTC', 'Peritubular capillaries', 'Wrap the tubules to take back reabsorbed substances and hand wastes over for secretion.', V(0, 0, -0.75), '#8e3b7a', NR);
+  const ptcGeo = tube(PTC, 0.03, 0.032, 10, 420);
+  { const pa2 = ptcGeo.attributes.position, cl = new Float32Array(pa2.count * 3), c = new THREE.Color(), A0 = new THREE.Color('#c81f28'), A1 = new THREE.Color('#4b4fb5'); const rows = pa2.count / 11; for (let i = 0; i < pa2.count; i++) { c.copy(A0).lerp(A1, ss(0.15, 0.95, Math.floor(i / 11) / rows)); cl[i * 3] = c.r; cl[i * 3 + 1] = c.g; cl[i * 3 + 2] = c.b; } ptcGeo.setAttribute('color', new THREE.BufferAttribute(cl, 3)); }
+  addMesh(pt, new THREE.Mesh(ptcGeo, withEm(phys({ color: 0xffffff, vertexColors: true, roughness: 0.32, clearcoat: 0.8 }), '#601c3c', 0.12)));
+  pt.anchor = V(-0.25, -0.9, 0.2);
+
+  // magnifier: leader line from a glomerulus in the cortex to the enlarged nephron
+  const src = polar(0.15, rOut(0.15) - 0.16, 0.02);
+  const dst = nephronRoot.position.clone().add(G).add(V(-0.36, 0, 0));
+  const lg = new THREE.BufferGeometry().setFromPoints([src, dst]);
+  const leader = new THREE.Line(lg, new THREE.LineDashedMaterial({ color: 0xffb08a, dashSize: 0.08, gapSize: 0.06, transparent: true, opacity: 0.75 }));
+  leader.computeLineDistances(); scene.add(leader);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.008, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffb08a })); ring.position.copy(src); scene.add(ring);
+  NEPH.leader = leader; NEPH.ring = ring; NEPH.src = src;
+}
+
+/* ================= PARTICLES ================= */
+function glowMat(depthTest) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: innerHeight * 0.05 }, uOpacity: { value: 1 } },
+    vertexShader: `attribute vec3 color; attribute float alpha; attribute float size; uniform float uScale; varying vec3 vC; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = size*uScale/max(0.1,-mv.z); gl_Position = projectionMatrix*mv; vC=color; vA=alpha; }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vC; varying float vA;
+      void main(){ float d = length(gl_PointCoord-0.5); float a = smoothstep(0.5,0.0,d); float core = smoothstep(0.2,0.0,d);
+        gl_FragColor = vec4(vC*(0.55+0.95*core), a*vA*uOpacity); }`,
+    transparent: true, depthWrite: false, depthTest, blending: THREE.AdditiveBlending
+  });
+}
+const NS = 160;
+function table(pts) {
+  const p = []; for (const q of pts) if (!p.length || p[p.length - 1].distanceToSquared(q) > 1e-10) p.push(q);
+  const cum = [0]; for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + p[i].distanceTo(p[i - 1]));
+  const L = cum[cum.length - 1], tab = new Float32Array((NS + 1) * 3); let k = 1;
+  for (let s = 0; s <= NS; s++) {
+    const d = s / NS * L; while (k < p.length - 1 && cum[k] < d) k++;
+    const t = clamp01((d - cum[k - 1]) / Math.max(1e-9, cum[k] - cum[k - 1]));
+    tab[s * 3] = lerp(p[k - 1].x, p[k].x, t); tab[s * 3 + 1] = lerp(p[k - 1].y, p[k].y, t); tab[s * 3 + 2] = lerp(p[k - 1].z, p[k].z, t);
+  }
+  return { tab, len: L };
+}
+function samp(T, u, out) { const x = clamp01(u) * NS, k = Math.min(NS - 1, Math.floor(x)), t = x - k, a = T.tab; return out.set(lerp(a[k * 3], a[k * 3 + 3], t), lerp(a[k * 3 + 1], a[k * 3 + 4], t), lerp(a[k * 3 + 2], a[k * 3 + 5], t)); }
+const lift = (pts, dz) => pts.map(p => p.clone().add(V(0, 0, dz)));
+const curvePts = (pts, n) => { const c = curveOf(pts); const out = []; for (let i = 0; i <= n; i++) out.push(c.getPointAt(i / n)); return out; };
+function inLumen(pts, rf, n = 40) { const c = curveOf(pts), out = []; for (let i = 0; i <= n; i++) { const u = i / n, p = c.getPointAt(u); p.z -= rf(u) * 0.45; out.push(p); } return out; }
+
+let K, NPh;   // particle systems
+function makePoints(n, depthTest, parent) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  g.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array(n), 1));
+  g.setAttribute('size', new THREE.BufferAttribute(new Float32Array(n), 1));
+  const pts = new THREE.Points(g, glowMat(depthTest)); pts.frustumCulled = false; pts.renderOrder = 20; parent.add(pts);
+  return pts;
+}
+function buildParticles() {
+  /* ---- whole-kidney routes ---- */
+  const mainA = curvePts(ART_MAIN, 40).map(p => p.add(V(0, 0, 0.15)));
+  const mainV = curvePts(VEN_MAIN, 40).map(p => p.add(V(0, 0, 0.2))).reverse();
+  const H_A = ART_MAIN[3], H_V = VEN_MAIN[3];
+  const art = routes.art.map(r => table([...mainA, ...curvePts([H_A, H_A.clone().lerp(HUB_A[r.col.g], 0.5).add(V(0, 0, 0.04)), HUB_A[r.col.g]], 14).map(p => p.add(V(0, 0, 0.09))),
+    ...curvePts(r.col.seg, 12).map(p => p.add(V(0, 0, 0.05))), ...lift(r.col.il, 0.035), ...lift(r.arc, 0.03), ...lift(r.ilob, 0.018)]));
+  const ven = routes.ven.map(r => table([...lift(r.ilob, 0.02), ...lift(r.arc, 0.035), ...lift(r.col.il, 0.04).reverse(),
+    ...curvePts(r.col.seg, 12).map(p => p.add(V(0, 0, 0.068))).reverse(), ...curvePts([H_V, H_V.clone().lerp(HUB_V[r.col.g], 0.5).add(V(0, 0, 0.06)), HUB_V[r.col.g]], 14).map(p => p.add(V(0, 0, 0.13))).reverse(), ...mainV]));
+  const pelvisRf = u => lerp(0.29, 0.11, u), uretRf = u => lerp(0.11, 0.085, u);
+  const pelvisIn = inLumen(PELVIS_PTS, pelvisRf, 30), uretIn = inLumen(URETER_PTS, uretRf, 50);
+  const majU = inLumen(MAJ_U_PTS, u => lerp(0.085, 0.13, u), 20), majL = inLumen(MAJ_L_PTS, u => lerp(0.085, 0.13, u), 20);
+  const minorByPyr = new Map();
+  for (const Pd of PYR) { const pts = minorCalyxPts(Pd); const rf = u => u < 0.25 ? lerp(0.14, 0.1, u / 0.25) : u < 0.55 ? lerp(0.1, 0.055, (u - 0.25) / 0.3) : lerp(0.055, 0.075, (u - 0.55) / 0.45); minorByPyr.set(Pd, inLumen(pts, rf, 30)); }
+  const urine = routes.urine.map(r => {
+    const g = calyxGroup(r.pyr), minor = minorByPyr.get(r.pyr).slice(2);
+    const tip = r.duct[r.duct.length - 1];
+    const join = g === 'U' ? majU : g === 'L' ? majL : [];
+    return table([...r.duct, tip.clone().add(V(0, 0, -0.04)), ...minor, ...join, ...pelvisIn, ...uretIn]);
+  });
+  const N1 = 520, N2 = 420, N3 = 520, N = N1 + N2 + N3;
+  const pts = makePoints(N, true, root), g = pts.geometry, list = [];
+  for (let i = 0; i < N; i++) {
+    const type = i < N1 ? 0 : i < N1 + N2 ? 1 : 2, arr = type === 0 ? art : type === 1 ? ven : urine;
+    list.push({ type, T: arr[Math.floor(rand() * arr.length)], u: rand(), sp: 0.8 + rand() * 0.4, jit: V(rand() - .5, rand() - .5, rand() - .5).multiplyScalar(type === 2 ? 0.05 : 0.03) });
+    const c = type === 0 ? [1.8, 0.28, 0.22] : type === 1 ? [0.45, 0.62, 1.8] : [1.8, 1.45, 0.35];
+    g.attributes.color.setXYZ(i, ...c); g.attributes.size.setX(i, type === 2 ? 0.9 + rand() * 0.4 : 0.75 + rand() * 0.35);
+  }
+  K = { pts, list, art, ven, urine };
+
+  /* ---- nephron routes ---- */
+  const blood = table([...curvePts(NEPH.AFF, 30), ...NEPH.knotPts.filter((_, i) => i % 2 === 0), ...curvePts(NEPH.EFF, 16), ...curvePts(NEPH.PTC, 220)]);
+  const nKnotStart = 31, uKnot0 = 0.0, tub = table([...curvePts(NEPH.BOW, 10), ...curvePts(NEPH.PCT, 80), ...curvePts(NEPH.LOOP, 120), ...curvePts(NEPH.DCT, 70), ...curvePts(NEPH.CD, 60)]);
+  // where each tubule segment starts (as a fraction of the tubule route)
+  const segLen = pts2 => { let s = 0; for (let i = 1; i < pts2.length; i++) s += pts2[i].distanceTo(pts2[i - 1]); return s; };
+  const lB = segLen(curvePts(NEPH.BOW, 10)), lP = segLen(curvePts(NEPH.PCT, 80)), lL = segLen(curvePts(NEPH.LOOP, 120)), lD = segLen(curvePts(NEPH.DCT, 70));
+  const uPCT = lB / tub.len, uLOOP = (lB + lP) / tub.len, uDCT = (lB + lP + lL) / tub.len, uCD = (lB + lP + lL + lD) / tub.len;
+  // blood fractions
+  const lAff = segLen(curvePts(NEPH.AFF, 30)), lKn = segLen(NEPH.knotPts.filter((_, i) => i % 2 === 0)), lEff = segLen(curvePts(NEPH.EFF, 16));
+  const bG0 = lAff / blood.len, bG1 = (lAff + lKn) / blood.len, bPTC = (lAff + lKn + lEff) / blood.len;
+  // nearest capillary point for every tubule sample (for reabsorption / secretion hops)
+  const near = new Float32Array(NS + 1), tmp = V(), tmp2 = V();
+  for (let s = 0; s <= NS; s++) {
+    samp(tub, s / NS, tmp); let best = 1e9, bu = bPTC;
+    for (let k = 0; k <= NS; k++) { const u = k / NS; if (u < bPTC) continue; samp(blood, u, tmp2); const d = tmp.distanceToSquared(tmp2); if (d < best) { best = d; bu = u; } }
+    near[s] = bu;
+  }
+  const nearTub = new Float32Array(NS + 1);
+  for (let k = 0; k <= NS; k++) {
+    const u = k / NS; if (u < bPTC) { nearTub[k] = -1; continue; }
+    samp(blood, u, tmp); let best = 1e9, bt = 0;
+    for (let s = 0; s <= NS; s++) { const t = s / NS; if (t < uPCT || t > uCD) continue; samp(tub, t, tmp2); const d = tmp.distanceToSquared(tmp2); if (d < best) { best = d; bt = t; } }
+    nearTub[k] = best < 0.12 ? bt : -1;
+  }
+  const NB = 230, NF = 280, NW = 60, NN = NB + NF + NW;
+  const np = makePoints(NN, true, nephronRoot), ng = np.geometry, nl = [];
+  for (let i = 0; i < NN; i++) {
+    const kind = i < NB ? 'rbc' : i < NB + NF ? 'fil' : 'sec';
+    const q = { kind, u: rand(), st: 0, sp: 0.85 + rand() * 0.3, jit: V(rand() - .5, rand() - .5, rand() - .5) };
+    if (kind === 'fil') { q.useful = rand() < 0.62; q.st = 1; q.u = rand() * 0.98; q.ru = q.useful ? (rand() < 0.75 ? lerp(uPCT + 0.02, uLOOP - 0.02, rand()) : lerp(uLOOP, uCD + 0.1, rand())) : 2; if (q.useful && q.u > q.ru) q.u = q.ru * rand(); }
+    if (kind === 'sec') { q.st = 0; q.u = lerp(bPTC, 1, rand()); q.su = lerp(bPTC + 0.05, 0.92, rand()); }
+    nl.push(q);
+    ng.attributes.size.setX(i, kind === 'rbc' ? 1.0 + rand() * 0.4 : 0.85 + rand() * 0.3);
+  }
+  NPh = { pts: np, list: nl, blood, tub, near, nearTub, bG0, bG1, bPTC, uPCT, uLOOP, uDCT, uCD };
+}
+const COL_A = new THREE.Color(1.8, 0.28, 0.22), COL_V = new THREE.Color(0.45, 0.6, 1.8), COL_USE = new THREE.Color(0.35, 1.7, 1.2), COL_W = new THREE.Color(1.8, 1.45, 0.3), _c = new THREE.Color();
+const counts = [0, 0, 0, 0], flashT = [0, 0, 0, 0];
+function bump(i) { counts[i]++; flashT[i] = 0.35; }
+const _p = V(), _p2 = V();
+function updateKidneyParticles(dt, speed) {
+  const { list, pts } = K, pos = pts.geometry.attributes.position.array, al = pts.geometry.attributes.alpha.array;
+  for (let i = 0; i < list.length; i++) {
+    const q = list[i]; q.u += dt * speed * q.sp * (q.type === 2 ? 0.42 : 0.95) / q.T.len;
+    if (q.u >= 1) { q.u = 0; const arr = q.type === 0 ? K.art : q.type === 1 ? K.ven : K.urine; q.T = arr[Math.floor(rand() * arr.length)]; }
+    samp(q.T, q.u, _p);
+    const j = q.type === 2 ? 0.6 + 0.4 * (q.u > 0.35 ? 1 : 0.2) : 0.5;
+    pos[i * 3] = _p.x + q.jit.x * j; pos[i * 3 + 1] = _p.y + q.jit.y * j; pos[i * 3 + 2] = _p.z + (q.type === 2 ? q.jit.z * j * 0.6 : 0);
+    al[i] = ss(0, 0.03, q.u) * (1 - ss(0.96, 1, q.u)) * 0.9;
+  }
+  pts.geometry.attributes.position.needsUpdate = true; pts.geometry.attributes.alpha.needsUpdate = true;
+}
+function updateNephronParticles(dt, speed) {
+  const N = NPh, pos = N.pts.geometry.attributes.position.array, al = N.pts.geometry.attributes.alpha.array, col = N.pts.geometry.attributes.color.array;
+  const bspd = dt * speed * 0.75 / N.blood.len, tspd = dt * speed * 0.42 / N.tub.len;
+  for (let i = 0; i < N.list.length; i++) {
+    const q = N.list[i]; let a = 0.9;
+    if (q.kind === 'rbc') {
+      q.u += bspd * q.sp * (q.u > N.bG0 && q.u < N.bG1 ? 2.2 : 1);
+      if (q.u >= 1) q.u = 0;
+      samp(N.blood, q.u, _p).addScaledVector(q.jit, 0.02);
+      _c.copy(COL_A).lerp(COL_V, ss(N.bPTC + 0.1, 0.95, q.u));
+      // some plasma leaves the glomerulus as filtrate
+      if (q.u > N.bG0 + 0.02 && q.u < N.bG1 && rand() < dt * 0.6 * speed) spawnFiltrate(_p);
+      a = ss(0, 0.02, q.u) * (1 - ss(0.97, 1, q.u));
+    } else if (q.kind === 'fil') {
+      if (q.st === 0) { a = 0; }                                              // waiting in the pool
+      else if (q.st === 1) {                                                  // flowing down the tubule
+        q.u += tspd * q.sp; samp(N.tub, q.u, _p).addScaledVector(q.jit, 0.03);
+        _c.copy(q.useful ? COL_USE : COL_W);
+        if (q.useful && q.u >= q.ru) { q.st = 2; q.t = 0; q.from = _p.clone(); q.bu = N.near[Math.round(clamp01(q.u) * NS)]; }
+        if (q.u >= 1) { q.st = 0; bump(3); }
+        a = ss(0, 0.02, q.u) * (1 - ss(0.97, 1, q.u)) * 0.95;
+      } else if (q.st === 2) {                                                // reabsorption hop into a capillary
+        q.t += dt * speed * 1.4; samp(N.blood, q.bu, _p2); _p.copy(q.from).lerp(_p2, ss(0, 1, q.t)); _p.z += Math.sin(Math.PI * clamp01(q.t)) * 0.08;
+        _c.copy(COL_USE); if (q.t >= 1) { q.st = 3; q.u = q.bu; bump(1); }
+      } else {                                                                // carried away in the blood
+        q.u += bspd * q.sp; samp(N.blood, q.u, _p).addScaledVector(q.jit, 0.02); _c.copy(COL_USE);
+        a = 1 - ss(0.95, 1, q.u); if (q.u >= 1) q.st = 0;
+      }
+    } else {                                                                  // waste in blood, secreted into the tubule
+      if (q.st === 0) {
+        q.u += bspd * q.sp; samp(N.blood, q.u, _p).addScaledVector(q.jit, 0.02); _c.copy(COL_W);
+        if (q.u >= q.su) { const tu = N.nearTub[Math.round(clamp01(q.u) * NS)]; if (tu >= 0) { q.st = 1; q.t = 0; q.from = _p.clone(); q.tu = tu; } }
+        if (q.u >= 1) { q.u = N.bPTC; q.su = lerp(N.bPTC + 0.05, 0.92, rand()); }
+      } else if (q.st === 1) {
+        q.t += dt * speed * 1.3; samp(N.tub, q.tu, _p2); _p.copy(q.from).lerp(_p2, ss(0, 1, q.t)); _c.copy(COL_W);
+        if (q.t >= 1) { q.st = 2; q.u = q.tu; bump(2); }
+      } else {
+        q.u += tspd * q.sp; samp(N.tub, q.u, _p).addScaledVector(q.jit, 0.03); _c.copy(COL_W);
+        if (q.u >= 1) { q.st = 0; q.u = N.bPTC; q.su = lerp(N.bPTC + 0.05, 0.92, rand()); bump(3); }
+      }
+    }
+    pos[i * 3] = _p.x; pos[i * 3 + 1] = _p.y; pos[i * 3 + 2] = _p.z; al[i] = a; col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
+  }
+  const g = N.pts.geometry; g.attributes.position.needsUpdate = true; g.attributes.alpha.needsUpdate = true; g.attributes.color.needsUpdate = true;
+}
+function spawnFiltrate(at) {
+  const N = NPh;
+  for (const q of N.list) if (q.kind === 'fil' && q.st === 0) {
+    q.st = 1; q.u = 0; q.useful = rand() < 0.62;
+    q.ru = q.useful ? (rand() < 0.75 ? lerp(N.uPCT + 0.02, N.uLOOP - 0.02, rand()) : lerp(N.uLOOP, N.uCD + 0.1, rand())) : 2;
+    bump(0); return;
+  }
+}
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+const state = { explode: false, cut: true, paused: false, neph: true, speed: 1 };
+const labelsEl = $('labels'), tip = $('tip'), info = $('info');
+let camTween = null;
+const sph = (t, r, th, ph) => V(t.x + r * Math.sin(ph) * Math.sin(th), t.y + r * Math.cos(ph), t.z + r * Math.sin(ph) * Math.cos(th));
+function tweenCamera(toP, toT, dur = 1.3) { camTween = { fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT, t: 0, dur }; }
+$('explode').onclick = () => {
+  state.explode = !state.explode; $('explode').textContent = state.explode ? 'Assemble' : 'Explode';
+  if (state.explode) tweenCamera(sph(HOME_T, homeDist() * 1.25, 0.72, 1.3), HOME_T.clone()); else tweenCamera(sph(HOME_T, homeDist(), 0.0, 1.53), HOME_T.clone());
+};
+$('cut').onclick = () => { state.cut = !state.cut; $('cut').classList.toggle('on', state.cut); $('cut').textContent = state.cut ? 'Cutaway on' : 'Cutaway off'; };
+$('pause').onclick = () => { state.paused = !state.paused; $('pause').textContent = state.paused ? 'Resume flow' : 'Pause flow'; $('pause').classList.toggle('on', state.paused); };
+$('neph').onclick = () => { state.neph = !state.neph; $('neph').classList.toggle('on', state.neph); };
+$('reset').onclick = () => tweenCamera(sph(HOME_T, homeDist(), 0.0, 1.53), HOME_T.clone());
+$('speed').oninput = e => { state.speed = +e.target.value; $('speedTxt').textContent = state.speed.toFixed(2).replace(/0$/, '') + '×'; };
+$('listToggle').onclick = () => $('right').classList.toggle('open');
+controls.addEventListener('start', () => { camTween = null; });
+
+let selected = null, listHover = null;
+function showInfo(o) { info.innerHTML = o ? `<b>${o.name}</b>${o.desc}` : '<b>Explore</b>Hover any structure, or pick one from this list to highlight it.'; }
+function buildList() {
+  const groups = [['Kidney', ['CAP', 'CTX', 'COL', 'PYR', 'CDK', 'PAP', 'GLO', 'MIN', 'MAJ', 'PEL', 'URE', 'FAT', 'ART', 'VEN']], ['Nephron (magnified)', ['N_GLO', 'N_BOW', 'N_AFF', 'N_EFF', 'N_PCT', 'N_LOH', 'N_DCT', 'N_CD', 'N_PTC']]];
+  const list = $('list');
+  for (const [title, keys] of groups) {
+    const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+    for (const k of keys) {
+      const p = parts.find(q => q.key === k); if (!p) continue;
+      const el = document.createElement('div'); el.className = 'item'; el.innerHTML = `<i style="background:${p.color}"></i>${p.name}`;
+      el.onmouseenter = () => { listHover = p; }; el.onmouseleave = () => { listHover = null; };
+      el.onclick = () => { selected = selected === p ? null : p; showInfo(selected); if (selected?.nephron && !state.neph) $('neph').click(); };
+      p.itemEl = el; list.appendChild(el);
+    }
+  }
+}
+const mouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+let mouseIn = false, mouseMoved = false, mx = 0, my = 0, hovered = null, hoveredInfo = null, downAt = null;
+renderer.domElement.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); mouseIn = true; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerleave', () => { mouseIn = false; mouseMoved = true; });
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  selected = hovered || null; showInfo(selected ? (hoveredInfo || hovered) : null);
+});
+function doHover() {
+  let found = null, inf = null;
+  if (mouseIn) {
+    ray.setFromCamera(mouse, camera);
+    for (const h of ray.intersectObjects(pickables, false)) {
+      const part = h.object.userData.part, m = h.object.material;
+      if (part.nephron && !state.neph) continue;
+      if (m.clippingPlanes && m.clippingPlanes[0].distanceToPoint(h.point) < 0) continue;
+      found = part; inf = h.object.userData.info || null; break;
+    }
+  }
+  const o = found ? (inf || found) : null;
+  if (found !== hovered || inf !== hoveredInfo) {
+    hovered = found; hoveredInfo = inf;
+    if (o) { tip.innerHTML = `<b>${o.name}</b>${o.desc}`; tip.style.opacity = 1; renderer.domElement.style.cursor = 'pointer'; }
+    else { tip.style.opacity = 0; renderer.domElement.style.cursor = ''; }
+  }
+  if (o) { const w = tip.offsetWidth, h = tip.offsetHeight; let x = mx + 18, y = my + 18; if (x + w > innerWidth - 10) x = mx - w - 18; if (y + h > innerHeight - 10) y = my - h - 18; tip.style.transform = `translate(${x}px,${y}px)`; }
+}
+
+/* ================= loop ================= */
+let last = performance.now(), eAmt = 0, eVel = 0, lidOpen = 1, nephVis = 1, uiT = 0, time = 0;
+const HLC = new THREE.Color(1.0, 0.55, 0.3), tmpC = new THREE.Color(), tmpV = V();
+let insetLabel;
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000); last = t; time += dt;
+  const speed = state.paused ? 0 : state.speed;
+
+  // explode spring
+  eVel += (70 * ((state.explode ? 1 : 0) - eAmt) - 12.5 * eVel) * dt; eAmt += eVel * dt;
+  for (const p of parts) {
+    p.group.position.copy(p.explode).multiplyScalar(eAmt);
+    for (const s of p.sub) s.obj.position.copy(s.v).multiplyScalar(eAmt);
+    if (p.plane) p.plane.constant = p.group.position.z;
+  }
+  // anterior half (lid)
+  const lidTarget = (state.cut || state.explode) ? 1 : 0;
+  lidOpen = lerp(lidOpen, lidTarget, Math.min(1, dt * 3.2));
+  const lo = ss(0, 1, lidOpen);
+  lid.position.set(0, 0.3 * lo, 2.8 * lo);
+  lidPlane.constant = -lid.position.z;
+  const lOp = 1 - ss(0.25, 0.85, lidOpen);
+  for (const m of lidMats) m.opacity = (m.userData.op0 ??= (m.opacity ?? 1)) * lOp;
+  lid.visible = lOp > 0.01;
+  // nephron inset
+  nephVis = lerp(nephVis, state.neph ? 1 : 0, Math.min(1, dt * 5));
+  nephronRoot.visible = nephVis > 0.02; nephronRoot.scale.setScalar(0.6 + 0.4 * nephVis);
+  NEPH.leader.visible = NEPH.ring.visible = nephronRoot.visible && eAmt < 0.5;
+  NEPH.ring.scale.setScalar(1 + 0.15 * Math.sin(time * 3));
+
+  // camera tween
+  if (camTween) {
+    camTween.t += dt / camTween.dur; const k = ss(0, 1, camTween.t);
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, k);
+    const a = camTween.fromP.clone().sub(camTween.fromT), b = camTween.toP.clone().sub(camTween.toT);
+    const r = lerp(a.length(), b.length(), k); a.normalize(); b.normalize();
+    camera.position.copy(controls.target).addScaledVector(a.lerp(b, k).normalize(), r);
+    if (camTween.t >= 1) camTween = null;
+  }
+
+  // particles
+  const kOp = (1 - ss(0.02, 0.25, Math.abs(eAmt))) * (1 - ss(0.0, 0.5, 1 - lidOpen));
+  const ku = K.pts.material.uniforms.uOpacity; ku.value = kOp; K.pts.visible = kOp > 0.01;
+  if (K.pts.visible && speed > 0) updateKidneyParticles(dt, speed);
+  const nu = NPh.pts.material.uniforms.uOpacity; nu.value = 1 - ss(0.02, 0.3, Math.abs(eAmt));
+  NPh.pts.visible = nu.value > 0.01 && nephronRoot.visible;
+  if (NPh.pts.visible && speed > 0) updateNephronParticles(dt, speed);
+
+  // hover / highlight
+  if (mouseMoved || Math.abs(eVel) > 0.02 || camTween) { doHover(); mouseMoved = false; }
+  for (const p of parts) {
+    const on = p === hovered || p === selected || p === listHover;
+    p.hl = lerp(p.hl, on ? 1 : 0, Math.min(1, dt * 10));
+    for (const m of p.mats) { m.emissive.copy(m.userData.baseEm); if (p.hl > 0.002) m.emissive.add(tmpC.copy(HLC).multiplyScalar(p.hl * 0.35)); }
+    p.itemEl?.classList.toggle('sel', p === selected);
+  }
+
+  // labels
+  const le = ss(0.45, 0.85, eAmt);
+  for (const p of parts) {
+    const el = p.labelEl; if (!el) continue;
+    const vis = (le > 0.01 || p === selected || p === hovered) && (!p.nephron || nephronRoot.visible);
+    if (!vis) { el.style.opacity = 0; continue; }
+    tmpV.copy(p.anchor).add(p.group.position);
+    if (p.nephron) { tmpV.multiplyScalar(nephronRoot.scale.x).add(nephronRoot.position); }
+    tmpV.project(camera);
+    if (tmpV.z > 1) { el.style.opacity = 0; continue; }
+    el.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,calc(-100% - 12px))`;
+    el.style.opacity = Math.max(le, (p === selected || p === hovered) ? 1 : 0);
+    el.classList.toggle('hot', p === hovered || p === selected);
+  }
+  if (insetLabel) {
+    tmpV.copy(nephronRoot.position).add(V(0.2, 2.75 * nephronRoot.scale.x, 0)).project(camera);
+    insetLabel.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,-50%)`;
+    insetLabel.style.opacity = nephronRoot.visible ? nephVis * (1 - le) : 0;
+  }
+
+  // dashboard
+  if ((uiT += dt) > 0.1) {
+    uiT = 0;
+    $('sRBF').innerHTML = `${(1.2 * state.speed * (state.paused ? 0 : 1)).toFixed(2)} <small>L/min</small>`;
+    $('sGFR').innerHTML = `${Math.round(125 * state.speed * (state.paused ? 0 : 1))} <small>mL/min</small>`;
+    $('sUrine').innerHTML = `${(1.0 * state.speed * (state.paused ? 0 : 1)).toFixed(1)} <small>mL/min</small>`;
+    for (let i = 0; i < 4; i++) { $('c' + (i + 1)).textContent = counts[i]; flashT[i] -= 0.1; $('st' + (i + 1)).classList.toggle('flash', flashT[i] > 0); }
+  }
+
+  controls.update();
+  composer.render();
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  if (K) K.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+  if (NPh) NPh.pts.material.uniforms.uScale.value = innerHeight * 0.05;
+});
+requestAnimationFrame(() => setTimeout(() => {
+  try { build(); }
+  catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong while building the model: ' + err.message; return; }
+  for (const p of parts) { const el = document.createElement('div'); el.className = 'label'; el.textContent = p.name; labelsEl.appendChild(el); p.labelEl = el; }
+  insetLabel = document.createElement('div'); insetLabel.className = 'label inset'; insetLabel.textContent = 'Nephron · magnified'; labelsEl.appendChild(insetLabel);
+  buildList();
+  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
+  last = performance.now(); requestAnimationFrame(frame);
+}, 40));
+</script>
+<a id="homeLink" href="../index.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
+<script>if (window.self === window.top) document.getElementById('homeLink').style.display = 'block';</script>
+</body>
+</html>
