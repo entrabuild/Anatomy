@@ -3,132 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Human Anatomy Explorer — Interactive 3D</title>
+<title>The Anatomy Library — Interactive 3D Books</title>
 <style>
-  :root{--glass:rgba(12,16,24,.66);--line:rgba(255,255,255,.09);--txt:#eef3f8;--mut:#93a1b3;--acc:#5ad1ff;--ease:cubic-bezier(.22,.8,.26,1)}
+  :root{--txt:#eef2f8;--mut:#9aa6b8;--gold:#e2bf68;--ease:cubic-bezier(.22,.8,.26,1)}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#05070b;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  html,body{margin:0;height:100%;overflow:hidden;background:#02030a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
   canvas{display:block;outline:none;touch-action:none}
-  .panel{position:fixed;background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
-  #brand{top:16px;left:16px;width:300px;padding:16px 16px 14px;max-height:calc(100vh - 32px);overflow:auto;transition:opacity .5s var(--ease),transform .6s var(--ease)}
-  #brand h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:9px}
-  #brand h1 i{width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc)}
-  #brand .sub{font-size:12px;color:var(--mut);margin-top:4px;line-height:1.45}
-  .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 2px 8px;font-weight:600;display:flex;justify-content:space-between}
-  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
-  .stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:8px 9px}
-  .stat b{display:block;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-  .stat span{font-size:10.5px;color:var(--mut)}
-  #organs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .dockSec{grid-column:1/-1;font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:600;margin:6px 2px 0}
-  .org{display:flex;align-items:center;gap:8px;font:inherit;font-size:12.6px;color:var(--txt);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:8px 9px;border-radius:10px;cursor:pointer;text-align:left;transition:background .15s,border-color .15s,transform .08s}
-  .org:hover,.org.hot{background:rgba(90,209,255,.12);border-color:rgba(90,209,255,.45)}
-  .org.sel{background:rgba(90,209,255,.2);border-color:rgba(90,209,255,.7)}
-  .org:active{transform:scale(.97)}
-  .org i{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
-  .row{display:flex;gap:6px;margin-top:10px}
-  .btn{flex:1;font:inherit;font-size:12.4px;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s}
-  .btn:hover{background:rgba(255,255,255,.12)} .btn.on{background:rgba(90,209,255,.16);border-color:rgba(90,209,255,.55)}
-  #hoverCard{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:12.4px;line-height:1.45;color:#cfd8e3;min-height:62px}
-  #hoverCard b{display:block;font-size:13.5px;color:#fff;margin-bottom:2px}
-  #hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--mut);background:var(--glass);border:1px solid var(--line);padding:7px 14px;border-radius:20px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none;transition:opacity .4s, left .7s var(--ease)}
-  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
-  .label{position:absolute;left:0;top:0;font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;background:rgba(8,12,18,.86);border:1px solid rgba(255,255,255,.22);white-space:nowrap;opacity:0;transition:opacity .25s;will-change:transform;pointer-events:auto;cursor:pointer}
-  .label::after{content:"";position:absolute;left:50%;bottom:-11px;width:1px;height:10px;background:rgba(255,255,255,.6)}
-  .label i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
-  .label.hot{border-color:var(--acc);background:rgba(10,40,58,.92)}
-  /* organ viewer */
-  #viewer{position:fixed;top:12px;right:12px;bottom:12px;left:24%;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;background:rgba(6,8,12,.92);border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 70px rgba(0,0,0,.6);transform:translateX(110%);opacity:0;transition:transform .75s var(--ease),opacity .5s,left .55s var(--ease);z-index:5}
-  body.peek #viewer{left:42%}
-  #viewer.open{transform:none;opacity:1}
-  #vbar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(14,18,26,.9)}
-  #vbar .t{flex:1;min-width:0}
-  #vbar .t b{font-size:15px;display:flex;align-items:center;gap:8px}
-  #vbar .t b i{width:9px;height:9px;border-radius:50%}
-  #vbar .t span{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #vbar .btn{flex:none;padding:7px 11px}
-  #vbar a.btn{text-decoration:none;display:inline-block}
-  #frameWrap{position:relative;flex:1}
-  #frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#07070a}
-  #vload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13px;color:var(--mut);background:#07080b;transition:opacity .5s;pointer-events:none}
-  #vload .bar2{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
-  #vload .bar2::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
-  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
-  body.focus #brand{top:auto;bottom:12px;left:12px;width:calc(24% - 24px);padding:9px;transition:width .55s var(--ease)}
-  body.focus.peek #brand{width:calc(42% - 24px)}
-  body.focus #brand h1,body.focus #brand .sub,body.focus #brand .sec,body.focus #brand .stats,body.focus #brand .row,body.focus #brand #hoverCard,body.focus .dockSec{display:none}
-  body.focus #organs{grid-template-columns:repeat(3,1fr);gap:5px}
-  body.focus.peek #organs{grid-template-columns:repeat(5,1fr)}
-  #peekTip{position:fixed;top:60px;left:16px;font-size:11.5px;color:var(--mut);opacity:0;transition:opacity .4s;pointer-events:none}
-  body.focus:not(.peek) #peekTip{opacity:.85}
-  body.focus .org{font-size:11.5px;padding:7px 7px}
-  body.focus #hint{opacity:0}
-  #crumb{position:fixed;top:16px;left:16px;padding:8px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;opacity:0;transform:translateY(-10px);transition:opacity .5s .2s,transform .6s var(--ease);pointer-events:none;z-index:4}
-  body.focus #crumb{opacity:1;transform:none;pointer-events:auto}
-  #crumb a{color:var(--acc);cursor:pointer;text-decoration:none}
-  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:13.5px;color:var(--mut);background:#05070b;z-index:20;transition:opacity .6s}
-  #loading .bar2{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
-  #loading .bar2::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
-  @media (max-width:900px){
-    #viewer{left:8px;right:8px;top:8px;bottom:8px}
-    body.focus #brand{display:none}
-    body.peek #viewer{left:8px}
-    #peekTip{display:none}
-    #brand{top:auto;bottom:12px;left:12px;right:12px;width:auto;padding:12px}
-    #brand .sub,#brand .stats,#brand .s1{display:none}
-    #organs{grid-template-columns:repeat(3,1fr)}
-    #hint{display:none}
-  }
+  #head{position:fixed;top:6vh;left:0;right:0;text-align:center;pointer-events:none;transition:opacity .6s}
+  #head h1{margin:0;font:700 clamp(26px,3.4vw,44px) Georgia,serif;letter-spacing:1px;color:#f4ecd2;text-shadow:0 6px 30px rgba(0,0,0,.7)}
+  #head p{margin:10px 0 0;font-size:14px;color:var(--mut);letter-spacing:.4px}
+  .card{position:fixed;bottom:9vh;width:min(330px,40vw);transform:translateX(-50%);text-align:center;padding:14px 16px;border-radius:16px;background:rgba(10,14,24,.62);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:opacity .4s,transform .5s var(--ease),border-color .3s;pointer-events:auto;cursor:pointer}
+  .card b{display:block;font:700 20px Georgia,serif;color:#f4ecd2}
+  .card span{display:block;margin-top:4px;font-size:12.5px;color:var(--mut);line-height:1.45}
+  .card i{display:inline-block;margin-top:10px;font-style:normal;font-size:12px;font-weight:700;color:var(--gold);padding:6px 12px;border-radius:14px;border:1px solid rgba(226,191,104,.45)}
+  [data-theme] .card b{color:var(--t-txt);font-family:var(--hfont);text-transform:var(--tt)} [data-theme] .card span{color:var(--t-mut)} [data-theme] .card i{color:var(--acc2);border-color:currentColor}
+  .card.hot{border-color:rgba(226,191,104,.7);transform:translateX(-50%) translateY(-6px)}
+  body.going .card,body.going #head{opacity:0}
+  #fade{position:fixed;inset:0;background:#02030a;opacity:1;pointer-events:none;transition:opacity .9s ease;z-index:10}
+  #fade.out{opacity:0} #fade.in{opacity:1;transition-duration:.55s}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:14px;z-index:11;transition:opacity .5s}
+  @media (max-width:700px){.card{width:44vw;padding:10px}.card span{display:none}}
+/* ================= THEMES — 10 design styles; every panel, button and chip reads these variables ================= */
+[data-theme]{--font:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--hfont:Georgia,serif;--tt:none;--fw:600;--ls:0;
+  --p-blur:blur(12px);--p-shine:none}
+[data-theme=spatial]{--p-bg:rgba(44,52,66,.42);--p-bd:1px solid rgba(255,255,255,.22);--p-rad:26px;--p-sh:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25);--p-blur:blur(30px) saturate(160%);
+  --t-txt:#fff;--t-mut:rgba(235,240,250,.72);--b-bg:rgba(255,255,255,.12);--b-bd:1px solid rgba(255,255,255,.16);--b-rad:999px;--b-sh:inset 0 1px 0 rgba(255,255,255,.18);--b-txt:#fff;
+  --on-bg:#fff;--on-txt:#14181f;--on-soft:rgba(255,255,255,.32);--chip-bg:rgba(0,0,0,.22);--chip-bd:1px solid rgba(255,255,255,.12);--acc2:#9fd0ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif;
+  --p-shine:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 40%)}
+[data-theme=bento]{--p-bg:#151515;--p-bd:1px solid #2a2a2a;--p-rad:20px;--p-sh:0 14px 40px rgba(0,0,0,.5);--p-blur:none;
+  --t-txt:#f3f3ee;--t-mut:#b9b9b0;--b-bg:#2b2b2b;--b-bd:1px solid transparent;--b-rad:14px;--b-sh:none;--b-txt:#f3f3ee;
+  --on-bg:#e9ef8a;--on-txt:#161616;--on-soft:#3f7a5a;--chip-bg:#232323;--chip-bd:1px solid #333;--acc2:#e9ef8a;--h1:#f4f4ea;--hfont:Inter,system-ui,sans-serif}
+[data-theme=liquid]{--p-bg:linear-gradient(135deg,rgba(110,90,255,.34),rgba(40,30,130,.46));--p-bd:1px solid rgba(200,190,255,.38);--p-rad:24px;--p-sh:0 16px 50px rgba(40,20,140,.45),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 30px rgba(140,120,255,.18);--p-blur:blur(26px) saturate(170%);
+  --t-txt:#fff;--t-mut:#cdc7ff;--b-bg:rgba(255,255,255,.1);--b-bd:1px solid rgba(210,200,255,.3);--b-rad:16px;--b-sh:inset 0 1px 0 rgba(255,255,255,.2);--b-txt:#fff;
+  --on-bg:linear-gradient(135deg,#9a6cff,#4f8cff);--on-txt:#fff;--on-soft:rgba(154,108,255,.45);--chip-bg:rgba(20,10,80,.35);--chip-bd:1px solid rgba(200,190,255,.22);--acc2:#c7b8ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=maximal]{--p-bg:#fffaf0;--p-bd:2px solid #ffd2a8;--p-rad:22px;--p-sh:0 10px 0 #ffb37a,0 18px 40px rgba(0,0,0,.3);--p-blur:none;
+  --t-txt:#1d1b16;--t-mut:#5d5646;--b-bg:#fff;--b-bd:2px solid #1d1b16;--b-rad:999px;--b-sh:0 3px 0 #1d1b16;--b-txt:#1d1b16;
+  --on-bg:#ff5a1f;--on-txt:#fff;--on-soft:#9be564;--chip-bg:#fff1c2;--chip-bd:2px solid #ffcf4a;--acc2:#e8460f;--h1:#fff3d6;--fw:800;--hfont:"Arial Black",Impact,sans-serif}
+[data-theme=minimal]{--p-bg:#ecebe6;--p-bd:1px solid #d3d1ca;--p-rad:4px;--p-sh:none;--p-blur:none;
+  --t-txt:#141414;--t-mut:#6b6a66;--b-bg:transparent;--b-bd:1px solid #141414;--b-rad:999px;--b-sh:none;--b-txt:#141414;
+  --on-bg:#141414;--on-txt:#fff;--on-soft:#d6d4cc;--chip-bg:transparent;--chip-bd:1px solid #d3d1ca;--acc2:#ff5a1f;--h1:#f2f1ec;--fw:500;--hfont:Inter,system-ui,sans-serif}
+[data-theme=brutal]{--p-bg:#f4f4f0;--p-bd:3px solid #000;--p-rad:0;--p-sh:6px 6px 0 #000;--p-blur:none;
+  --t-txt:#000;--t-mut:#333;--b-bg:#fff;--b-bd:2px solid #000;--b-rad:0;--b-sh:3px 3px 0 #000;--b-txt:#000;
+  --on-bg:#d4ff2a;--on-txt:#000;--on-soft:#b89bff;--chip-bg:#fff;--chip-bd:2px solid #000;--acc2:#7c4dff;--h1:#fff;--tt:uppercase;--fw:800;--ls:.4px;--font:"Arial Narrow",Arial,sans-serif;--hfont:Impact,"Arial Black",sans-serif}
+[data-theme=clay]{--p-bg:#eef0ff;--p-bd:none;--p-rad:28px;--p-sh:0 14px 30px rgba(80,70,190,.35),inset -6px -6px 14px rgba(110,100,200,.18),inset 6px 6px 14px #fff;--p-blur:none;
+  --t-txt:#3a3463;--t-mut:#6c66a0;--b-bg:#f7f8ff;--b-bd:none;--b-rad:18px;--b-sh:0 6px 12px rgba(90,80,200,.25),inset -3px -3px 6px rgba(110,100,200,.2),inset 3px 3px 6px #fff;--b-txt:#3a3463;
+  --on-bg:#8c7cf6;--on-txt:#fff;--on-soft:#8bdc8b;--chip-bg:#fff;--chip-bd:none;--acc2:#7a6af0;--h1:#fff;--fw:800;--font:Nunito,"Trebuchet MS",system-ui,sans-serif;--hfont:Nunito,"Trebuchet MS",sans-serif}
+[data-theme=glassy]{--p-bg:rgba(255,255,255,.58);--p-bd:1px solid rgba(255,255,255,.8);--p-rad:22px;--p-sh:0 12px 40px rgba(0,0,0,.25);--p-blur:blur(20px) saturate(140%);
+  --t-txt:#1d2433;--t-mut:#5a6275;--b-bg:rgba(255,255,255,.65);--b-bd:1px solid rgba(255,255,255,.9);--b-rad:14px;--b-sh:0 2px 8px rgba(0,0,0,.08);--b-txt:#1d2433;
+  --on-bg:#ff7a1a;--on-txt:#fff;--on-soft:#ffd2ad;--chip-bg:rgba(255,255,255,.55);--chip-bd:1px solid rgba(255,255,255,.8);--acc2:#ff7a1a;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=neumo]{--p-bg:#e6e9ef;--p-bd:none;--p-rad:20px;--p-sh:8px 8px 18px rgba(0,0,0,.35),-4px -4px 12px rgba(255,255,255,.08);--p-blur:none;
+  --t-txt:#39415a;--t-mut:#7a8199;--b-bg:#e6e9ef;--b-bd:none;--b-rad:12px;--b-sh:4px 4px 9px #c3c8d2,-4px -4px 9px #fff;--b-txt:#39415a;
+  --on-bg:#e6e9ef;--on-txt:#3a6df0;--on-soft:#e6e9ef;--chip-bg:#e6e9ef;--chip-bd:none;--acc2:#3a6df0;--h1:#eef1f7;--hfont:Inter,system-ui,sans-serif}
+[data-theme=skeuo]{--p-bg:linear-gradient(180deg,#fafafa,#dcdcdc);--p-bd:1px solid #b9b9b9;--p-rad:16px;--p-sh:0 1px 0 #fff inset,0 14px 34px rgba(0,0,0,.45);--p-blur:none;
+  --t-txt:#2e2e2e;--t-mut:#6a6a6a;--b-bg:linear-gradient(180deg,#ffffff,#d9d9d9);--b-bd:1px solid #a9a9a9;--b-rad:10px;--b-sh:0 2px 0 #9a9a9a,0 3px 6px rgba(0,0,0,.25),inset 0 1px 0 #fff;--b-txt:#2e2e2e;
+  --on-bg:linear-gradient(180deg,#d0d0d0,#ececec);--on-txt:#111;--on-soft:linear-gradient(180deg,#d0d0d0,#ececec);--chip-bg:#1d2a22;--chip-bd:1px solid #555;--acc2:#a0581a;--h1:#f2f2f2;--fw:700}
+
+/* components wired to the variables */
+html[data-theme],html[data-theme] body{font-family:var(--font)}
+[data-theme] .glass{background:var(--p-shine),var(--p-bg);border:var(--p-bd);border-radius:var(--p-rad);box-shadow:var(--p-sh);backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);color:var(--t-txt)}
+[data-theme] .btn{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);letter-spacing:var(--ls);color:var(--b-txt);background:var(--b-bg);border:var(--b-bd);border-radius:var(--b-rad);box-shadow:var(--b-sh);transition:transform .12s,box-shadow .12s,background .15s,filter .15s}
+[data-theme] .btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+[data-theme] .btn:active{transform:translateY(1px)}
+[data-theme] .btn.on{background:var(--on-soft);color:var(--b-txt)}
+[data-theme] .tab{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);letter-spacing:var(--ls);color:var(--t-mut);border-radius:var(--b-rad)}
+[data-theme] .tab:hover{color:var(--t-txt);background:var(--b-bg)}
+[data-theme] .tab.on{background:var(--on-bg);color:var(--on-txt);border-color:transparent;box-shadow:var(--b-sh)}
+[data-theme] #lab .chip{background:var(--chip-bg);border:var(--chip-bd);color:var(--t-mut);border-radius:calc(var(--b-rad) * .7)}
+[data-theme] #lab .chip b,[data-theme] #lab .val{color:var(--t-txt)}
+[data-theme] #lab .ttl{color:var(--acc2)} [data-theme] #lab .ctrl{color:var(--t-mut)}
+[data-theme] #lab input[type=range]{accent-color:var(--acc2)}
+[data-theme] #tip{color:var(--t-mut)} [data-theme] #tip b{color:var(--t-txt)} [data-theme] #hint{color:var(--t-mut)}
+[data-theme] #intro h1,[data-theme] #head h1{font-family:var(--hfont);color:var(--h1);text-transform:var(--tt)}
+/* style-specific touches */
+[data-theme=bento] #lab .btn:nth-child(4n+1){background:#c9c3f5;color:#161616} [data-theme=bento] #lab .btn:nth-child(4n+2){background:#3d7a5a}
+[data-theme=bento] #lab .btn:nth-child(4n+3){background:#f3c6e3;color:#161616} [data-theme=bento] #lab .btn:nth-child(4n){background:#e9ef8a;color:#161616}
+[data-theme=bento] #lab .btn.on{outline:3px solid #fff;outline-offset:-3px}
+[data-theme=maximal] #lab .btn:nth-child(4n+1){background:#ffd84a} [data-theme=maximal] #lab .btn:nth-child(4n+2){background:#9be564}
+[data-theme=maximal] #lab .btn:nth-child(4n+3){background:#ffb3d9} [data-theme=maximal] #lab .btn:nth-child(4n){background:#a8c8ff}
+[data-theme=maximal] #lab .btn.on{background:#ff5a1f;color:#fff}
+[data-theme=neumo] .btn.on,[data-theme=neumo] .tab.on{box-shadow:inset 4px 4px 9px #c3c8d2,inset -4px -4px 9px #fff;color:#3a6df0}
+[data-theme=skeuo] .btn.on,[data-theme=skeuo] .tab.on{box-shadow:inset 0 2px 5px rgba(0,0,0,.35),0 1px 0 #fff}
+[data-theme=skeuo] .btn.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#3cff5a;box-shadow:0 0 6px #3cff5a;vertical-align:1px}
+[data-theme=skeuo] #lab .chip{font-family:"Courier New",monospace;color:#7dffa0} [data-theme=skeuo] #lab .chip b{color:#c8ffd6}
+[data-theme=brutal] .glass{backdrop-filter:none}
+[data-theme=liquid] .tab.on,[data-theme=liquid] .btn.on{box-shadow:0 0 18px rgba(140,110,255,.6)}
+
+/* the style switcher */
+#themeBtn{position:fixed;top:12px;right:12px;z-index:20}
+#themePop{position:fixed;top:58px;right:12px;z-index:21;width:min(520px,calc(100vw - 24px));padding:14px;display:none}
+#themePop.show{display:block}
+#themePop h4{margin:0 0 10px;font:700 13px var(--font);color:var(--t-txt);text-transform:var(--tt)}
+#themePop .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{cursor:pointer;border-radius:14px;padding:3px;border:2px solid transparent;background:none;font:inherit;text-align:left}
+.sw.cur{border-color:var(--acc2)}
+.sw .prev{height:78px;display:flex;flex-direction:column;justify-content:space-between;padding:9px;overflow:hidden;font-family:var(--font)}
+.sw .prev .row{display:flex;gap:5px}
+.sw .prev .btn{font-size:10px;padding:4px 8px}
+.sw .prev .tab{font-size:10px;padding:4px 8px;border:0;cursor:pointer}
+.sw .nm{display:block;margin:6px 4px 2px;font:600 12px Inter,system-ui,sans-serif;color:var(--t-txt)}
+.sw[data-theme=spatial] .prev{background-image:linear-gradient(135deg,#2a3550,#5b6d8a)}
 </style>
 </head>
 <body>
-<div id="loading"><div>Building the human body…</div><div class="bar2"></div></div>
-
-<div id="brand" class="panel">
-  <h1><i></i>Human Anatomy Explorer</h1>
-  <div class="sub">A see-through 3D body. Click any organ to open its detailed, animated model.</div>
-  <div class="sec s1"><span>The body in numbers</span></div>
-  <div class="stats">
-    <div class="stat"><b>78</b><span>organs</span></div>
-    <div class="stat"><b>206</b><span>bones</span></div>
-    <div class="stat"><b>11</b><span>to explore</span></div>
-  </div>
-  <div class="sec"><span>Organs</span><span id="sysTxt"></span></div>
-  <div id="organs"></div>
-  <div class="sec"><span>Layers</span></div>
-  <div class="row" style="margin-top:0">
-    <button class="btn on" id="skinBtn">🫥 Skin</button>
-    <button class="btn on" id="skeletonBtn">🦴 Skeleton</button>
-    <button class="btn" id="nervousBtn">⚡ Nerves</button>
-  </div>
-  <div class="row">
-    <button class="btn" id="labelsBtn">Show labels</button>
-    <button class="btn on" id="spinBtn">Auto-rotate</button>
-    <button class="btn" id="resetBtn">Reset view</button>
-  </div>
-  <div id="hoverCard"><b>Explore the body</b>Hover over an organ inside the body to identify it, then click to open it.</div>
-</div>
-
-<div id="peekTip">↔ Point at the body to enlarge it</div>
-<div id="crumb" class="panel"><a id="crumbHome">Body</a><span style="color:var(--mut)">›</span><span id="crumbOrgan">Heart</span></div>
-
-<div id="viewer">
-  <div id="vbar">
-    <button class="btn" id="backBtn" title="Back to the body (Esc)">← Body</button>
-    <div class="t"><b id="vTitle"><i></i>Heart</b><span id="vDesc"></span></div>
-    <button class="btn" id="prevBtn" title="Previous organ">‹</button>
-    <button class="btn" id="nextBtn" title="Next organ">›</button>
-    <a class="btn" id="fullBtn" target="_blank" rel="noopener">Full screen ↗</a>
-  </div>
-  <div id="frameWrap">
-    <iframe id="frame" title="Organ model" allow="autoplay; fullscreen"></iframe>
-    <div id="vload"><div id="vloadTxt">Loading…</div><div class="bar2"></div></div>
-  </div>
-</div>
-
-<div id="hint">Drag to rotate · Scroll to zoom · Click an organ</div>
-<div id="labels"></div>
-
+<div id="head"><h1>The Anatomy Library</h1><p>Two living books floating in space — choose one to open</p></div>
+<div class="card glass" id="c0"><b>Zoology</b><span>The Human Body — skeleton, nerves, brain, eye, heart, lungs and every organ as a live 3D model.</span><i>Open the book →</i></div>
+<div class="card glass" id="c1"><b>Botany</b><span>The Living Plant — cells, leaves, photosynthesis, transport, flowers, seeds and tropisms as live experiments.</span><i>Open the book →</i></div>
+<div id="fade"></div><div id="loading">Lighting the stars…</div>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -137,982 +117,217 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-/* ================= math helpers ================= */
+/* Spatial UI everywhere */
+document.documentElement.dataset.theme = 'spatial';
+const THEME = { get: () => 'spatial', set() { } };
+
+
+/* ================= helpers ================= */
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
-const lerp = (a, b, t) => a + (b - a) * t;
-const clamp01 = x => Math.min(1, Math.max(0, x));
-const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x)), clamp01 = x => clamp(x, 0, 1);
 const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
-let seed = 31337;
-const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-const PERM = new Uint8Array(512);
-{ const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) PERM[i] = p[i & 255]; }
-const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
-function grad(h, x, y, z) { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
-function noise(x, y, z) {
-  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
-  const X = fx & 255, Y = fy & 255, Z = fz & 255; x -= fx; y -= fy; z -= fz;
-  const u = fade(x), v = fade(y), w = fade(z), P = PERM;
-  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
-  return lerp(lerp(lerp(grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z), u), lerp(grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z), u), v),
-              lerp(lerp(grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1), u), lerp(grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1), u), v), w);
-}
-function fbm(x, y, z, o = 3) { let a = .5, f = 1, s = 0; for (let i = 0; i < o; i++) { s += a * noise(x * f, y * f, z * f); f *= 2.03; a *= .5; } return s; }
-function worley3(x, y, z) {
-  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z); let f1 = 9, f2 = 9;
-  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-    const cx = xi + dx, cy = yi + dy, cz = zi + dz, h = PERM[(PERM[(PERM[cx & 255] + (cy & 255)) & 255] + (cz & 255)) & 255];
-    const d = (cx + PERM[h] / 255 - x) ** 2 + (cy + PERM[h + 1] / 255 - y) ** 2 + (cz + PERM[h + 2] / 255 - z) ** 2;
-    if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
-  }
-  return [Math.sqrt(f1), Math.sqrt(f2)];
-}
-
-
-/* ================= geometry helpers ================= */
-const curveOf = pts => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-function taperTube(curve, segs, radial, rFn) {
-  const frames = curve.computeFrenetFrames(segs, false);
-  const pos = [], nor = [], uv = [], idx = [], P = V(), N = V();
-  for (let i = 0; i <= segs; i++) {
-    const u = i / segs; curve.getPointAt(u, P); const r = rFn(u);
-    for (let j = 0; j <= radial; j++) {
-      const a = j / radial * Math.PI * 2, s = Math.sin(a), c = -Math.cos(a), n = frames.normals[i], b = frames.binormals[i];
-      N.set(c * n.x + s * b.x, c * n.y + s * b.y, c * n.z + s * b.z).normalize();
-      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(u * 6, j / radial);
-    }
-  }
-  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeBoundingSphere(); return g;
-}
-const tube = (pts, r0, r1, radial = 14, segs) => { const c = curveOf(pts); return taperTube(c, segs || Math.max(12, Math.round(c.getLength() * 40)), radial, u => lerp(r0, r1, u)); };
-function mergeGeoms(list) {
-  let nv = 0, ni = 0; for (const g of list) { nv += g.attributes.position.count; ni += g.index.count; }
-  const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), U = new Float32Array(nv * 2), I = new Uint32Array(ni); let ov = 0, oi = 0;
-  for (const g of list) {
-    P.set(g.attributes.position.array, ov * 3); N.set(g.attributes.normal.array, ov * 3); if (g.attributes.uv) U.set(g.attributes.uv.array, ov * 2);
-    const ia = g.index.array; for (let i = 0; i < ia.length; i++) I[oi + i] = ia[i] + ov;
-    ov += g.attributes.position.count; oi += ia.length;
-  }
-  const m = new THREE.BufferGeometry();
-  m.setAttribute('position', new THREE.BufferAttribute(P, 3)); m.setAttribute('normal', new THREE.BufferAttribute(N, 3)); m.setAttribute('uv', new THREE.BufferAttribute(U, 2));
-  m.setIndex(new THREE.BufferAttribute(I, 1)); m.computeBoundingSphere(); return m;
-}
-function blob(cx, cy, cz, rx, ry, rz, amp = 0.04, sd = 0, seg = 28) {
-  const g = new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), p = g.attributes.position, v = V();
-  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + amp * fbm(v.x * 2 + sd, v.y * 2, v.z * 2, 3); p.setXYZ(i, cx + v.x * rx * n, cy + v.y * ry * n, cz + v.z * rz * n); }
+const rand = Math.random;
+let ENV = null;
+const std = (hex, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.55 }, o));
+const phys = (hex, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.5, clearcoat: 0.12, clearcoatRoughness: 0.5, sheen: 0.35, sheenRoughness: 0.6 }, o));
+const glassMat = (o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: '#dff4ff', roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.5 }, o));
+function tag(mesh, name, desc, list) { mesh.userData.info = { name, desc }; if (list) list.push(mesh); return mesh; }
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+function latheGeo(prof, seg = 48) { return new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), seg); }
+function tubeGeo(pts, r, radial = 8, seg) { const c = new THREE.CatmullRomCurve3(pts); return new THREE.TubeGeometry(c, seg || Math.max(8, pts.length * 6), r, radial, false); }
+function roundedBox(w, h, d, r, seg = 10) {
+  const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg), p = g.attributes.position, v = V(), inner = V();
+  const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r;
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); inner.set(clamp(v.x, -hx, hx), clamp(v.y, -hy, hy), clamp(v.z, -hz, hz)); v.sub(inner); if (v.lengthSq() > 0) v.normalize().multiplyScalar(r); v.add(inner); p.setXYZ(i, v.x, v.y, v.z); }
   g.computeVertexNormals(); return g;
 }
-/* surface nets: smooth iso-surface mesh from a sampled field */
-function surfaceNets(F, nx, ny, nz, o, h, iso) {
-  const idx = (i, j, k) => i + nx * (j + ny * k), cell = new Int32Array(nx * ny * nz).fill(-1), pos = [];
-  const cx = [0, 1, 0, 1, 0, 1, 0, 1], cy = [0, 0, 1, 1, 0, 0, 1, 1], cz = [0, 0, 0, 0, 1, 1, 1, 1];
-  const E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]], v = new Float32Array(8);
-  for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
-    let m = 0; for (let c = 0; c < 8; c++) { v[c] = F[idx(i + cx[c], j + cy[c], k + cz[c])] - iso; if (v[c] < 0) m |= 1 << c; }
-    if (m === 0 || m === 255) continue;
-    let sx = 0, sy = 0, sz = 0, n = 0;
-    for (const [a, b] of E) { if ((v[a] < 0) === (v[b] < 0)) continue; const t = v[a] / (v[a] - v[b]); sx += cx[a] + (cx[b] - cx[a]) * t; sy += cy[a] + (cy[b] - cy[a]) * t; sz += cz[a] + (cz[b] - cz[a]) * t; n++; }
-    cell[idx(i, j, k)] = pos.length / 3; pos.push(o.x + (i + sx / n) * h, o.y + (j + sy / n) * h, o.z + (k + sz / n) * h);
-  }
-  const tri = [];
-  const quad = (a, b, c, d) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; tri.push(a, b, c, a, c, d); };
-  for (let k = 1; k < nz - 1; k++) for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) {
-    const s0 = F[idx(i, j, k)] < iso;
-    if ((F[idx(i + 1, j, k)] < iso) !== s0 && i < nx - 1) quad(cell[idx(i, j - 1, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i, j - 1, k)]);
-    if ((F[idx(i, j + 1, k)] < iso) !== s0) quad(cell[idx(i - 1, j, k - 1)], cell[idx(i, j, k - 1)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
-    if ((F[idx(i, j, k + 1)] < iso) !== s0) quad(cell[idx(i - 1, j - 1, k)], cell[idx(i, j - 1, k)], cell[idx(i, j, k)], cell[idx(i - 1, j, k)]);
-  }
-  // gradient normals (trilinear) and winding fix
-  const grad = (x, y, z, out) => {
-    const fx = (x - o.x) / h, fy = (y - o.y) / h, fz = (z - o.z) / h;
-    const g = (a, b, c) => { a = clamp(a, 0, nx - 1.001); b = clamp(b, 0, ny - 1.001); c = clamp(c, 0, nz - 1.001); const i = Math.floor(a), j = Math.floor(b), k = Math.floor(c), u = a - i, w = b - j, t = c - k;
-      const L = (ii, jj, kk) => F[idx(ii, jj, kk)];
-      return lerp(lerp(lerp(L(i, j, k), L(i + 1, j, k), u), lerp(L(i, j + 1, k), L(i + 1, j + 1, k), u), w), lerp(lerp(L(i, j, k + 1), L(i + 1, j, k + 1), u), lerp(L(i, j + 1, k + 1), L(i + 1, j + 1, k + 1), u), w), t); };
-    return out.set(g(fx + .5, fy, fz) - g(fx - .5, fy, fz), g(fx, fy + .5, fz) - g(fx, fy - .5, fz), g(fx, fy, fz + .5) - g(fx, fy, fz - .5)).normalize();
-  };
-  const nor = new Float32Array(pos.length), g = V();
-  for (let q = 0; q < pos.length; q += 3) { grad(pos[q], pos[q + 1], pos[q + 2], g); nor[q] = g.x; nor[q + 1] = g.y; nor[q + 2] = g.z; }
-  for (let t = 0; t < tri.length; t += 3) {
-    const a = tri[t] * 3, b = tri[t + 1] * 3, c = tri[t + 2] * 3;
-    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2], vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
-    const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
-    if (fx * nor[a] + fy * nor[a + 1] + fz * nor[a + 2] < 0) { const s = tri[t + 1]; tri[t + 1] = tri[t + 2]; tri[t + 2] = s; }
-  }
-  return { pos, nor, tri };
-}
-
-/* ================= SHARED BODY RIG (y up, facing +z, patient's left = +x, 1 unit ≈ 20 cm) ================= */
-const RIG = {
-  headC: V(0, 3.92, 0.0), tmj: V(0, 3.66, -0.08), neck: V(0, 3.28, -0.1),
-  shoulder: V(0.79, 2.85, -0.08), elbow: V(0.97, 1.43, -0.1), wrist: V(1.12, 0.24, 0.0),
-  hip: V(0.36, 0.42, 0.03), knee: V(0.29, -1.68, 0.03), ankle: V(0.26, -3.5, -0.03),
-};
-/* finger layout (left hand, palm facing forward, thumb outward) */
-const FINGERS = [ // [x at knuckle, MCP y, length, radius]
-  { name: 'index', x: 1.215, y: -0.16, len: 0.37, r: 0.034 },
-  { name: 'middle', x: 1.155, y: -0.175, len: 0.41, r: 0.035 },
-  { name: 'ring', x: 1.098, y: -0.165, len: 0.38, r: 0.032 },
-  { name: 'little', x: 1.045, y: -0.135, len: 0.3, r: 0.028 },
-];
-const THUMB = [V(1.2, 0.13, 0.03), V(1.275, 0.02, 0.075), V(1.31, -0.09, 0.1), V(1.325, -0.18, 0.11)];
-const fingerPts = f => { const a = V(f.x, f.y, 0.035), l = f.len, out = [a]; let y = f.y, z = 0.035; for (const k of [0.46, 0.29, 0.25]) { y -= l * k; z += 0.012; out.push(V(f.x + (f.x - 1.13) * 0.06, y, z)); } return out; };
-const TOES = [ // [x, base z, length, radius] left foot, big toe medial
-  { x: 0.205, z: 0.37, len: 0.17, r: 0.042 }, { x: 0.262, z: 0.375, len: 0.13, r: 0.027 }, { x: 0.307, z: 0.36, len: 0.115, r: 0.025 },
-  { x: 0.345, z: 0.34, len: 0.1, r: 0.023 }, { x: 0.378, z: 0.31, len: 0.085, r: 0.021 }];
-const sdEll = (x, y, z, cx, cy, cz, rx, ry, rz) => { const qx = (x - cx) / rx, qy = (y - cy) / ry, qz = (z - cz) / rz; return (Math.sqrt(qx * qx + qy * qy + qz * qz) - 1) * Math.min(rx, ry, rz); };
-function sdCap(x, y, z, ax, ay, az, bx, by, bz, ra, rb) {
-  const px = x - ax, py = y - ay, pz = z - az, ex = bx - ax, ey = by - ay, ez = bz - az;
-  const t = clamp01((px * ex + py * ey + pz * ez) / (ex * ex + ey * ey + ez * ez)), dx = px - ex * t, dy = py - ey * t, dz = pz - ez * t;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz) - lerp(ra, rb, t);
-}
-const capV = (x, y, z, a, b, ra, rb) => sdCap(x, y, z, a.x, a.y, a.z, b.x, b.y, b.z, ra, rb);
-const smin = (a, b, k) => { const h = clamp01(0.5 + 0.5 * (b - a) / k); return lerp(b, a, h) - k * h * (1 - h); };
-const smax = (a, b, k) => -smin(-a, -b, k);
-function handSDF(X, y, z) {
-  let d = sdEll(X, y, z, 1.14, -0.02, 0.025, 0.125, 0.165, 0.048);
-  d = smin(d, sdEll(X, y, z, 1.215, 0.06, 0.04, 0.055, 0.08, 0.045), 0.04);       // thenar (thumb) pad
-  d = smin(d, sdEll(X, y, z, 1.07, 0.02, 0.03, 0.045, 0.1, 0.04), 0.04);          // hypothenar
-  for (const f of FINGERS) { const p = fingerPts(f); for (let i = 0; i < 3; i++) d = smin(d, capV(X, y, z, p[i], p[i + 1], f.r * (1 - i * 0.08), f.r * (0.9 - i * 0.1)), 0.018); }
-  for (let i = 0; i < 3; i++) d = smin(d, capV(X, y, z, THUMB[i], THUMB[i + 1], 0.048 - i * 0.006, 0.042 - i * 0.008), 0.025);
-  return d;
-}
-function footSDF(X, y, z) {
-  const A = RIG.ankle;
-  let d = sdEll(X, y, z, 0.275, -3.715, 0.1, 0.115, 0.075, 0.3);
-  d = smin(d, sdEll(X, y, z, 0.255, -3.7, -0.15, 0.08, 0.085, 0.1), 0.06);
-  d = smin(d, sdCap(X, y, z, A.x, A.y + 0.05, A.z, 0.28, -3.67, 0.2, 0.085, 0.07), 0.07);
-  for (const t of TOES) d = smin(d, sdCap(X, y, z, t.x, -3.76, t.z - 0.04, t.x + 0.004, -3.775, t.z + t.len, t.r, t.r * 0.85), 0.02);
-  return smax(d, -3.8 - y, 0.02);   // flat sole
-}
-function bodySDF(x, y, z) {
-  const X = Math.abs(x), R = RIG;
-  let d = 1e9;
-  if (y > 2.75) { // head & neck
-    let h = sdEll(x, y, z, 0, 3.97, -0.03, 0.355, 0.43, 0.41);
-    h = smin(h, sdEll(x, y, z, 0, 3.66, 0.14, 0.28, 0.33, 0.27), 0.12);
-    h = smin(h, sdEll(x, y, z, 0, 3.44, 0.21, 0.15, 0.1, 0.12), 0.08);                               // chin
-    h = smin(h, sdCap(X, y, z, 0.23, 3.56, -0.02, 0.1, 3.41, 0.22, 0.07, 0.06), 0.06);               // jaw line
-    h = smin(h, sdEll(X, y, z, 0.19, 3.72, 0.22, 0.09, 0.06, 0.07), 0.05);                           // cheekbones
-    h = smin(h, sdCap(x, y, z, 0, 3.84, 0.4, 0, 3.69, 0.47, 0.03, 0.05), 0.04);                      // nose
-    h = smin(h, sdEll(X, y, z, 0.035, 3.67, 0.43, 0.035, 0.03, 0.035), 0.02);
-    h = smin(h, sdCap(x, y, z, -0.17, 3.87, 0.36, 0.17, 3.87, 0.36, 0.035, 0.035), 0.05);           // brow
-    h = smax(h, -sdEll(X, y, z, 0.12, 3.79, 0.42, 0.075, 0.045, 0.05), 0.03);                        // eye sockets
-    h = smin(h, sdEll(X, y, z, 0.12, 3.79, 0.37, 0.05, 0.035, 0.05), 0.01);                          // eyes
-    h = smin(h, sdEll(x, y, z, 0, 3.535, 0.37, 0.085, 0.028, 0.04), 0.03);                           // lips
-    h = smin(h, sdEll(X, y, z, 0.36, 3.77, -0.03, 0.035, 0.1, 0.065), 0.03);                         // ears
-    let n = sdCap(x, y, z, 0, 3.0, -0.07, 0, 3.55, -0.04, 0.17, 0.155);
-    n = smin(n, sdCap(X, y, z, 0.13, 3.55, -0.02, 0.05, 3.06, 0.13, 0.05, 0.045), 0.05);             // neck muscles
-    d = smin(h, n, 0.1);
-  }
-  if (y > -0.1 && y < 3.35) { // torso
-    let t = sdEll(x, y, z, 0, 2.45, -0.03, 0.68, 0.75, 0.5);
-    t = smin(t, sdCap(X, y, z, 0.1, 3.2, -0.13, 0.72, 2.97, -0.09, 0.1, 0.09), 0.18);                 // trapezius slope
-    t = smin(t, sdEll(X, y, z, 0.32, 2.6, 0.3, 0.3, 0.2, 0.16), 0.12);                              // chest
-    t = smin(t, sdEll(x, y, z, 0, 1.55, 0.0, 0.57, 0.72, 0.4), 0.3);                                // abdomen
-    t = smin(t, sdEll(x, y, z, 0, 0.68, -0.03, 0.63, 0.42, 0.4), 0.25);                             // pelvis
-    t = smin(t, sdEll(X, y, z, 0.41, 0.5, -0.02, 0.29, 0.32, 0.32), 0.15);                           // hips
-    t = smin(t, sdEll(X, y, z, 0.23, 0.42, -0.21, 0.25, 0.3, 0.21), 0.12);                           // buttocks
-    d = smin(d, t, 0.14);
-  }
-  if (X > 0.45 && y > 0.05 && y < 3.15) { // arms
-    let a = sdEll(X, y, z, 0.82, 2.78, -0.07, 0.2, 0.27, 0.2);                                        // deltoid
-    a = smin(a, capV(X, y, z, R.shoulder, R.elbow, 0.155, 0.11), 0.1);
-    a = smin(a, sdEll(X, y, z, 0.9, 2.1, 0.01, 0.085, 0.32, 0.095), 0.06);                           // biceps
-    a = smin(a, sdEll(X, y, z, 0.89, 2.18, -0.16, 0.095, 0.36, 0.09), 0.06);                         // triceps
-    a = smin(a, sdEll(X, y, z, R.elbow.x, R.elbow.y, R.elbow.z, 0.11, 0.1, 0.1), 0.05);
-    a = smin(a, capV(X, y, z, R.elbow, R.wrist, 0.11, 0.065), 0.06);
-    a = smin(a, sdEll(X, y, z, 1.0, 1.12, -0.04, 0.1, 0.32, 0.085), 0.06);                           // forearm muscles
-    a = smin(a, sdEll(X, y, z, R.wrist.x, R.wrist.y, R.wrist.z, 0.075, 0.05, 0.045), 0.04);
-    d = smin(d, a, 0.08);
-  }
-  if (X > 0.85 && y < 0.36 && y > -0.7) d = smin(d, handSDF(X, y, z), 0.04);
-  if (y < 0.75) { // legs
-    let l = sdCap(X, y, z, 0.34, 0.48, 0.0, R.knee.x, R.knee.y + 0.08, R.knee.z, 0.29, 0.155);
-    l = smin(l, sdEll(X, y, z, 0.35, -0.45, 0.09, 0.19, 0.62, 0.17), 0.1);                           // quadriceps
-    l = smin(l, sdEll(X, y, z, 0.33, -0.5, -0.09, 0.18, 0.6, 0.16), 0.1);                            // hamstrings
-    l = smin(l, sdEll(X, y, z, 0.2, -0.05, -0.01, 0.13, 0.45, 0.16), 0.08);                          // adductors
-    l = smin(l, sdEll(X, y, z, R.knee.x, R.knee.y, R.knee.z, 0.14, 0.15, 0.14), 0.06);
-    l = smin(l, sdEll(X, y, z, 0.29, -1.63, 0.15, 0.06, 0.07, 0.035), 0.04);                         // kneecap
-    l = smin(l, capV(X, y, z, R.knee, R.ankle, 0.14, 0.075), 0.06);
-    l = smin(l, sdEll(X, y, z, 0.29, -2.25, -0.09, 0.13, 0.45, 0.13), 0.08);                         // calf
-    l = smin(l, sdEll(X, y, z, R.ankle.x, R.ankle.y, R.ankle.z, 0.085, 0.08, 0.085), 0.04);
-    if (y < -3.3) l = smin(l, footSDF(X, y, z), 0.05);
-    d = smin(d, l, 0.1);
-  }
-  return d;
-}
-function sampleSDF(fn, min, max, h) {
-  const nx = Math.ceil((max.x - min.x) / h) + 1, ny = Math.ceil((max.y - min.y) / h) + 1, nz = Math.ceil((max.z - min.z) / h) + 1, F = new Float32Array(nx * ny * nz);
-  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) F[i + nx * (j + ny * k)] = fn(min.x + i * h, min.y + j * h, min.z + k * h);
-  return surfaceNets(F, nx, ny, nz, min, h, 0);
-}
-/* body mesh: coarse grid for the body, fine grids for hands and feet, stitched at the wrists and ankles */
-function buildBodyGeometry(hCoarse = 0.034) {
-  const pos = [], nor = [], idx = [];
-  const add = (m, keep) => {
-    const map = new Int32Array(m.pos.length / 3).fill(-1);
-    for (let t = 0; t < m.tri.length; t += 3) {
-      const a = m.tri[t], b = m.tri[t + 1], c = m.tri[t + 2];
-      const cx = (m.pos[a * 3] + m.pos[b * 3] + m.pos[c * 3]) / 3, cy = (m.pos[a * 3 + 1] + m.pos[b * 3 + 1] + m.pos[c * 3 + 1]) / 3;
-      if (!keep(cx, cy)) continue;
-      for (const v of [a, b, c]) { if (map[v] < 0) { map[v] = pos.length / 3; pos.push(m.pos[v * 3], m.pos[v * 3 + 1], m.pos[v * 3 + 2]); nor.push(m.nor[v * 3], m.nor[v * 3 + 1], m.nor[v * 3 + 2]); } idx.push(map[v]); }
+/* leaf / petal: a curved blade along +y */
+const LEAF_TEX = (() => { let t; return () => t || (t = canvasTex(512, 1024, (g, w, h) => {
+  const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, '#2b5a22'); gr.addColorStop(0.6, '#3f7a2e'); gr.addColorStop(1, '#4f8a36'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(${rand() < 0.5 ? '20,50,15' : '120,160,70'},${rand() * 0.06})`; g.beginPath(); g.arc(rand() * w, rand() * h, 3 + rand() * 18, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(200,230,150,.35)'; g.lineWidth = 1; for (let i = 0; i < 900; i++) { const x = rand() * w, y = rand() * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rand() - 0.5) * 22, y + (rand() - 0.5) * 22); g.stroke(); }
+  g.strokeStyle = 'rgba(214,236,170,.75)'; g.lineWidth = 7; g.beginPath(); g.moveTo(w / 2, h); g.lineTo(w / 2, 0); g.stroke();
+  g.lineWidth = 2.6; g.strokeStyle = 'rgba(205,232,160,.55)'; for (let i = 1; i < 12; i++) { const y = h - i * h / 12; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(w / 2, y); g.quadraticCurveTo(w / 2 + s * w * 0.22, y - 40, w / 2 + s * w * 0.47, y - 110); g.stroke(); } }
+})); })();
+function bladeGeo(len, wid, curl = 0.15, shape = 'leaf', segU = 14, segV = 6) {
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= segU; i++) {
+    const u = i / segU, w = shape === 'petal' ? wid * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.85 + 0.08)), 0.7) * (0.55 + 0.45 * u) : wid * Math.pow(Math.sin(Math.PI * u), 0.8) * (1 - 0.25 * u);
+    for (let j = 0; j <= segV; j++) {
+      const v = j / segV * 2 - 1, x = v * w, y = u * len, z = -curl * len * u * u + 0.08 * w * (1 - v * v);
+      pos.push(x, y, z); uv.push((v + 1) / 2, u);
     }
-  };
-  const WY = 0.2, AY = -3.4;
-  const inHand = (x, y) => Math.abs(x) > 0.85 && y < WY, inFoot = y => y < AY;
-  add(sampleSDF(bodySDF, V(-1.45, -3.84, -0.6), V(1.45, 4.45, 0.62), hCoarse), (x, y) => !inHand(x, y) && !inFoot(y));
-  for (const s of [-1, 1]) {
-    const f = (x, y, z) => bodySDF(x, y, z);
-    add(sampleSDF(f, V(s > 0 ? 0.88 : -1.42, -0.66, -0.12), V(s > 0 ? 1.42 : -0.88, WY + 0.05, 0.19), 0.011), (x, y) => y < WY && x * s > 0);
-    add(sampleSDF(f, V(s > 0 ? 0.08 : -0.5, -3.83, -0.3), V(s > 0 ? 0.5 : -0.08, AY + 0.05, 0.6), 0.016), (x, y) => y < AY && x * s > 0);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx);
-  g.computeBoundingSphere(); return g;
+  for (let i = 0; i < segU; i++) for (let j = 0; j < segV; j++) { const a = i * (segV + 1) + j, b = a + segV + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
-/* see-through "glass body" shader */
-const SKIN = { time: { value: 0 }, scan: { value: -5 } };
-function skinMaterial(side, k, tint = [0.25, 0.62, 0.95]) {
-  return new THREE.ShaderMaterial({
-    uniforms: { uTime: SKIN.time, uScan: SKIN.scan, uK: { value: k }, uDim: { value: 1 }, uTint: { value: new THREE.Vector3(...tint) } },
-    vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vP = wp.xyz; vN = normalize(mat3(modelMatrix)*normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix*viewMatrix*wp; }`,
-    fragmentShader: `uniform float uTime, uScan, uK, uDim; uniform vec3 uTint; varying vec3 vN; varying vec3 vV; varying vec3 vP;
-      void main(){
-        float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.3);
-        float scan = exp(-pow((vP.y - uScan) * 5.0, 2.0));
-        vec3 c = mix(uTint, vec3(0.65, 0.9, 1.0), f);
-        float a = (0.03 + 0.5 * f) * uK + scan * 0.12;
-        gl_FragColor = vec4(c * (0.5 + 0.9 * f + 1.0 * scan), a * uDim);
-      }`,
-    transparent: true, depthWrite: false, side
+const leafMat = (o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: '#ffffff', map: LEAF_TEX(), side: THREE.DoubleSide, roughness: 0.55, sheen: 0.5, sheenRoughness: 0.4, sheenColor: new THREE.Color('#c8f0a0'), clearcoat: 0.25, clearcoatRoughness: 0.4 }, o));
+/* glowing dots for gases, water, pollen … */
+class Dots {
+  constructor(n, size, additive = true) {
+    this.n = n; const g = new THREE.BufferGeometry();
+    this.pos = new Float32Array(n * 3); this.col = new Float32Array(n * 3); this.al = new Float32Array(n);
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(this.col, 3)); g.setAttribute('alpha', new THREE.BufferAttribute(this.al, 1));
+    this.mat = new THREE.ShaderMaterial({ uniforms: { uSize: { value: size } }, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      vertexShader: 'attribute vec3 color; attribute float alpha; varying vec3 vC; varying float vA; uniform float uSize; void main(){ vC = color; vA = alpha; vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = uSize * 300.0 / -mv.z; gl_Position = projectionMatrix*mv; }',
+      fragmentShader: 'varying vec3 vC; varying float vA; void main(){ float d = length(gl_PointCoord-0.5); if (d > 0.5) discard; float a = smoothstep(0.5, 0.15, d) * vA; gl_FragColor = vec4(vC, a); }' });
+    this.points = new THREE.Points(g, this.mat); this.points.frustumCulled = false; this.items = [];
+  }
+  add(o) { if (this.items.length >= this.n) return null; this.items.push(o); return o; }
+  flush(fn) { // fn(item) returns false to remove; item has x,y,z,r,g,b,a
+    let k = 0;
+    for (let i = 0; i < this.items.length; i++) { const it = this.items[i]; if (fn(it) === false) continue; this.items[k++] = it; }
+    this.items.length = k;
+    for (let i = 0; i < this.n; i++) { const it = this.items[i]; if (!it) { this.al[i] = 0; continue; } this.pos[i * 3] = it.x; this.pos[i * 3 + 1] = it.y; this.pos[i * 3 + 2] = it.z; this.col[i * 3] = it.r; this.col[i * 3 + 1] = it.g; this.col[i * 3 + 2] = it.b; this.al[i] = it.a; }
+    const a = this.points.geometry.attributes; a.position.needsUpdate = a.color.needsUpdate = a.alpha.needsUpdate = true;
+  }
+}
+const RGB = hex => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
+function baseScene(bg = ['#24382c', '#0d1712']) {
+  // a calm, dark lab backdrop (vignette) with studio lighting — realistic rather than cartoon-bright
+  const s = new THREE.Scene(), c0 = new THREE.Color(bg[0]).lerp(new THREE.Color('#0c0f12'), 0.45), c1 = new THREE.Color(bg[1]).lerp(new THREE.Color('#020304'), 0.5);
+  s.background = canvasTex(256, 320, (g, w, h) => { const gr = g.createRadialGradient(w * 0.5, h * 0.42, 8, w * 0.5, h * 0.5, w * 0.85); gr.addColorStop(0, '#' + c0.getHexString()); gr.addColorStop(1, '#' + c1.getHexString()); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  s.environment = ENV;
+  s.add(new THREE.HemisphereLight(0xe8f0ff, 0x101410, 0.55));
+  const d = new THREE.DirectionalLight(0xfff4e6, 2.0); d.position.set(3, 5, 4); s.add(d);
+  const f = new THREE.DirectionalLight(0x9fb8ff, 0.5); f.position.set(-4, 1, 2); s.add(f);
+  const r = new THREE.DirectionalLight(0xffffff, 0.9); r.position.set(-1, 3, -5); s.add(r);
+  return s;
+}
+/* deep-space backdrop: stars, dust lanes and a soft nebula (one texture, no per-frame cost) */
+function spaceTex(neb = ['#3a5cff', '#ff5ab4']) {
+  const t = canvasTex(2048, 1024, (g, w, h) => {
+    g.fillStyle = '#02030a'; g.fillRect(0, 0, w, h);
+    const band = g.createLinearGradient(0, h * 0.25, 0, h * 0.75); band.addColorStop(0, 'rgba(0,0,0,0)'); band.addColorStop(0.5, 'rgba(40,50,90,.28)'); band.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = band; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'lighter';
+    const blob = (x, y, r, col, a) => { const c = new THREE.Color(col), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
+    for (let i = 0; i < 70; i++) { const k = i / 70, x = w * (0.3 + 0.45 * k) + (rand() - 0.5) * 260, y = h * (0.45 + 0.12 * Math.sin(k * 6)) + (rand() - 0.5) * 160; blob(x, y, 60 + rand() * 190, neb[i % 2], 0.05 + rand() * 0.06); }
+    for (let i = 0; i < 18; i++) blob(rand() * w, h * (0.2 + rand() * 0.6), 80 + rand() * 200, neb[i % 2], 0.03);
+    for (let i = 0; i < 5200; i++) { const y = h * (0.5 + (rand() - 0.5) * (rand() < 0.6 ? 0.5 : 1)), x = rand() * w, r = rand() < 0.97 ? 0.5 + rand() * 0.9 : 1.4 + rand() * 1.4, a = 0.35 + rand() * 0.65, tint = rand(); g.fillStyle = tint < 0.15 ? `rgba(255,214,170,${a})` : tint < 0.3 ? `rgba(170,200,255,${a})` : `rgba(255,255,255,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); if (r > 1.8) blob(x, y, r * 7, '#9fc0ff', 0.18); }
+    g.globalCompositeOperation = 'source-over';
   });
+  t.mapping = THREE.EquirectangularReflectionMapping; return t;
 }
+/* organic, softly translucent surface: wrap lighting + rim glow, like tissue under a microscope */
+function tissue(hex, o = {}) {
+  const { rim, rimK: _rk, ...props } = o;
+  const m = new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.55, metalness: 0, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), 0.5), clearcoat: 0.15, clearcoatRoughness: 0.6 }, props));
+  const rimCol = new THREE.Color(o.rim || hex).lerp(new THREE.Color('#ffffff'), 0.35), rimK = o.rimK ?? 0.55;
+  m.onBeforeCompile = sh => { sh.uniforms.uRim = { value: rimCol }; sh.uniforms.uRimK = { value: rimK };
+    sh.fragmentShader = 'uniform vec3 uRim; uniform float uRimK;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', 'float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.5); outgoingLight += uRim * fr * uRimK;\n#include <opaque_fragment>'); };
+  m.customProgramCacheKey = () => 'tissue' + rimK; return m;
+}
+/* fine grain noise for bump / roughness maps */
+const NOISE = (() => { let t; return () => t || (t = (() => { const x = canvasTex(256, 256, (g, w, h) => { const d = g.createImageData(w, h); for (let i = 0; i < d.data.length; i += 4) { const v = 110 + rand() * 120; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); g.filter = 'blur(1.2px)'; g.drawImage(g.canvas, 0, 0); }); x.colorSpace = THREE.NoColorSpace; x.wrapS = x.wrapT = THREE.RepeatWrapping; return x; })()); })();
+/* the leather cover with gilt title and emblem */
+function coverTex(BOOK) { return canvasTex(1024, 1434, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, BOOK.cover[0]); gr.addColorStop(1, BOOK.cover[1]); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.strokeStyle = BOOK.gold; g.lineWidth = 6; g.strokeRect(50, 50, w - 100, h - 100); g.lineWidth = 2; g.strokeRect(70, 70, w - 140, h - 140);
+  g.fillStyle = BOOK.gold; g.textAlign = 'center'; g.font = 'bold 120px Georgia, serif'; g.fillText(BOOK.title, w / 2, 330);
+  g.font = 'italic 46px Georgia, serif'; g.fillText(BOOK.sub, w / 2, 410);
+  g.save(); g.translate(w / 2, 820); g.strokeStyle = BOOK.gold; g.fillStyle = BOOK.gold; BOOK.emblem(g); g.restore(); g.fillStyle = BOOK.gold; g.textAlign = 'center';
+  g.font = '38px Georgia, serif'; g.fillText('An interactive 3D book', w / 2, 1210); g.font = 'bold 30px Inter, sans-serif'; g.fillText(BOOK.vol, w / 2, 1270);
+}); }
 
-/* ================= SKELETON GEOMETRY (built on the shared RIG; left side mirrored to the right) ================= */
-function triSDF(a, b, c) { // unsigned distance to a triangle (after Inigo Quilez)
-  const ba = b.clone().sub(a), cb = c.clone().sub(b), ac = a.clone().sub(c), nor = ba.clone().cross(ac);
-  const n1 = ba.clone().cross(nor), n2 = cb.clone().cross(nor), n3 = ac.clone().cross(nor), d2 = v => v.x * v.x + v.y * v.y + v.z * v.z;
-  const lba = d2(ba), lcb = d2(cb), lac = d2(ac), lnor = d2(nor);
-  return (x, y, z) => {
-    const pax = x - a.x, pay = y - a.y, paz = z - a.z, pbx = x - b.x, pby = y - b.y, pbz = z - b.z, pcx = x - c.x, pcy = y - c.y, pcz = z - c.z;
-    const s = Math.sign(n1.x * pax + n1.y * pay + n1.z * paz) + Math.sign(n2.x * pbx + n2.y * pby + n2.z * pbz) + Math.sign(n3.x * pcx + n3.y * pcy + n3.z * pcz);
-    if (s < 2) {
-      const e = (ex, ey, ez, px, py, pz, l) => { const t = clamp01((ex * px + ey * py + ez * pz) / l); const dx = ex * t - px, dy = ey * t - py, dz = ez * t - pz; return dx * dx + dy * dy + dz * dz; };
-      return Math.sqrt(Math.min(e(ba.x, ba.y, ba.z, pax, pay, paz, lba), e(cb.x, cb.y, cb.z, pbx, pby, pbz, lcb), e(ac.x, ac.y, ac.z, pcx, pcy, pcz, lac)));
-    }
-    const q = nor.x * pax + nor.y * pay + nor.z * paz; return Math.sqrt(q * q / lnor);
-  };
-}
-function sdfGeo(fn, min, max, h) {
-  const m = sampleSDF(fn, min, max, h), g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(m.nor, 3));
-  const uv = []; for (let i = 0; i < m.pos.length; i += 3) uv.push(m.pos[i] * 3 + m.pos[i + 2] * 2, m.pos[i + 1] * 3);
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(m.tri); return g;
-}
-function mirrorGeo(g) {
-  const m = g.clone(), p = m.attributes.position, n = m.attributes.normal;
-  for (let i = 0; i < p.count; i++) { p.array[i * 3] *= -1; if (n) n.array[i * 3] *= -1; }
-  const ix = m.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
-  return m;
-}
-const capsSDF = list => (x, y, z) => { let d = 1e9; for (const [a, b, ra, rb, k] of list) d = smin(d, capV(x, y, z, a, b, ra, rb ?? ra), k ?? 0.02); return d; };
-/* spine curve through the vertebral bodies */
-const SPINE_CURVE = new THREE.CatmullRomCurve3([V(0, 3.62, -0.08), V(0, 3.35, -0.06), V(0, 3.08, -0.14), V(0, 2.7, -0.24), V(0, 2.3, -0.275), V(0, 1.9, -0.25), V(0, 1.56, -0.18), V(0, 1.22, -0.1), V(0, 0.9, -0.12)], false, 'centripetal');
-function spineAtY(y) { let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (SPINE_CURVE.getPointAt(m).y > y) lo = m; else hi = m; } const u = (lo + hi) / 2; return { p: SPINE_CURVE.getPointAt(u), t: SPINE_CURVE.getTangentAt(u).negate() }; }
-const VERT = [];   // vertebra levels
-{
-  const lv = [], push = (name, kind, y0, y1, n) => { for (let i = 0; i < n; i++) lv.push({ name: name + (i + 1), kind, y: lerp(y0, y1, (i + 0.5) / n), h: (y0 - y1) / n }); };
-  push('C', 'C', 3.62, 3.08, 7); push('T', 'T', 3.08, 1.57, 12); push('L', 'L', 1.57, 0.9, 5);
-  for (const v of lv) { const s = spineAtY(v.y); v.p = s.p; v.t = s.t; VERT.push(v); }
-}
-const canalAt = v => { const back = V(0, -v.t.z, v.t.y).normalize().multiplyScalar(-1); if (back.z > 0) back.negate(); const r = v.kind === 'C' ? 0.045 : v.kind === 'T' ? 0.062 : 0.085; return v.p.clone().addScaledVector(back, r + 0.042); };
-function vertebraSDF(v) {
-  const r = v.kind === 'C' ? 0.045 : v.kind === 'T' ? lerp(0.055, 0.075, (VERT.indexOf(v) - 7) / 11) : 0.088, hh = v.h * 0.36;
-  const spL = v.kind === 'C' ? 0.07 : v.kind === 'T' ? 0.13 : 0.1, spD = v.kind === 'T' ? 0.09 : 0.02, tp = v.kind === 'L' ? 0.1 : v.kind === 'T' ? 0.08 : 0.05;
-  const up = v.t.clone(), fw = V(0, -up.z, up.y).normalize(); if (fw.z < 0) fw.negate(); const rt = V(1, 0, 0);
-  const W = (lx, ly, lz) => v.p.clone().addScaledVector(rt, lx).addScaledVector(up, ly).addScaledVector(fw, lz);
-  const C = W(0, 0, 0), cr = 0.042;
-  const caps = [
-    [W(-0.5 * r, 0, -r * 0.8), W(-0.55 * r, 0, -r - cr * 0.6), 0.016], [W(0.5 * r, 0, -r * 0.8), W(0.55 * r, 0, -r - cr * 0.6), 0.016],
-    [W(-0.55 * r, 0, -r - cr * 0.6), W(0, 0, -r - cr * 1.8), 0.015], [W(0.55 * r, 0, -r - cr * 0.6), W(0, 0, -r - cr * 1.8), 0.015],
-    [W(0, 0, -r - cr * 1.8), W(0, -spD, -r - cr * 1.8 - spL), 0.016, 0.012],
-    [W(-0.55 * r, 0, -r - cr * 0.7), W(-r - tp, 0.01, -r - cr * 0.9), 0.014, 0.011], [W(0.55 * r, 0, -r - cr * 0.7), W(r + tp, 0.01, -r - cr * 0.9), 0.014, 0.011],
-    [W(-0.5 * r, hh, -r - cr * 0.9), W(-0.5 * r, -hh, -r - cr * 0.9), 0.012], [W(0.5 * r, hh, -r - cr * 0.9), W(0.5 * r, -hh, -r - cr * 0.9), 0.012],
-  ];
-  const arch = capsSDF(caps.map(c => [c[0], c[1], c[2], c[3], 0.012]));
-  return (x, y, z) => {
-    const px = x - C.x, py = y - C.y, pz = z - C.z, ly = px * up.x + py * up.y + pz * up.z, lx = px, lz = px * fw.x + py * fw.y + pz * fw.z;
-    const rr = Math.sqrt(lx * lx + lz * lz) - r * (1 + 0.08 * (Math.abs(ly) / hh)), body = Math.max(rr, Math.abs(ly) - hh) - 0.006;
-    let d = smin(body, arch(x, y, z), 0.012);
-    return smax(d, -(capV(x, y, z, W(0, 1, -r - cr), W(0, -1, -r - cr), cr, cr)), 0.006);   // spinal canal hole
-  };
-}
-const RIB_W = [0.3, 0.4, 0.48, 0.54, 0.58, 0.61, 0.62, 0.61, 0.58, 0.54, 0.46, 0.37];
-const RIB_ZF = [0.3, 0.34, 0.36, 0.37, 0.37, 0.36, 0.34, 0.3, 0.25, 0.18, 0.02, -0.1];
-const STERNUM_Y = [2.98, 2.82, 2.7, 2.58, 2.46, 2.34, 2.22];
-const RIBS = [];
-function ribPath(i) {
-  const v = VERT[7 + i], y0 = v.p.y, zs = v.p.z, w = RIB_W[i], zf = RIB_ZF[i], drop = 0.24 + i * 0.03;
-  const bone = [V(0.05, y0 + 0.01, zs - 0.02), V(0.14, y0 + 0.02, zs - 0.07), V(w * 0.72, y0 - 0.03, zs - 0.02), V(w * 0.97, y0 - drop * 0.35, -0.08), V(w * 0.9, y0 - drop * 0.65, zf * 0.55), V(w * 0.62, y0 - drop * 0.9, zf * 0.92)];
-  if (i >= 10) bone[5] = V(w * 0.7, y0 - drop * 0.8, zf + 0.06);
-  let cart = null;
-  if (i < 7) cart = [bone[5], V(w * 0.35, lerp(bone[5].y, STERNUM_Y[i], 0.6), zf + 0.03), V(0.07, STERNUM_Y[i], 0.39)];
-  else if (i < 10) cart = [bone[5], V(w * 0.45, bone[5].y + 0.06, zf + 0.06), V(0.26 - (i - 7) * 0.02, 2.06 + (i - 7) * 0.02 - 0.12 * (i - 7), 0.33 - (i - 7) * 0.03)];
-  return { bone, cart };
-}
-/* pivots (left side positions; the right side mirrors x) */
-const PIV = {
-  ROOT: { p: V(0, 0, 0) }, NECK: { p: V(0, 3.3, -0.09), parent: 'ROOT' }, JAW: { p: V(0, 3.665, -0.07), parent: 'NECK' },
-  SH: { p: RIG.shoulder.clone(), parent: 'ROOT', side: 1 }, EL: { p: RIG.elbow.clone(), parent: 'SH', side: 1 }, WR: { p: RIG.wrist.clone(), parent: 'EL', side: 1 },
-  TH: { p: THUMB[0].clone(), parent: 'WR', side: 1 },
-  HIP: { p: RIG.hip.clone(), parent: 'ROOT', side: 1 }, KN: { p: RIG.knee.clone(), parent: 'HIP', side: 1 }, AN: { p: RIG.ankle.clone(), parent: 'KN', side: 1 },
+const ZB = {
+  title: 'ZOOLOGY', sub: 'The Human Body', vol: 'VOLUME I  ·  12 LIVE 3D MODELS', footer: 'Zoology · The Human Body', lab0: 'LIVE MODEL',
+  cover: ['#5a2a26', '#2a100f'], edge: '#3a1614', spine: '#331311', gold: '#e2bf68', ink: '#4a1a16', rim: 0xffb0a0, screen: '#0a0d14', nebula: ['#ff5a7a', '#5a6cff'],
+  emblem(g) { // a stylised skull-and-spine mark
+    g.lineWidth = 7; g.beginPath(); g.ellipse(0, -160, 120, 135, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.ellipse(-45, -165, 30, 34, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.ellipse(45, -165, 30, 34, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(0, -125); g.lineTo(-14, -95); g.lineTo(14, -95); g.closePath(); g.stroke();
+    for (let i = 0; i < 7; i++) { const y = -10 + i * 42, w = 38 - i * 2; g.beginPath(); g.roundRect ? g.roundRect(-w, y, w * 2, 26, 10) : g.rect(-w, y, w * 2, 26); g.stroke(); }
+    g.lineWidth = 5; for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(s * 40, 10 + i * 42); g.quadraticCurveTo(s * 170, -10 + i * 46, s * 150, 70 + i * 40); g.stroke(); }
+  },
 };
-FINGERS.forEach((f, i) => { const p = fingerPts(f); PIV['F' + i] = { p: p[0].clone(), parent: 'WR', side: 1 }; PIV['G' + i] = { p: p[1].clone(), parent: 'F' + i, side: 1 }; });
-function skeletonGeometry(q = 1) {
-  const H = 0.013 / q, recs = [], add = (part, pivot, geo, side = 'C') => recs.push({ part, pivot, geo, side });
-  const both = (part, pivot, geo) => { add(part, pivot, geo, 'L'); add(part, pivot, mirrorGeo(geo), 'R'); };
-  /* ---- skull ---- */
-  const skull = (x, y, z) => {
-    const X = Math.abs(x);
-    let d = sdEll(x, y, z, 0, 3.98, -0.04, 0.32, 0.37, 0.37);
-    d = smin(d, sdEll(x, y, z, 0, 3.7, 0.16, 0.2, 0.2, 0.17), 0.08);                          // face
-    d = smin(d, sdEll(x, y, z, 0, 3.565, 0.21, 0.15, 0.06, 0.13), 0.05);                       // maxilla / upper jaw
-    d = smin(d, sdCap(X, y, z, 0.2, 3.72, 0.2, 0.3, 3.69, -0.03, 0.026, 0.024), 0.03);        // zygomatic arch
-    d = smin(d, sdEll(X, y, z, 0.17, 3.72, 0.23, 0.07, 0.05, 0.06), 0.04);                     // cheek bone
-    d = smin(d, sdEll(X, y, z, 0.27, 3.66, -0.12, 0.04, 0.06, 0.045), 0.03);                   // mastoid
-    d = smax(d, -sdEll(X, y, z, 0.115, 3.8, 0.34, 0.075, 0.07, 0.08), 0.02);                   // orbits
-    d = smax(d, -sdEll(x, y, z, 0, 3.66, 0.35, 0.04, 0.065, 0.07), 0.015);                     // nasal opening
-    d = smax(d, -sdEll(X, y, z, 0.29, 3.73, -0.01, 0.03, 0.03, 0.05), 0.01);                   // ear canal
-    return d;
-  };
-  add('SKULL', 'NECK', sdfGeo(skull, V(-0.36, 3.5, -0.44), V(0.36, 4.38, 0.42), H * 1.15));
-  const mand = (x, y, z) => {
-    const X = Math.abs(x);
-    let d = sdCap(X, y, z, 0.25, 3.68, -0.08, 0.235, 3.5, -0.05, 0.028, 0.03);                // ramus up to the condyle
-    d = smin(d, sdCap(X, y, z, 0.235, 3.5, -0.05, 0.15, 3.43, 0.14, 0.03, 0.034), 0.03);       // body
-    d = smin(d, sdCap(X, y, z, 0.15, 3.43, 0.14, 0.0, 3.42, 0.26, 0.034, 0.04), 0.03);
-    d = smin(d, sdCap(X, y, z, 0.22, 3.55, -0.02, 0.21, 3.64, 0.04, 0.018, 0.012), 0.02);      // coronoid
-    d = smin(d, sdEll(X, y, z, 0.25, 3.685, -0.08, 0.035, 0.02, 0.025), 0.015);               // condyle
-    return d;
-  };
-  add('MAND', 'JAW', sdfGeo(mand, V(-0.3, 3.36, -0.13), V(0.3, 3.72, 0.32), H));
-  const teethU = [], teethL = [];
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 15 - 0.5) * 2.4, x = Math.sin(a) * 0.12, z = 0.18 + Math.cos(a) * 0.1 - 0.02, w = Math.abs(a) > 0.6 ? 0.017 : 0.012;
-    teethU.push(blob(x, 3.515, z, w, 0.022, 0.014, 0.05, i, 8)); teethL.push(blob(x * 0.95, 3.475, z - 0.008, w, 0.02, 0.013, 0.05, i + 20, 8));
-  }
-  add('TEETH', 'NECK', mergeGeoms(teethU)); add('TEETH', 'JAW', mergeGeoms(teethL));
-  /* ---- spine & discs ---- */
-  VERT.forEach((v, i) => {
-    const r = v.kind === 'L' ? 0.36 : 0.34, b = v.kind === 'C' ? 0.17 : 0.24;
-    const g = sdfGeo(vertebraSDF(v), v.p.clone().add(V(-b, -0.12, -0.32)), v.p.clone().add(V(b, 0.12, 0.13)), H * 0.75);
-    add(v.kind === 'C' ? 'CERV' : v.kind === 'T' ? 'THOR' : 'LUMB', v.kind === 'C' && i < 3 ? 'NECK' : 'ROOT', g);
-    if (i < VERT.length - 1) {
-      const nx = VERT[i + 1], m = v.p.clone().lerp(nx.p, 0.5), rr = v.kind === 'C' ? 0.042 : v.kind === 'T' ? 0.06 : 0.083;
-      const dg = new THREE.CylinderGeometry(rr, rr, (v.y - nx.y) * 0.22, 20, 1); dg.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), v.t.clone().lerp(nx.t, 0.5).normalize())); dg.translate(m.x, m.y, m.z);
-      add('DISC', v.kind === 'C' && i < 2 ? 'NECK' : 'ROOT', dg);
-    }
-  });
-  const sac = (() => { const t1 = triSDF(V(-0.14, 0.86, -0.15), V(0.14, 0.86, -0.15), V(0, 0.42, -0.3)); return (x, y, z) => { const zc = -0.15 - 0.3 * (0.86 - y) + 0.6 * Math.pow(0.86 - y, 2); return smin(t1(x, y, z - (zc + 0.15 + 0.3 * (0.86 - y) * 0.5) * 0) - 0.045, sdEll(x, y, z, 0, 0.84, -0.13, 0.09, 0.05, 0.075), 0.03); }; })();
-  add('SACR', 'ROOT', sdfGeo(sac, V(-0.22, 0.36, -0.4), V(0.22, 0.95, 0.0), H));
-  add('COCC', 'ROOT', mergeGeoms([0, 1, 2, 3].map(i => blob(0, 0.39 - i * 0.04, -0.29 + i * 0.02, 0.024 - i * 0.004, 0.02, 0.018, 0.05, i, 10))));
-  /* ---- ribs, cartilage, sternum ---- */
-  const ribG = [], cartG = [];
-  for (let i = 0; i < 12; i++) {
-    const { bone, cart } = ribPath(i); RIBS.push({ bone, cart });
-    const c = new THREE.CatmullRomCurve3(bone);
-    ribG.push(taperTube(c, 70, 10, u => lerp(0.017, 0.021, Math.sin(u * Math.PI))));
-    if (cart) cartG.push(taperTube(new THREE.CatmullRomCurve3(cart), 30, 8, u => lerp(0.019, 0.014, u)));
-  }
-  const ribGeo = mergeGeoms(ribG); add('RIBS', 'ROOT', ribGeo); add('RIBS', 'ROOT', mirrorGeo(ribGeo));
-  const cg = mergeGeoms(cartG); add('COST', 'ROOT', cg); add('COST', 'ROOT', mirrorGeo(cg));
-  const ster = (x, y, z) => smin(smin(sdEll(x, y, z, 0, 2.88, 0.395, 0.1, 0.11, 0.028), sdEll(x, y, z, 0, 2.47, 0.405, 0.066, 0.31, 0.026), 0.04), sdCap(x, y, z, 0, 2.17, 0.4, 0, 2.06, 0.37, 0.02, 0.01), 0.02);
-  add('STER', 'ROOT', sdfGeo(ster, V(-0.14, 2.0, 0.32), V(0.14, 3.02, 0.46), H * 0.8));
-  /* ---- shoulder girdle ---- */
-  const clav = taperTube(new THREE.CatmullRomCurve3([V(0.06, 2.985, 0.385), V(0.28, 3.02, 0.32), V(0.52, 3.0, 0.14), V(0.74, 2.985, -0.04)]), 50, 10, u => 0.026 + 0.008 * Math.abs(u - 0.5));
-  both('CLAV', 'ROOT', clav);
-  const scap = (() => {
-    const t1 = triSDF(V(0.28, 2.96, -0.38), V(0.36, 2.2, -0.4), V(0.72, 2.84, -0.15)), t2 = triSDF(V(0.28, 2.96, -0.38), V(0.6, 2.98, -0.25), V(0.72, 2.84, -0.15));
-    const extra = capsSDF([[V(0.3, 2.78, -0.41), V(0.8, 2.98, -0.12), 0.022, 0.03], [V(0.8, 2.98, -0.12), V(0.86, 2.99, -0.02), 0.03, 0.025], [V(0.66, 2.88, -0.08), V(0.66, 2.84, 0.06), 0.02, 0.016], [V(0.36, 2.2, -0.4), V(0.7, 2.75, -0.17), 0.018, 0.024]]);
-    return (x, y, z) => smin(smin(Math.min(t1(x, y, z), t2(x, y, z)) - 0.011, extra(x, y, z), 0.02), sdEll(x, y, z, 0.705, 2.845, -0.1, 0.035, 0.06, 0.05), 0.02);
-  })();
-  both('SCAP', 'ROOT', sdfGeo(scap, V(0.22, 2.12, -0.48), V(0.92, 3.06, 0.1), H));
-  /* ---- arm ---- */
-  const S = RIG.shoulder, E = RIG.elbow, Wr = RIG.wrist;
-  const hum = (x, y, z) => {
-    let d = sdEll(x, y, z, S.x - 0.01, S.y, S.z, 0.088, 0.09, 0.088);
-    d = smin(d, sdEll(x, y, z, S.x + 0.07, S.y + 0.01, S.z + 0.02, 0.05, 0.06, 0.05), 0.03);
-    d = smin(d, sdCap(x, y, z, S.x + 0.03, S.y - 0.12, S.z, E.x - 0.01, E.y + 0.1, E.z, 0.042, 0.04), 0.04);
-    d = smin(d, sdEll(x, y, z, E.x, E.y + 0.04, E.z, 0.11, 0.045, 0.05), 0.04);
-    d = smin(d, sdCap(x, y, z, E.x - 0.07, E.y - 0.01, E.z + 0.01, E.x + 0.06, E.y - 0.01, E.z + 0.01, 0.038, 0.035), 0.02);
-    return d;
-  };
-  both('HUM', 'SH', sdfGeo(hum, V(S.x - 0.16, E.y - 0.08, S.z - 0.12), V(S.x + 0.22, S.y + 0.12, S.z + 0.12), H));
-  const uln = capsSDF([[V(E.x - 0.05, E.y + 0.06, E.z - 0.06), V(E.x - 0.05, E.y - 0.06, E.z - 0.02), 0.035, 0.03, 0.03], [V(E.x - 0.05, E.y - 0.05, E.z - 0.01), V(Wr.x - 0.055, Wr.y + 0.04, Wr.z - 0.01), 0.026, 0.016, 0.03], [V(Wr.x - 0.055, Wr.y + 0.04, Wr.z - 0.01), V(Wr.x - 0.06, Wr.y + 0.015, Wr.z - 0.015), 0.022, 0.012, 0.01]]);
-  both('ULN', 'EL', sdfGeo(uln, V(E.x - 0.14, Wr.y - 0.04, E.z - 0.14), V(Wr.x + 0.02, E.y + 0.13, Wr.z + 0.08), H));
-  const rad = capsSDF([[V(E.x + 0.055, E.y - 0.05, E.z + 0.02), V(E.x + 0.055, E.y - 0.08, E.z + 0.02), 0.034, 0.03, 0.01], [V(E.x + 0.055, E.y - 0.08, E.z + 0.02), V(Wr.x + 0.03, Wr.y + 0.06, Wr.z + 0.01), 0.018, 0.03, 0.03], [V(Wr.x + 0.03, Wr.y + 0.06, Wr.z + 0.01), V(Wr.x + 0.065, Wr.y + 0.02, Wr.z + 0.005), 0.03, 0.012, 0.02]]);
-  both('RAD', 'EL', sdfGeo(rad, V(E.x - 0.02, Wr.y - 0.03, E.z - 0.08), V(Wr.x + 0.12, E.y + 0.0, Wr.z + 0.1), H));
-  /* ---- hand ---- */
-  const carp = [];
-  for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) carp.push(blob(lerp(1.06, 1.205, i / 3), Wr.y - 0.06 - r * 0.07, 0.01 + r * 0.008, 0.026, 0.03, 0.022, 0.08, r * 4 + i, 12));
-  both('CARP', 'WR', mergeGeoms(carp));
-  const mc = [];
-  FINGERS.forEach(f => { const p0 = fingerPts(f)[0]; mc.push(taperTube(new THREE.CatmullRomCurve3([V(lerp(1.085, 1.19, (f.x - 1.045) / 0.17), Wr.y - 0.15, 0.02), p0.clone().add(V(0, 0.02, -0.005))]), 20, 8, u => 0.015 + 0.006 * Math.abs(u - 0.45) * 2)); mc.push(blob(p0.x, p0.y + 0.02, p0.z - 0.005, 0.02, 0.018, 0.018, 0.04, f.len * 10, 10)); });
-  both('MCARP', 'WR', mergeGeoms(mc));
-  const thumbG = [taperTube(new THREE.CatmullRomCurve3([THUMB[0], THUMB[1]]), 20, 8, u => 0.017), taperTube(new THREE.CatmullRomCurve3([THUMB[1], THUMB[2]]), 16, 8, u => 0.014), taperTube(new THREE.CatmullRomCurve3([THUMB[2], THUMB[3]]), 14, 8, u => lerp(0.013, 0.009, u))];
-  for (const p of THUMB.slice(1)) thumbG.push(blob(p.x, p.y, p.z, 0.017, 0.016, 0.016, 0.03, p.y * 9, 10));
-  both('HPHAL', 'TH', mergeGeoms(thumbG));
-  FINGERS.forEach((f, i) => {
-    const p = fingerPts(f), seg = (a, b, r0, r1) => taperTube(new THREE.CatmullRomCurve3([a, b]), 14, 8, u => lerp(r0, r1, u));
-    both('HPHAL', 'F' + i, mergeGeoms([seg(p[0], p[1], 0.015, 0.012), blob(p[1].x, p[1].y, p[1].z, 0.015, 0.014, 0.014, 0.03, i, 10)]));
-    both('HPHAL', 'G' + i, mergeGeoms([seg(p[1], p[2], 0.012, 0.011), blob(p[2].x, p[2].y, p[2].z, 0.012, 0.012, 0.012, 0.03, i + 5, 10), seg(p[2], p[3].clone().add(V(0, 0.012, 0)), 0.011, 0.008)]));
-  });
-  /* ---- pelvis ---- */
-  const Hp = RIG.hip;
-  const hipBone = (() => {
-    const t1 = triSDF(V(0.12, 0.8, -0.27), V(0.58, 1.02, -0.06), V(0.34, 0.52, -0.02)), t2 = triSDF(V(0.58, 1.02, -0.06), V(0.56, 0.86, 0.13), V(0.34, 0.52, -0.02));
-    const rim = capsSDF([[V(0.12, 0.8, -0.27), V(0.35, 0.98, -0.2), 0.03, 0.03, 0.03], [V(0.35, 0.98, -0.2), V(0.58, 1.02, -0.06), 0.03, 0.033, 0.03], [V(0.58, 1.02, -0.06), V(0.56, 0.86, 0.13), 0.033, 0.03, 0.03],
-      [V(Hp.x - 0.02, Hp.y + 0.03, Hp.z + 0.05), V(0.06, 0.36, 0.17), 0.035, 0.03, 0.03], [V(0.06, 0.36, 0.17), V(0.06, 0.26, 0.14), 0.03, 0.03, 0.02], [V(0.06, 0.26, 0.14), V(0.24, 0.17, -0.04), 0.024, 0.032, 0.02],
-      [V(Hp.x - 0.04, Hp.y - 0.03, Hp.z - 0.06), V(0.25, 0.17, -0.06), 0.04, 0.045, 0.03], [V(0.12, 0.8, -0.27), V(0.12, 0.66, -0.25), 0.04, 0.04, 0.03]]);
-    return (x, y, z) => {
-      let d = smin(Math.min(t1(x, y, z), t2(x, y, z)) - 0.018, rim(x, y, z), 0.035);
-      d = smin(d, sdEll(x, y, z, Hp.x + 0.01, Hp.y, Hp.z - 0.01, 0.11, 0.11, 0.11), 0.04);
-      return smax(d, -sdEll(x, y, z, Hp.x + 0.05, Hp.y, Hp.z + 0.02, 0.095, 0.095, 0.095), 0.01);   // acetabulum socket
-    };
-  })();
-  both('PELV', 'ROOT', sdfGeo(hipBone, V(0.0, 0.1, -0.36), V(0.68, 1.08, 0.24), H));
-  /* ---- leg ---- */
-  const K = RIG.knee, A = RIG.ankle;
-  const fem = (x, y, z) => {
-    let d = sdEll(x, y, z, Hp.x + 0.02, Hp.y, Hp.z, 0.085, 0.085, 0.085);
-    d = smin(d, sdCap(x, y, z, Hp.x + 0.02, Hp.y, Hp.z, 0.49, 0.34, 0.0, 0.05, 0.055), 0.03);
-    d = smin(d, sdEll(x, y, z, 0.53, 0.37, -0.03, 0.06, 0.085, 0.06), 0.03);
-    d = smin(d, sdEll(x, y, z, 0.44, 0.25, -0.05, 0.03, 0.03, 0.03), 0.02);
-    d = smin(d, sdCap(x, y, z, 0.5, 0.3, 0.0, 0.4, -0.6, 0.04, 0.05, 0.046), 0.05);
-    d = smin(d, sdCap(x, y, z, 0.4, -0.6, 0.04, K.x + 0.01, K.y + 0.12, K.z, 0.046, 0.05), 0.05);
-    d = smin(d, sdEll(x, y, z, K.x - 0.055, K.y + 0.03, K.z - 0.01, 0.055, 0.07, 0.085), 0.04);
-    d = smin(d, sdEll(x, y, z, K.x + 0.06, K.y + 0.03, K.z - 0.01, 0.055, 0.07, 0.085), 0.04);
-    return d;
-  };
-  both('FEM', 'HIP', sdfGeo(fem, V(0.16, K.y - 0.07, -0.14), V(0.64, Hp.y + 0.12, 0.14), H));
-  both('PAT', 'HIP', blob(K.x, K.y + 0.07, 0.115, 0.05, 0.06, 0.022, 0.06, 3, 18));
-  const tib = (x, y, z) => {
-    let d = sdEll(x, y, z, K.x, K.y - 0.06, K.z, 0.12, 0.04, 0.09);
-    d = smin(d, sdCap(x, y, z, K.x, K.y - 0.08, K.z, A.x - 0.01, A.y + 0.06, A.z, 0.05, 0.034), 0.05);
-    d = smin(d, sdEll(x, y, z, K.x, K.y - 0.16, K.z + 0.07, 0.03, 0.04, 0.025), 0.03);
-    d = smin(d, sdEll(x, y, z, A.x - 0.045, A.y - 0.02, A.z, 0.03, 0.05, 0.035), 0.03);
-    d = smin(d, sdEll(x, y, z, A.x, A.y + 0.03, A.z, 0.05, 0.03, 0.05), 0.03);
-    return d;
-  };
-  both('TIB', 'KN', sdfGeo(tib, V(K.x - 0.15, A.y - 0.09, -0.13), V(K.x + 0.15, K.y + 0.0, 0.13), H));
-  const fib = capsSDF([[V(K.x + 0.11, K.y - 0.12, K.z - 0.05), V(K.x + 0.11, K.y - 0.16, K.z - 0.05), 0.028, 0.024, 0.02], [V(K.x + 0.11, K.y - 0.16, K.z - 0.05), V(A.x + 0.085, A.y + 0.06, A.z - 0.03), 0.016, 0.017, 0.02], [V(A.x + 0.085, A.y + 0.06, A.z - 0.03), V(A.x + 0.09, A.y - 0.05, A.z - 0.04), 0.022, 0.02, 0.02]]);
-  both('FIB', 'KN', sdfGeo(fib, V(K.x + 0.03, A.y - 0.09, -0.12), V(K.x + 0.17, K.y - 0.06, 0.03), H));
-  /* ---- foot ---- */
-  const tar = [blob(A.x, A.y - 0.06, A.z + 0.01, 0.055, 0.04, 0.065, 0.06, 1, 16), blob(A.x - 0.005, -3.67, -0.12, 0.05, 0.055, 0.1, 0.07, 2, 18),
-    blob(A.x - 0.035, -3.61, 0.1, 0.035, 0.035, 0.035, 0.06, 3, 12), blob(A.x + 0.055, -3.66, 0.08, 0.04, 0.035, 0.045, 0.06, 4, 12),
-    blob(0.205, -3.66, 0.17, 0.025, 0.03, 0.035, 0.05, 5, 10), blob(0.245, -3.645, 0.165, 0.022, 0.028, 0.03, 0.05, 6, 10), blob(0.282, -3.65, 0.16, 0.022, 0.028, 0.03, 0.05, 7, 10)];
-  both('TARS', 'AN', mergeGeoms(tar));
-  const mt = [], fp = [];
-  TOES.forEach((t, i) => {
-    const b = V(lerp(0.205, 0.34, i / 4), -3.67, 0.19 - i * 0.02), e = V(t.x, -3.745, t.z - 0.03);
-    mt.push(taperTube(new THREE.CatmullRomCurve3([b, e]), 20, 8, u => lerp(0.017, 0.014, u) * (i === 0 ? 1.4 : 1)), blob(e.x, e.y, e.z, i === 0 ? 0.022 : 0.016, 0.016, 0.016, 0.04, i, 10));
-    const n = i === 0 ? 2 : 3; let p = e;
-    for (let k = 0; k < n; k++) { const q2 = p.clone().add(V(0.002, -0.006, t.len / n * 0.95)); fp.push(taperTube(new THREE.CatmullRomCurve3([p, q2]), 10, 8, u => lerp(0.012, 0.009, u) * (i === 0 ? 1.4 : 1))); p = q2; }
-  });
-  both('MTARS', 'AN', mergeGeoms(mt)); both('FPHAL', 'AN', mergeGeoms(fp));
-  /* ---- joints & cartilage ---- */
-  const cap = (c, r, dir, ang) => { const g = new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, ang); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), dir.clone().normalize())); g.translate(c.x, c.y, c.z); return g; };
-  const ring = (c, r, t, dir) => { const g = new THREE.TorusGeometry(r, t, 10, 36); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), dir.clone().normalize())); g.translate(c.x, c.y, c.z); return g; };
-  both('J_SH', 'SH', cap(V(S.x - 0.01, S.y, S.z), 0.093, V(-1, 0.4, 0), 1.25)); both('J_SH', 'ROOT', ring(V(0.715, 2.845, -0.1), 0.05, 0.012, V(1, 0, 0.3)));
-  both('J_EL', 'SH', (() => { const g = new THREE.CylinderGeometry(0.043, 0.043, 0.14, 20, 1, true); g.rotateZ(Math.PI / 2); g.translate(E.x, E.y - 0.01, E.z + 0.01); return g; })());
-  both('J_WR', 'EL', blob(Wr.x, Wr.y + 0.005, Wr.z, 0.085, 0.014, 0.035, 0.03, 4, 16));
-  both('J_HIP', 'HIP', cap(V(Hp.x + 0.02, Hp.y, Hp.z), 0.089, V(-0.6, 0.8, 0), 1.3)); both('J_HIP', 'ROOT', ring(V(Hp.x + 0.07, Hp.y, Hp.z + 0.02), 0.09, 0.012, V(1, 0, 0.25)));
-  both('J_KN', 'KN', mergeGeoms([ring(V(K.x - 0.055, K.y - 0.015, K.z), 0.045, 0.011, V(0, 1, 0)), ring(V(K.x + 0.06, K.y - 0.015, K.z), 0.042, 0.011, V(0, 1, 0)),
-    taperTube(new THREE.CatmullRomCurve3([V(K.x - 0.01, K.y - 0.03, K.z + 0.04), V(K.x + 0.02, K.y + 0.05, K.z - 0.03)]), 8, 6, () => 0.01), taperTube(new THREE.CatmullRomCurve3([V(K.x + 0.01, K.y - 0.03, K.z - 0.05), V(K.x - 0.02, K.y + 0.05, K.z + 0.02)]), 8, 6, () => 0.01)]));
-  both('J_AN', 'AN', cap(V(A.x, A.y - 0.04, A.z + 0.01), 0.05, V(0, 1, 0), 1.0));
-  add('J_SYM', 'ROOT', blob(0, 0.31, 0.16, 0.022, 0.06, 0.03, 0.04, 8, 14));
-  both('J_TMJ', 'NECK', blob(0.25, 3.69, -0.08, 0.025, 0.008, 0.02, 0.03, 9, 10));
-  return recs;
-}
-/* bone & joint catalogue */
-const BONES = {
-  SKULL: ['Skull (cranium)', 'Protects the brain and holds the eyes, ears and teeth — 22 bones locked together by sutures.', V(0, 0.9, 0.2), 'Skull & face'],
-  MAND: ['Mandible (jawbone)', 'The only movable bone of the skull; it hinges at the jaw joint for chewing and speaking.', V(0, 0.2, 0.75), 'Skull & face'],
-  TEETH: ['Teeth', 'The hardest parts of the body — 32 adult teeth cut, tear and grind food.', V(0, 0.15, 1.25), 'Skull & face'],
-  CERV: ['Cervical vertebrae (C1–C7)', 'The seven neck bones; C1 and C2 let the head nod and turn.', V(0, 0.55, -0.9), 'Spine & chest'],
-  THOR: ['Thoracic vertebrae (T1–T12)', 'Twelve middle back bones, each joined to a pair of ribs.', V(0, 0, -1.25), 'Spine & chest'],
-  LUMB: ['Lumbar vertebrae (L1–L5)', 'Five big, strong lower-back bones that carry most of the body’s weight.', V(0, -0.35, -1.1), 'Spine & chest'],
-  SACR: ['Sacrum', 'Five fused vertebrae forming the back of the pelvis.', V(0, -0.6, -1.0), 'Spine & chest'],
-  COCC: ['Coccyx (tailbone)', 'Small fused bones at the bottom of the spine; an anchor for pelvic muscles.', V(0, -1.0, -0.9), 'Spine & chest'],
-  DISC: ['Intervertebral discs', 'Rubbery cartilage cushions between vertebrae that absorb shocks and let the spine bend.', V(0, 0, -1.9), 'Joints & cartilage'],
-  RIBS: ['Ribs (12 pairs)', 'A flexible cage that protects the heart and lungs and moves when you breathe.', V(0, 0, 0.75), 'Spine & chest'],
-  COST: ['Costal cartilage', 'Bendy cartilage joining the ribs to the breastbone, letting the chest expand.', V(0, -0.05, 1.25), 'Joints & cartilage'],
-  STER: ['Sternum (breastbone)', 'A flat bone at the front of the chest that anchors the ribs and shields the heart.', V(0, 0, 1.7), 'Spine & chest'],
-  CLAV: ['Clavicle (collarbone)', 'A strut that holds the shoulder away from the body — the most commonly broken bone.', V(0.55, 0.65, 0.6), 'Shoulders & arms'],
-  SCAP: ['Scapula (shoulder blade)', 'A triangular bone that glides over the back and forms the shoulder socket.', V(0.45, 0.25, -1.0), 'Shoulders & arms'],
-  HUM: ['Humerus', 'The upper-arm bone, from the shoulder ball to the elbow hinge.', V(0.85, 0.1, 0.0), 'Shoulders & arms'],
-  RAD: ['Radius', 'The thumb-side forearm bone; it rolls over the ulna to turn the palm up or down.', V(1.0, -0.2, 0.35), 'Shoulders & arms'],
-  ULN: ['Ulna', 'The little-finger-side forearm bone; its tip forms the point of the elbow.', V(0.9, -0.2, -0.35), 'Shoulders & arms'],
-  CARP: ['Carpals', 'Eight small wrist bones in two rows that make the wrist flexible.', V(0.65, -0.3, 0.35), 'Hands'],
-  MCARP: ['Metacarpals', 'Five bones forming the palm; their heads are your knuckles.', V(0.8, -0.55, 0.55), 'Hands'],
-  HPHAL: ['Phalanges of the hand', '14 finger bones — 3 in each finger, 2 in the thumb — for gripping and fine movement.', V(0.95, -0.85, 0.75), 'Hands'],
-  PELV: ['Hip bones (pelvis)', 'Ilium, ischium and pubis fused together — they carry the upper body onto the legs.', V(0.65, 0.35, 0.1), 'Pelvis & legs'],
-  FEM: ['Femur (thigh bone)', 'The longest and strongest bone — it can support 30 times the body’s weight.', V(0.75, -0.2, 0.25), 'Pelvis & legs'],
-  PAT: ['Patella (kneecap)', 'A bone inside the thigh tendon that protects the knee and boosts leverage.', V(0.3, 0.0, 1.0), 'Pelvis & legs'],
-  TIB: ['Tibia (shin bone)', 'The main weight-bearing bone of the lower leg.', V(0.55, -0.45, 0.45), 'Pelvis & legs'],
-  FIB: ['Fibula', 'A thin bone beside the tibia that anchors muscles and forms the outer ankle.', V(0.95, -0.45, -0.25), 'Pelvis & legs'],
-  TARS: ['Tarsals', 'Seven ankle and heel bones that take the impact of every step.', V(0.6, -0.4, -0.2), 'Feet'],
-  MTARS: ['Metatarsals', 'Five long bones that form the arch of the foot.', V(0.7, -0.55, 0.45), 'Feet'],
-  FPHAL: ['Phalanges of the foot', '14 toe bones that help with balance and push-off when walking.', V(0.8, -0.65, 0.95), 'Feet'],
-  J_SH: ['Shoulder joint', 'A ball-and-socket joint — the most mobile joint in the body, able to swing in almost any direction.', V(0.45, 0.35, 0.45), 'Joints & cartilage'],
-  J_EL: ['Elbow joint', 'A hinge joint that bends and straightens the arm; the radius also pivots here.', V(0.55, 0.0, 0.5), 'Joints & cartilage'],
-  J_WR: ['Wrist joint', 'An ellipsoid joint that tilts the hand up, down and side to side.', V(0.45, -0.1, 0.55), 'Joints & cartilage'],
-  J_HIP: ['Hip joint', 'A deep ball-and-socket joint — very stable, built to carry body weight.', V(0.45, 0.0, 0.55), 'Joints & cartilage'],
-  J_KN: ['Knee joint', 'The largest hinge joint, cushioned by two menisci and held by the cruciate ligaments.', V(0.45, 0.0, 0.7), 'Joints & cartilage'],
-  J_AN: ['Ankle joint', 'A hinge between the shin bones and the talus that points the foot up and down.', V(0.45, -0.1, 0.55), 'Joints & cartilage'],
-  J_SYM: ['Pubic symphysis', 'A cartilage joint joining the two hip bones at the front.', V(0, -0.4, 0.9), 'Joints & cartilage'],
-  J_TMJ: ['Jaw joint (TMJ)', 'A sliding hinge in front of each ear that opens the mouth.', V(0.45, 0.4, 0.2), 'Joints & cartilage'],
+const BB = {
+  title: 'BOTANY', sub: 'The Living Plant', vol: 'VOLUME II  ·  8 LIVE EXPERIMENTS', footer: 'Botany · The Living Plant', lab0: 'TIME-LAPSE',
+  cover: ['#2f5a32', '#14331a'], edge: '#1e4422', spine: '#1a3a1e', gold: '#e2bf68', ink: '#1f3a22', rim: 0x9ad8a0, screen: '#0b0f12', nebula: ['#2f9a6a', '#3a6cff'],
+  emblem(g) { g.lineWidth = 7; g.beginPath(); g.moveTo(0, 230); g.bezierCurveTo(-260, 60, -170, -230, 0, -300); g.bezierCurveTo(170, -230, 260, 60, 0, 230); g.stroke(); g.lineWidth = 5; g.beginPath(); g.moveTo(0, 260); g.lineTo(0, -270); g.stroke(); for (let i = 0; i < 6; i++) { const y = 170 - i * 75; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, y); g.quadraticCurveTo(s * 70, y - 30, s * (150 - Math.abs(i - 2) * 18), y - 95); g.stroke(); } } },
 };
-const CARTILAGE = new Set(['DISC', 'COST', 'J_SH', 'J_EL', 'J_WR', 'J_HIP', 'J_KN', 'J_AN', 'J_SYM', 'J_TMJ']);
-
-/* ================= NERVOUS SYSTEM PATHS (left side; mirrored to the right) ================= */
-const mirP = p => V(-p.x, p.y, p.z);
-const mirL = a => a.map(mirP);
-const NV = {};   // named polylines (left side)
-const CORD = [];   // spinal cord centreline, top → conus
-let CONUS_Y = 1.52;
-function cordAt(y) { // point on the cord (or cauda) at height y
-  if (y >= CORD[0].y) return CORD[0].clone();
-  for (let i = 1; i < CORD.length; i++) if (CORD[i].y <= y) { const a = CORD[i - 1], b = CORD[i], t = (a.y - y) / (a.y - b.y); return a.clone().lerp(b, t); }
-  return CORD[CORD.length - 1].clone();
-}
-const LEVELS = [];   // 31 spinal nerve levels
-function buildNervePaths() {
-  // spinal cord through the vertebral canal
-  CORD.push(V(0, 3.66, -0.12));
-  for (const v of VERT) { const c = canalAt(v); if (c.y > CONUS_Y - 0.05) CORD.push(c); }
-  CORD.push(cordAt(CONUS_Y).add(V(0, -0.08, 0)));
-  // spinal nerve levels: C1–C8, T1–T12, L1–L5, S1–S5, Co1
-  const exitOf = (y, z) => V(0.13, y, z + 0.015);
-  for (let i = 0; i < 8; i++) { const v = VERT[Math.min(6, i)], y = i < 7 ? v.p.y + v.h * 0.45 : v.p.y - v.h * 0.5; LEVELS.push({ name: 'C' + (i + 1), y, exit: exitOf(y, canalAt(v).z) }); }
-  for (let i = 0; i < 12; i++) { const v = VERT[7 + i]; LEVELS.push({ name: 'T' + (i + 1), y: v.p.y - v.h * 0.5, exit: exitOf(v.p.y - v.h * 0.5, canalAt(v).z) }); }
-  for (let i = 0; i < 5; i++) { const v = VERT[19 + i]; LEVELS.push({ name: 'L' + (i + 1), y: v.p.y - v.h * 0.5, exit: exitOf(v.p.y - v.h * 0.5, canalAt(v).z) }); }
-  for (let i = 0; i < 5; i++) { const y = 0.8 - i * 0.085, z = -0.2 - 0.06 * i; LEVELS.push({ name: 'S' + (i + 1), y, exit: V(0.08 - i * 0.008, y, z + 0.03), sacral: true }); }
-  LEVELS.push({ name: 'Co1', y: 0.36, exit: V(0.03, 0.36, -0.27), sacral: true });
-  // root: from the cord (where its segment sits) down to the exit — lumbar/sacral roots descend in the cauda equina
-  LEVELS.forEach((L, i) => {
-    const segY = lerp(3.62, CONUS_Y, i / (LEVELS.length - 1)) ;   // cord segments are compressed above the conus
-    const c = cordAt(Math.max(segY, CONUS_Y - 0.06));
-    const pts = [c.clone().add(V(0.02, 0, 0))];
-    if (c.y - L.exit.y > 0.12) { pts.push(V(0.02 + 0.06 * (i - 20) / 11, lerp(c.y, L.exit.y, 0.35), c.z), V(L.exit.x - 0.06, L.exit.y + 0.05, L.exit.z - 0.02)); }
-    pts.push(L.exit.clone());
-    L.root = pts; L.drg = L.exit.clone().add(V(-0.015, 0, -0.01));
-  });
-  const lv = n => LEVELS.find(l => l.name === n).exit;
-  // ---- brachial plexus & arm ----
-  const AX = V(0.72, 2.6, -0.05);
-  NV.brachial = ['C5', 'C6', 'C7', 'C8', 'T1'].map(n => [lv(n), V(0.32, lerp(lv(n).y, 2.95, 0.6), -0.1), V(0.55, 2.84, -0.02), AX]);
-  NV.axillary = [AX, V(0.8, 2.6, -0.17), V(0.9, 2.66, -0.12), V(0.94, 2.72, -0.02)];
-  NV.musculo = [AX, V(0.84, 2.35, 0.05), V(0.9, 1.95, 0.08), V(0.98, 1.45, 0.06), V(1.06, 0.95, 0.08), V(1.12, 0.45, 0.07)];
-  NV.median = [AX, V(0.81, 2.3, 0.0), V(0.9, 1.8, 0.03), V(0.945, 1.45, 0.04), V(1.03, 0.95, 0.05), V(1.1, 0.45, 0.05), V(1.13, 0.2, 0.055), V(1.15, 0.0, 0.065)];
-  NV.ulnar = [AX, V(0.79, 2.25, -0.08), V(0.86, 1.75, -0.13), V(0.885, 1.45, -0.165), V(0.97, 0.9, -0.06), V(1.06, 0.22, 0.035), V(1.07, -0.02, 0.06)];
-  NV.radial = [AX, V(0.8, 2.3, -0.19), V(0.93, 1.92, -0.17), V(1.03, 1.6, -0.08), V(1.07, 1.38, -0.02), V(1.15, 0.8, -0.01), V(1.2, 0.2, -0.02), V(1.24, 0.06, -0.015)];
-  const tip = f => { const p = fingerPts(f); return p.map(q => q.clone().add(V(0, 0, 0.032))); };
-  NV.digits = [[...NV.median.slice(-1), ...THUMB.slice(1).map(p => p.clone().add(V(-0.01, 0, 0.035)))], [NV.median[NV.median.length - 1], ...tip(FINGERS[0])], [NV.median[NV.median.length - 1], ...tip(FINGERS[1])], [NV.median[NV.median.length - 1], ...tip(FINGERS[2])], [NV.ulnar[NV.ulnar.length - 1], ...tip(FINGERS[3])], [NV.ulnar[NV.ulnar.length - 1], ...tip(FINGERS[2]).slice(1).map(p => p.add(V(-0.012, 0, 0)))]];
-  // ---- cervical plexus & phrenic ----
-  NV.cervical = [[lv('C2'), V(0.2, 3.62, -0.15), V(0.28, 3.86, -0.22)], [lv('C2'), V(0.22, 3.5, -0.08), V(0.33, 3.66, 0.0)], [lv('C3'), V(0.18, 3.32, 0.02), V(0.08, 3.25, 0.15)], [lv('C4'), V(0.3, 3.12, -0.08), V(0.5, 3.05, 0.0)]];
-  NV.phrenic = [lv('C4'), V(0.12, 3.15, 0.04), V(0.13, 2.85, 0.12), V(0.2, 2.45, 0.18), V(0.27, 2.05, 0.12), V(0.3, 1.85, 0.0), V(0.2, 1.9, -0.1)];
-  // ---- intercostals ----
-  NV.intercostal = [];
-  for (let i = 0; i < 12; i++) { const r = ribPath(i), L = lv('T' + (i + 1)); const pts = [L, ...r.bone.slice(1).map(p => p.clone().add(V(0, -0.035, 0.0)))]; if (r.cart) pts.push(...r.cart.slice(1).map(p => p.clone().add(V(0, -0.03, 0.01)))); NV.intercostal.push(pts); }
-  // ---- lumbar plexus & leg ----
-  NV.lumbar = ['L1', 'L2', 'L3', 'L4'].map(n => [lv(n), V(0.19, lv(n).y - 0.08, -0.13), V(0.24, 0.92, -0.1)]);
-  NV.ilio = [lv('L1'), V(0.35, 1.25, -0.2), V(0.55, 0.98, -0.05), V(0.45, 0.7, 0.2), V(0.25, 0.5, 0.25)];
-  NV.latcut = [V(0.24, 0.92, -0.1), V(0.5, 0.75, 0.08), V(0.55, 0.35, 0.12), V(0.52, -0.4, 0.12), V(0.45, -1.2, 0.1)];
-  NV.femoral = [V(0.24, 0.92, -0.1), V(0.28, 0.7, 0.02), V(0.32, 0.5, 0.17), V(0.33, 0.25, 0.19), V(0.36, -0.3, 0.2), V(0.33, -1.2, 0.17)];
-  NV.saphenous = [V(0.33, 0.25, 0.19), V(0.22, -0.5, 0.1), V(0.2, -1.6, 0.0), V(0.19, -2.6, 0.03), V(0.19, -3.42, 0.04), V(0.19, -3.7, 0.16)];
-  NV.obturator = [V(0.24, 0.92, -0.1), V(0.14, 0.75, -0.04), V(0.2, 0.3, 0.08), V(0.19, -0.25, 0.04), V(0.2, -0.9, 0.02)];
-  NV.sacral = ['L4', 'L5', 'S1', 'S2', 'S3'].map(n => [lv(n), V(0.16, lerp(lv(n).y, 0.52, 0.6), -0.22), V(0.24, 0.47, -0.22)]);
-  NV.sciatic = [V(0.24, 0.47, -0.22), V(0.32, 0.28, -0.21), V(0.33, -0.5, -0.15), V(0.31, -1.35, -0.1)];
-  NV.tibial = [V(0.31, -1.35, -0.1), V(0.29, -1.72, -0.11), V(0.29, -2.5, -0.11), V(0.23, -3.3, -0.1), V(0.2, -3.5, -0.09), V(0.2, -3.74, 0.02), V(0.21, -3.76, 0.2), V(0.205, -3.77, 0.5)];
-  NV.lplantar = [V(0.2, -3.74, 0.02), V(0.3, -3.76, 0.12), V(0.35, -3.77, 0.33), V(0.378, -3.775, 0.38)];
-  NV.peroneal = [V(0.31, -1.35, -0.1), V(0.38, -1.62, -0.08), V(0.43, -1.86, -0.02), V(0.36, -2.3, 0.08), V(0.33, -2.9, 0.07), V(0.28, -3.45, 0.08), V(0.27, -3.66, 0.22), V(0.262, -3.7, 0.48)];
-  NV.supperoneal = [V(0.43, -1.86, -0.02), V(0.41, -2.6, 0.04), V(0.35, -3.4, 0.07), V(0.34, -3.66, 0.2), V(0.345, -3.7, 0.4)];
-  NV.gluteal = [V(0.24, 0.47, -0.22), V(0.35, 0.55, -0.3), V(0.42, 0.45, -0.28)];
-  // ---- autonomic ----
-  NV.symp = []; for (const L of LEVELS.slice(1, 26)) NV.symp.push(V(0.1, L.y, L.exit.z + 0.075));
-  NV.symp.push(V(0.06, 0.75, -0.15), V(0.035, 0.5, -0.23), V(0.0, 0.36, -0.26));
-  NV.splanch = [[NV.symp[12], V(0.07, 1.95, 0.0), V(0.0, 1.78, 0.02)], [NV.symp[16], V(0.05, 1.7, -0.02), V(0.0, 1.78, 0.02)]];
-  NV.cardiac = [[NV.symp[1], V(0.08, 2.8, 0.06), V(0.08, 2.35, 0.12)]];
-  NV.vagus = [V(0.04, 3.66, -0.09), V(0.09, 3.45, -0.02), V(0.1, 3.1, 0.04), V(0.09, 2.75, -0.02), V(0.07, 2.4, -0.05), V(0.05, 2.0, -0.02), V(0.1, 1.8, 0.07), V(0.2, 1.72, 0.14)];
-  NV.vagusBr = [[V(0.07, 2.4, -0.05), V(0.09, 2.3, 0.08)], [V(0.09, 2.75, -0.02), V(0.25, 2.55, -0.05)], [V(0.05, 2.0, -0.02), V(0.0, 1.78, 0.02), V(-0.05, 1.3, 0.1), V(0.05, 1.0, 0.14)]];
-  // ---- cranial nerves (left) ----
-  NV.cranial = {
-    'I · Olfactory': [[V(0.03, 3.87, 0.2), V(0.03, 3.84, 0.31)], 'Carries smell from the nose to the brain.'],
-    'II · Optic': [[V(0.12, 3.79, 0.33), V(0.07, 3.77, 0.18), V(0.0, 3.75, 0.1), V(-0.05, 3.79, 0.0)], 'Carries vision from the eye; half its fibres cross at the optic chiasm.'],
-    'III · Oculomotor': [[V(0.015, 3.76, -0.04), V(0.07, 3.79, 0.12), V(0.1, 3.8, 0.27)], 'Moves most eye muscles, lifts the eyelid and narrows the pupil.'],
-    'IV · Trochlear': [[V(0.03, 3.74, -0.14), V(0.09, 3.77, 0.0), V(0.08, 3.85, 0.27)], 'Controls the superior oblique muscle to turn the eye down and in.'],
-    'V · Trigeminal': [[V(0.05, 3.7, -0.08), V(0.12, 3.7, 0.0), V(0.12, 3.92, 0.35)], 'Feeling in the face and the chewing muscles — the largest cranial nerve.'],
-    'V2 · Trigeminal (maxillary)': [[V(0.12, 3.7, 0.0), V(0.17, 3.7, 0.33)], 'Feeling in the cheek, upper lip and upper teeth.'],
-    'V3 · Trigeminal (mandibular)': [[V(0.12, 3.7, 0.0), V(0.17, 3.58, 0.08), V(0.14, 3.48, 0.26)], 'Feeling in the jaw and lower teeth, and power for chewing.'],
-    'VI · Abducens': [[V(0.012, 3.68, -0.07), V(0.08, 3.74, 0.1), V(0.14, 3.79, 0.25)], 'Moves the eye outward (lateral rectus).'],
-    'VII · Facial': [[V(0.05, 3.69, -0.1), V(0.26, 3.71, -0.04), V(0.26, 3.6, 0.0), V(0.22, 3.62, 0.18), V(0.2, 3.84, 0.29)], 'Moves the muscles of facial expression and carries taste from the front of the tongue.'],
-    'VII · Facial (lower branches)': [[V(0.26, 3.6, 0.0), V(0.18, 3.52, 0.3), V(0.1, 3.45, 0.3)], 'Controls the lips, chin and smile.'],
-    'VIII · Vestibulocochlear': [[V(0.06, 3.68, -0.11), V(0.23, 3.72, -0.06)], 'Hearing and balance, from the inner ear.'],
-    'IX · Glossopharyngeal': [[V(0.04, 3.64, -0.11), V(0.08, 3.55, 0.05), V(0.04, 3.5, 0.18)], 'Taste from the back of the tongue and the swallowing reflex.'],
-    'XI · Accessory': [[V(0.03, 3.3, -0.12), V(0.06, 3.62, -0.12), V(0.18, 3.42, -0.13), V(0.14, 3.25, 0.06)], 'Moves the neck (sternocleidomastoid) and shrugs the shoulders (trapezius).'],
-    'XI · Accessory (trapezius)': [[V(0.18, 3.42, -0.13), V(0.32, 3.12, -0.26), V(0.45, 3.0, -0.28)], 'Shrugs the shoulders.'],
-    'XII · Hypoglossal': [[V(0.03, 3.62, -0.08), V(0.1, 3.48, 0.04), V(0.03, 3.5, 0.22)], 'Moves the tongue for speaking and swallowing.'],
-  };
-  // keep every nerve just under the skin
-  const pushIn = p => { for (let k = 0; k < 8; k++) { const d = bodySDF(p.x, p.y, p.z); if (d < -0.015) break; const e = 0.01, g = V(bodySDF(p.x + e, p.y, p.z) - bodySDF(p.x - e, p.y, p.z), bodySDF(p.x, p.y + e, p.z) - bodySDF(p.x, p.y - e, p.z), bodySDF(p.x, p.y, p.z + e) - bodySDF(p.x, p.y, p.z - e)).normalize(); p.addScaledVector(g, -(d + 0.018)); } return p; };
-  const walk = v => { if (!v) return; if (v.isVector3 || (v.x !== undefined && v.y !== undefined)) pushIn(v); else if (Array.isArray(v)) v.forEach(walk); };
-  for (const k in NV) { if (k === 'cranial') { for (const key in NV.cranial) walk(NV.cranial[key][0]); } else walk(NV[k]); }
-  for (const L of LEVELS) { walk(L.root); pushIn(L.exit); pushIn(L.drg); }
-  // inner brain tracts
-  NV.motorTract = [V(0.12, 4.27, 0.01), V(0.07, 4.05, -0.03), V(0.035, 3.85, -0.07), V(0.0, 3.68, -0.1)];
-  NV.sensTract = [V(0.0, 3.68, -0.11), V(0.04, 3.85, -0.09), V(0.05, 3.95, -0.07), V(0.13, 4.24, -0.09)];
-}
-/* small twigs from a point toward the skin (sensory endings) */
-function twigsTo(p, n, len, rnd) {
-  const out = [];
-  for (let k = 0; k < n; k++) {
-    const pts = [p.clone()], d = V(rnd() - .5, rnd() - .5, rnd() - .5).normalize(); let q = p.clone();
-    for (let s = 0; s < 6; s++) {
-      const e = 0.01, gx = bodySDF(q.x + e, q.y, q.z) - bodySDF(q.x - e, q.y, q.z), gy = bodySDF(q.x, q.y + e, q.z) - bodySDF(q.x, q.y - e, q.z), gz = bodySDF(q.x, q.y, q.z + e) - bodySDF(q.x, q.y, q.z - e);
-      const g = V(gx, gy, gz).normalize(); d.lerp(g, 0.45).normalize();
-      q = q.clone().addScaledVector(d, len / 6); if (bodySDF(q.x, q.y, q.z) > -0.012) break; pts.push(q);
-    }
-    if (pts.length > 1) out.push(pts);
-  }
-  return out;
-}
-const NERVE_INFO = {
-  axillary: ['Axillary nerve', 'Wraps around the top of the humerus to move the deltoid and lift the arm.'],
-  musculo: ['Musculocutaneous nerve', 'Powers the biceps to bend the elbow, then supplies feeling to the outer forearm.'],
-  median: ['Median nerve', 'Runs down the middle of the arm through the carpal tunnel; controls thumb grip and feeling in most fingers.'],
-  ulnar: ['Ulnar nerve', 'Passes behind the elbow (the “funny bone”) to the little-finger side of the hand.'],
-  radial: ['Radial nerve', 'Spirals around the humerus to straighten the elbow, wrist and fingers.'],
-  digits: ['Digital nerves', 'Fine nerves along each finger carrying touch from the fingertips — among the most sensitive skin in the body.'],
-  phrenic: ['Phrenic nerve', 'From C3–C5 to the diaphragm — every breath depends on it.'],
-  cervical: ['Cervical plexus branches', 'Feeling in the neck, ear and back of the head.'],
-  intercostal: ['Intercostal nerves', 'Run under each rib to the breathing muscles and the skin of the chest and belly.'],
-  ilio: ['Iliohypogastric nerve', 'Feeling in the lower belly and hip; powers the abdominal muscles.'],
-  latcut: ['Lateral cutaneous nerve of thigh', 'Feeling in the outer thigh.'],
-  femoral: ['Femoral nerve', 'Powers the quadriceps to straighten the knee — the nerve behind the knee-jerk reflex.'],
-  saphenous: ['Saphenous nerve', 'The longest sensory branch, carrying feeling from the inner leg and foot.'],
-  obturator: ['Obturator nerve', 'Pulls the thighs together (adductor muscles).'],
-  sciatic: ['Sciatic nerve', 'The thickest nerve in the body — as wide as a thumb — running down the back of the thigh.'],
-  tibial: ['Tibial nerve', 'Powers the calf muscles to point the foot and carries feeling from the sole.'],
-  lplantar: ['Lateral plantar nerve', 'Feeling and small muscles on the outer sole.'],
-  peroneal: ['Common peroneal nerve', 'Wraps around the fibula to lift the foot and toes.'],
-  supperoneal: ['Superficial peroneal nerve', 'Feeling on the top of the foot.'],
-  gluteal: ['Gluteal nerves', 'Power the buttock muscles for standing up and climbing.'],
-};
-
-/* ================= LAYERS: skeleton & nerves (built from the shared rig) ================= */
-function buildSkeletonLayer(parent) {
-  const recs = skeletonGeometry(0.6).filter(r => r.part !== 'TEETH').map(r => { const g = r.geo; if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); if (!g.attributes.normal) g.computeVertexNormals(); return g; });
-  const mesh = new THREE.Mesh(mergeGeoms(recs), new THREE.MeshPhysicalMaterial({ color: '#efe4cc', roughness: 0.5, clearcoat: 0.3, transparent: true, opacity: 0.22, depthWrite: false, emissive: new THREE.Color('#2a2418') }));
-  mesh.renderOrder = 3; parent.add(mesh); mesh.userData.base = 0.22; return mesh;
-}
-function buildNerveLayer(parent) {
-  buildNervePaths();
-  const t = (pts, r0, r1) => { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); return taperTube(c, Math.max(8, Math.round(c.getLength() * 30)), 6, u => lerp(r0, r1, u)); };
-  const L = [], add = (pts, r0, r1) => { L.push(t(pts, r0, r1)); L.push(mirrorGeo(t(pts, r0, r1))); };
-  L.push(t(CORD, 0.035, 0.025));
-  for (const lv of LEVELS) add(lv.root, 0.01, 0.012);
-  for (const k of ['axillary', 'musculo', 'median', 'ulnar', 'radial', 'phrenic', 'ilio', 'latcut', 'femoral', 'saphenous', 'obturator', 'sciatic', 'tibial', 'lplantar', 'peroneal', 'supperoneal', 'gluteal', 'vagus']) add(NV[k], k === 'sciatic' ? 0.026 : 0.015, 0.008);
-  for (const k of ['brachial', 'lumbar', 'sacral', 'digits', 'intercostal', 'cervical']) for (const p of NV[k]) add(p, 0.01, 0.006);
-  for (const key in NV.cranial) add(NV.cranial[key][0], 0.008, 0.005);
-  add(NV.symp, 0.007, 0.007);
-  const brain = [blob(0.148, 4.0, -0.04, 0.15, 0.24, 0.33, 0.06, 1, 32), blob(-0.148, 4.0, -0.04, 0.15, 0.24, 0.33, 0.06, 2, 32), blob(0, 3.73, -0.27, 0.2, 0.1, 0.13, 0.04, 3, 24)];
-  const mesh = new THREE.Mesh(mergeGeoms([...L, ...brain]), new THREE.MeshPhysicalMaterial({ color: '#ffd77a', roughness: 0.4, clearcoat: 0.6, transparent: true, opacity: 0.7, depthWrite: false, emissive: new THREE.Color('#5a3c08') }));
-  mesh.renderOrder = 4; parent.add(mesh); mesh.userData.base = 0.7; return mesh;
-}
-
-/* ================= ORGANS ================= */
-const ORGANS = [
-  { key: 'brain', name: 'Brain', file: 'brain.html', color: '#f4a8c4', sys: 'Nervous system', desc: 'The control centre for thinking, memory, movement and the senses — about 86 billion neurons.' },
-  { key: 'eyes', name: 'Eyes', file: 'eye.html', color: '#8fd8ff', sys: 'Sensory system', desc: 'Focus light onto the retina and turn it into signals the brain reads as pictures.' },
-  { key: 'lungs', name: 'Lungs', file: 'lungs.html', color: '#ff9fb0', sys: 'Respiratory system', desc: 'Bring oxygen into the blood and remove carbon dioxide — about 20,000 breaths a day.' },
-  { key: 'heart', name: 'Heart', file: 'heart.html', color: '#ff4a5c', sys: 'Circulatory system', desc: 'A muscular pump that beats about 100,000 times a day to push blood around the body.' },
-  { key: 'liver', name: 'Liver', file: 'liver.html', color: '#d0563e', sys: 'Digestive system', desc: 'Cleans the blood, stores energy, makes bile and handles over 500 jobs.' },
-  { key: 'stomach', name: 'Stomach', file: 'stomach.html', color: '#ffb48e', sys: 'Digestive system', desc: 'Churns food with acid and enzymes into a smooth paste called chyme.' },
-  { key: 'pancreas', name: 'Pancreas', file: 'pancreas.html', color: '#ffd27a', sys: 'Digestive & endocrine', desc: 'Makes digestive enzymes and the hormones insulin and glucagon that control blood sugar.' },
-  { key: 'kidneys', name: 'Kidneys', file: 'kidneys.html', color: '#e8745c', sys: 'Urinary system', desc: 'Filter about 180 litres of blood plasma a day, keeping what you need and making urine.' },
-  { key: 'intestines', name: 'Intestines', file: 'intestines.html', color: '#f4b8a0', sys: 'Digestive system', desc: 'About 7.5 m of tubing that absorbs nutrients and water from digested food.' },
-  { key: 'nervous', name: 'Nervous system', file: 'nervous.html', color: '#ffd27a', sys: 'Body system', system: true, desc: 'Brain, spinal cord and 72 km of nerves carrying signals at up to 120 m/s.' },
-  { key: 'skeleton', name: 'Skeleton', file: 'skeleton.html', color: '#efe4cc', sys: 'Body system', system: true, desc: '206 bones and about 360 joints that hold you up, protect organs and make movement possible.' },
-];
-const OBY = {}; ORGANS.forEach(o => OBY[o.key] = o);
-const organPick = [];
-function organMat(hex, o = {}) { const c = new THREE.Color(hex); return new THREE.MeshPhysicalMaterial(Object.assign({ color: c, roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.3, sheen: 0.5, sheenColor: new THREE.Color('#ffffff'), emissive: c.clone().multiplyScalar(0.2) }, o)); }
-function addOrgan(key, meshes, anchor) {
-  const o = OBY[key], g = new THREE.Group(); g.name = key; o.group = g; o.anchor = anchor; o.mats = [];
-  for (const m of meshes) { g.add(m); m.userData.key = key; organPick.push(m); if (!o.mats.includes(m.material)) { o.mats.push(m.material); m.material.userData.baseEm = m.material.emissive.clone(); } }
-  const c = new THREE.Box3().setFromObject(g).getCenter(V()); o.center = c;
-  return g;
-}
-function wrinkled(geo, amp, freq, sd) { const p = geo.attributes.position, v = V(), c = V(); for (let i = 0; i < p.count; i++) c.add(v.fromBufferAttribute(p, i)); c.multiplyScalar(1 / p.count); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = v.clone().sub(c).normalize(); const k = 1 - Math.abs(noise(v.x * freq + sd, v.y * freq, v.z * freq)); v.addScaledVector(n, amp * (k * k - 0.4)); p.setXYZ(i, v.x, v.y, v.z); } geo.computeVertexNormals(); return geo; }
-function buildOrgans(parent) {
-  const M = (g, mat) => new THREE.Mesh(g, mat);
-  // brain: two wrinkled hemispheres + cerebellum + brainstem
-  const bm = organMat('#f2b6c2', { roughness: 0.5 });
-  parent.add(addOrgan('brain', [
-    M(wrinkled(blob(-0.155, 4.0, 0.0, 0.16, 0.25, 0.38, 0.05, 1, 40), 0.025, 11, 1), bm), M(wrinkled(blob(0.155, 4.0, 0.0, 0.16, 0.25, 0.38, 0.05, 2, 40), 0.025, 11, 5), bm),
-    M(wrinkled(blob(0, 3.74, -0.27, 0.2, 0.1, 0.13, 0.04, 3, 28), 0.012, 22, 2), organMat('#e89aae')), M(tube([V(0, 3.78, -0.12), V(0, 3.5, -0.1)], 0.055, 0.045, 10, 8), organMat('#e0a0b0'))], V(0, 4.42, 0)));
-  // eyes
-  const eyes = [];
-  for (const s of [-1, 1]) {
-    eyes.push(M(new THREE.SphereGeometry(0.06, 28, 20).translate(0.12 * s, 3.79, 0.33), organMat('#f2f6fa', { roughness: 0.15, clearcoat: 1, emissive: new THREE.Color('#2a3440') })));
-    eyes.push(M(new THREE.CircleGeometry(0.028, 24).translate(0.12 * s, 3.79, 0.391), organMat('#3a7ab8', { emissive: new THREE.Color('#0a2a4a'), side: THREE.DoubleSide })));
-    eyes.push(M(tube([V(0.12 * s, 3.79, 0.28), V(0.07 * s, 3.77, 0.12), V(0, 3.75, 0.05)], 0.016, 0.014, 6, 12), organMat('#f2e2b0')));
-  }
-  parent.add(addOrgan('eyes', eyes, V(0.12, 3.9, 0.36)));
-  // lungs with trachea & bronchi
-  const lm = organMat('#f29aa8', { roughness: 0.6, sheen: 1, sheenColor: new THREE.Color('#ffd0d8') });
-  const lungs = [];
-  for (const s of [-1, 1]) {
-    const g = blob(0.36 * s, 2.42, -0.04, 0.29, 0.54, 0.33, 0.06, s + 4, 40), p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); if (x * s < 0.2) p.setX(i, s * Math.max(x * s, 0.2 - (s > 0 ? 0.06 : 0) + 0.02 * (y - 2.4))); if (s > 0 && x > 0 && x < 0.32 && y < 2.4 && p.getZ(i) > 0) p.setX(i, Math.max(x, 0.32 - 0.25 * (2.4 - y))); }
-    g.computeVertexNormals(); lungs.push(M(g, lm));
-    lungs.push(M(tube([V(0, 2.75, -0.05), V(0.12 * s, 2.6, -0.05), V(0.25 * s, 2.45, -0.05)], 0.035, 0.025, 8, 12), organMat('#f0dcd0')));
-  }
-  lungs.push(M(tube([V(0, 3.3, 0.02), V(0, 2.75, -0.05)], 0.045, 0.042, 12, 12), organMat('#f0dcd0')));
-  parent.add(addOrgan('lungs', lungs, V(-0.52, 2.95, 0)));
-  // heart (tilted to the patient's left = +x) with the aortic arch
-  const hg = blob(0, 0, 0, 0.2, 0.26, 0.18, 0.06, 7, 36); hg.rotateZ(0.5); hg.translate(0.1, 2.2, 0.13);
-  parent.add(addOrgan('heart', [M(hg, organMat('#d42a36', { emissive: new THREE.Color('#5a0810') })), M(tube([V(0.02, 2.36, 0.1), V(0.02, 2.62, 0.05), V(-0.08, 2.68, -0.1), V(-0.05, 2.45, -0.22), V(-0.02, 2.0, -0.24)], 0.05, 0.045, 10, 30), organMat('#e0303c'))], V(0.12, 2.55, 0.15)));
-  // liver (patient's right = -x)
-  const lv = blob(-0.26, 1.8, 0.07, 0.5, 0.25, 0.32, 0.05, 9, 40), lp = lv.attributes.position;
-  for (let i = 0; i < lp.count; i++) { const x = lp.getX(i), y = lp.getY(i); const t = clamp01((x + 0.76) / 1.0); lp.setY(i, 1.8 + (y - 1.8) * lerp(1.15, 0.45, t) - 0.08 * t); }
-  lv.computeVertexNormals();
-  parent.add(addOrgan('liver', [M(lv, organMat('#8e2a22', { emissive: new THREE.Color('#3a0c08') })), M(blob(-0.16, 1.62, 0.25, 0.06, 0.09, 0.05, 0.04, 2, 20), organMat('#6a9a4a'))], V(-0.5, 2.0, 0.1)));
-  // stomach (J shape)
-  const sc = curveOf([V(0.22, 2.08, 0.02), V(0.34, 1.86, 0.1), V(0.42, 1.66, 0.16), V(0.3, 1.47, 0.2), V(0.08, 1.46, 0.2), V(-0.1, 1.55, 0.18), V(-0.18, 1.52, 0.12)]);
-  parent.add(addOrgan('stomach', [M(taperTube(sc, 60, 24, u => u < 0.08 ? 0.05 : lerp(0.16, 0.06, ss(0.3, 1, u)) * (1 + 0.25 * Math.sin(u * 3.2))), organMat('#eaa08e'))], V(0.45, 1.95, 0.2)));
-  // pancreas (behind the stomach)
-  parent.add(addOrgan('pancreas', [M(taperTube(curveOf([V(-0.16, 1.4, -0.06), V(0.08, 1.46, -0.1), V(0.3, 1.52, -0.12), V(0.5, 1.62, -0.14)]), 40, 16, u => lerp(0.075, 0.04, u) * (1 + 0.15 * noise(u * 12, 1, 1))), organMat('#f2c27a'))], V(0.22, 1.32, -0.1)));
-  // kidneys
-  const kd = [];
-  for (const s of [-1, 1]) { const g = blob(0.36 * s, s < 0 ? 1.3 : 1.38, -0.17, 0.1, 0.17, 0.075, 0.03, s + 11, 28); kd.push(M(g, organMat('#b4423a'))); kd.push(M(tube([V(0.3 * s, s < 0 ? 1.3 : 1.38, -0.14), V(0.25 * s, 0.9, -0.15), V(0.12 * s, 0.45, 0.05)], 0.014, 0.012, 6, 20), organMat('#f2dcb0'))); }
-  parent.add(addOrgan('kidneys', kd, V(-0.5, 1.55, -0.17)));
-  // intestines: coiled small intestine framed by the colon
-  const si = [V(-0.12, 1.32, 0.2)]; const rows = [1.18, 1.06, 0.94, 0.82, 0.7];
-  rows.forEach((y, r) => { for (let i = 0; i <= 8; i++) { const t = i / 8, x = r % 2 ? lerp(0.33, -0.3, t) : lerp(-0.3, 0.33, t); si.push(V(x, y + 0.035 * Math.sin(t * 9 + r), 0.14 + 0.08 * Math.sin(t * 7 + r * 2))); } });
-  si.push(V(-0.38, 0.66, 0.1));
-  const colon = curveOf([V(-0.42, 0.6, 0.08), V(-0.45, 0.95, 0.06), V(-0.44, 1.28, 0.1), V(-0.2, 1.3, 0.27), V(0.2, 1.28, 0.28), V(0.45, 1.33, 0.1), V(0.48, 0.95, 0.03), V(0.44, 0.62, 0.05), V(0.2, 0.5, 0.15), V(0.0, 0.45, -0.05), V(0, 0.3, -0.12)]);
-  const im = organMat('#eba48e', { roughness: 0.45 });
-  parent.add(addOrgan('intestines', [M(taperTube(curveOf(si), 400, 12, () => 0.05), im), M(taperTube(colon, 220, 18, u => 0.085 * (1 + 0.14 * Math.pow(Math.abs(Math.sin(u * 60)), 0.6))), organMat('#dc9a86', { roughness: 0.5 }))], V(-0.25, 0.62, 0.2)));
-}
-
-/* ================= renderer & scene ================= */
-const $ = id => document.getElementById(id);
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+/* ================= THE LIBRARY: two books adrift in space ================= */
+const LOWEND = (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+const renderer = new THREE.WebGLRenderer({ antialias: !LOWEND, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOWEND ? 1 : 1.5)); renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 document.body.prepend(renderer.domElement);
-const scene = new THREE.Scene();
-{
-  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
-  const gr = g.createRadialGradient(256, 230, 10, 256, 256, 420); gr.addColorStop(0, '#14202e'); gr.addColorStop(.55, '#080c13'); gr.addColorStop(1, '#030407');
-  g.fillStyle = gr; g.fillRect(0, 0, 512, 512); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
-}
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
-const HOME_T = V(0, 0.3, 0), HOME_D = () => innerWidth / innerHeight < 0.75 ? 22 : 15.5;
-const sph = (t, r, th, ph) => V(t.x + r * Math.sin(ph) * Math.sin(th), t.y + r * Math.cos(ph), t.z + r * Math.sin(ph) * Math.cos(th));
-camera.position.copy(sph(HOME_T, HOME_D(), 0.35, 1.5));
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.copy(HOME_T); controls.enableDamping = true; controls.dampingFactor = 0.07; controls.enablePan = false;
-controls.minDistance = 3.2; controls.maxDistance = 24; controls.autoRotate = true; controls.autoRotateSpeed = 0.6;
-controls.zoomToCursor = true; controls.zoomSpeed = 0.6; controls.rotateSpeed = 0.75;
-controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.72;   // never under the floor or straight overhead
-scene.add(new THREE.HemisphereLight(0xdfefff, 0x0a0e14, 0.7));
-const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(4, 8, 8); scene.add(key);
-const rim = new THREE.DirectionalLight(0x7ab8ff, 1.4); rim.position.set(-6, 3, -7); scene.add(rim);
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.45, 0.86); composer.addPass(bloom);
-composer.addPass(new OutputPass());
-const root = new THREE.Group(); scene.add(root);
+ENV = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const scene = new THREE.Scene(); scene.background = spaceTex(['#4a5cff', '#ff5a9a']); scene.environment = ENV; scene.environmentIntensity = 0.6;
+scene.backgroundRotation = new THREE.Euler(0, 0, 0);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 200); camera.position.set(0, 0.15, 7.2);
+scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x0a0a14, 0.45));
+const sun = new THREE.DirectionalLight(0xfff0dc, 2.4); sun.position.set(4, 3, 6); scene.add(sun);
+const rimL = new THREE.DirectionalLight(0x8aa0ff, 1.4); rimL.position.set(-5, 2, -4); scene.add(rimL);
+// a distant planet with an atmosphere glow, for depth
+const planet = new THREE.Mesh(new THREE.SphereGeometry(5, 64, 48), new THREE.MeshStandardMaterial({ map: canvasTex(1024, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1b2a52'); gr.addColorStop(0.5, '#3a4f86'); gr.addColorStop(1, '#141c38'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(${150 + rand() * 80 | 0},${170 + rand() * 60 | 0},255,${0.04 + rand() * 0.08})`; g.fillRect(0, rand() * h, w, 2 + rand() * 14); } }), roughness: 0.9 }));
+planet.position.set(-9, -6.5, -16); scene.add(planet);
+const atmo = new THREE.Mesh(new THREE.SphereGeometry(5.35, 64, 48), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
+  vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }',
+  fragmentShader: 'varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(vec3(0.35,0.55,1.0)*f*1.6, f); }' }));
+atmo.position.copy(planet.position); scene.add(atmo);
+// near star dust that drifts slowly (parallax)
+const dust = new Dots(LOWEND ? 160 : 320, 0.05); scene.add(dust.points);
+for (let i = 0; i < dust.n; i++) dust.add({ x: (rand() - 0.5) * 22, y: (rand() - 0.5) * 12, z: -2 - rand() * 14, s: rand() * 6, r: 0.8, g: 0.86, b: 1, a: 0.5 });
 
-/* ================= platform ================= */
-function buildPlatform() {
-  const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: SKIN.time },
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-    fragmentShader: `uniform float uTime; varying vec2 vUv;
-      void main(){ vec2 p = vUv*2.0-1.0; float r = length(p);
-        float ring = smoothstep(0.02,0.0,abs(r-0.92)) + 0.6*smoothstep(0.015,0.0,abs(r-0.62)) + 0.35*smoothstep(0.012,0.0,abs(r-0.35));
-        float pulse = smoothstep(0.03,0.0,abs(r - fract(uTime*0.25)));
-        float glow = (1.0 - smoothstep(0.0,1.0,r)) * 0.25;
-        float a = (ring*0.7 + pulse*0.35*(1.0-r) + glow) * smoothstep(1.0,0.9,r);
-        gl_FragColor = vec4(vec3(0.35,0.78,1.0)*(0.6+ring), a); }`,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
-  });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), mat); m.rotation.x = -Math.PI / 2; m.position.y = -3.86; scene.add(m);
+/* the two books */
+const BW = 1.5, BH = 2.1, BT = 0.26;
+function edgeTex() { return canvasTex(64, 512, (g, w, h) => { g.fillStyle = '#eee3c6'; g.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 2) { g.fillStyle = `rgba(120,100,60,${0.08 + rand() * 0.14})`; g.fillRect(x, 0, 1, h); } }); }
+function spineTex(B) { return canvasTex(160, 1434, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, B.spine); gr.addColorStop(0.5, B.cover[0]); gr.addColorStop(1, B.spine); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = B.gold; for (const y of [90, 120, h - 120, h - 90]) g.fillRect(14, y, w - 28, 4); g.save(); g.translate(w / 2, h / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.font = 'bold 64px Georgia, serif'; g.fillText(B.title, 0, 22); g.restore(); }); }
+function makeBook(B) {
+  const leather = (map, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ map, roughness: 0.5, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.45, sheen: 0.3 }, o));
+  const e = new THREE.MeshStandardMaterial({ map: edgeTex(), roughness: 0.9 }), et = new THREE.MeshStandardMaterial({ color: '#e9dfc2', roughness: 0.9 });
+  const backC = new THREE.MeshPhysicalMaterial({ color: B.edge, roughness: 0.55, clearcoat: 0.3 });
+  const g = new THREE.Group();
+  const block = new THREE.Mesh(new THREE.BoxGeometry(BW - 0.04, BH - 0.06, BT - 0.06), [e, e, et, et, e, e]); block.position.x = 0.01; g.add(block);
+  const front = new THREE.Mesh(roundedBox(BW + 0.06, BH + 0.08, 0.035, 0.012, 3), [backC]); front.position.z = BT / 2 - 0.018; g.add(front);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(BW + 0.05, BH + 0.07), leather(coverTex(B))); face.position.z = BT / 2 + 0.0005; g.add(face);
+  const back = new THREE.Mesh(front.geometry, [backC]); back.position.z = -BT / 2 + 0.018; g.add(back);
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(BT / 2 + 0.012, BT / 2 + 0.012, BH + 0.08, 24, 1, false, Math.PI, Math.PI), leather(spineTex(B))); spine.position.x = -BW / 2 - 0.0; spine.rotation.y = 0; g.add(spine);
+  g.traverse(o => { if (o.isMesh) o.userData.book = true; });
+  return g;
 }
-
-/* ================= state ================= */
-let selectedKey = null, hoveredKey = null, labelsOn = false, focusAmt = 0, peekAmt = 0, peek = false, bodyMesh, bodyBack, skel, peekTimer = null;
-/* while an organ is open, the body shrinks to a slim strip; pointing at it enlarges it again */
-function setPeek(v, delay = 90) {
-  clearTimeout(peekTimer);
-  peekTimer = setTimeout(() => { peek = v && !!selectedKey; document.body.classList.toggle('peek', peek); }, delay);
-}
-const labelsEl = $('labels'), card = $('hoverCard');
-const LAYER = { skeleton: true, nervous: false, skin: true };
-function ensureNerves() { if (OBY.nervous.group) return; const m = buildNerveLayer(root); OBY.nervous.group = m; OBY.nervous.mats = [m.material]; m.material.userData.baseEm = m.material.emissive.clone(); }
-function setLayer(k, v) {
-  LAYER[k] = v; if (k === 'nervous' && v) ensureNerves();
-  const b = $(k + 'Btn'); if (b) b.classList.toggle('on', v);
-}
-function buildDock() {
-  const d = $('organs');
-  for (const o of ORGANS) {
-    if (o.key === 'nervous') { const h = document.createElement('div'); h.className = 'dockSec'; h.textContent = 'Body systems'; d.appendChild(h); }
-    const b = document.createElement('button'); b.className = 'org'; b.innerHTML = `<i style="background:${o.color};color:${o.color}"></i>${o.name}`;
-    b.onmouseenter = () => setHover(o.key); b.onmouseleave = () => setHover(null);
-    b.onclick = () => openOrgan(o.key); o.btn = b; d.appendChild(b);
-    const l = document.createElement('div'); l.className = 'label'; l.innerHTML = `<i style="background:${o.color}"></i>${o.name}`;
-    l.onclick = () => openOrgan(o.key); l.onmouseenter = () => setHover(o.key); l.onmouseleave = () => setHover(null);
-    labelsEl.appendChild(l); o.label = l;
+const SHELF = [
+  { B: ZB, url: 'zoology.html#open', x: -1.35, card: 'c0' },
+  { B: BB, url: 'botany.html#open', x: 1.35, card: 'c1' },
+];
+for (const s of SHELF) { s.g = makeBook(s.B); s.g.position.set(s.x, 0.1, 0); scene.add(s.g); s.hot = 0; s.el = document.getElementById(s.card); s.el.onclick = () => go(s); s.el.onmouseenter = () => sel = s; s.el.onmouseleave = () => { if (sel === s) sel = null; }; s.ph = rand() * 6; }
+let sel = null, going = null, mx = 0, my = 0, moved = false;
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(-9, -9);
+addEventListener('pointermove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); moved = true; });
+renderer.domElement.addEventListener('click', () => { const s = pickBook(); if (s) go(s); });
+addEventListener('keydown', e => { if (going) return; if (e.key === 'ArrowLeft') sel = SHELF[0]; if (e.key === 'ArrowRight') sel = SHELF[1]; if ((e.key === 'Enter' || e.key === ' ') && sel) go(sel); });
+function pickBook() { ray.setFromCamera(mouse, camera); for (const s of SHELF) if (ray.intersectObject(s.g, true).length) return s; return null; }
+function go(s) { if (going) return; going = { s, t: 0 }; document.body.classList.add('going'); setTimeout(() => document.getElementById('fade').className = 'in', 650); setTimeout(() => location.href = s.url.replace('.html', '.html?theme=' + THEME.get()), 1250); }
+addEventListener('pageshow', e => { if (e.persisted) { going = null; document.body.classList.remove('going'); document.getElementById('fade').className = 'out'; } });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+function placeCards() { for (const s of SHELF) { const p = s.g.position.clone(); p.y = -1.25; p.project(camera); s.el.style.left = ((p.x + 1) / 2 * innerWidth) + 'px'; s.el.classList.toggle('hot', sel === s); } }
+let last = performance.now(), time = 0, fpsN = 0, fpsT = 0, slow = 0;
+const easeIO = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+  // tiny auto-quality: drop resolution if this laptop struggles
+  fpsN++; fpsT += dt; if (fpsT > 1) { if (fpsN / fpsT < 40 && ++slow >= 2 && renderer.getPixelRatio() > 0.75) { renderer.setPixelRatio(Math.max(0.75, renderer.getPixelRatio() - 0.25)); renderer.setSize(innerWidth, innerHeight); slow = 0; } fpsN = 0; fpsT = 0; }
+  if (!going && moved) { moved = false; const h = pickBook(); if (h) sel = h; else if (!SHELF.some(s => s.el.matches(':hover'))) sel = null; renderer.domElement.style.cursor = h ? 'pointer' : ''; }
+  for (const s of SHELF) {
+    s.hot = lerp(s.hot, sel === s ? 1 : 0, Math.min(1, dt * 6));
+    const bob = Math.sin(time * 0.9 + s.ph) * 0.08;
+    s.g.position.set(s.x * (1 - 0.06 * s.hot), 0.12 + bob + s.hot * 0.12, s.hot * 0.5);
+    s.g.rotation.set(-0.06 + Math.sin(time * 0.6 + s.ph) * 0.04 + my * 0.2, -Math.sign(s.x) * 0.32 * (1 - s.hot * 0.7) + mx * 0.3 + Math.sin(time * 0.4 + s.ph) * 0.05, Math.sign(s.x) * 0.03);
   }
-}
-function setHover(k) {
-  if (hoveredKey === k) return; hoveredKey = k;
-  for (const o of ORGANS) o.btn.classList.toggle('hot', o.key === k);
-  const o = k ? OBY[k] : null;
-  card.innerHTML = o ? `<b style="color:${o.color}">${o.name}</b>${o.desc}<div style="margin-top:4px;font-size:11px;color:var(--mut)">${o.sys} · click to open</div>` : '<b>Explore the body</b>Hover over an organ inside the body to identify it, then click to open it.';
-  $('sysTxt').textContent = o ? o.sys : '';
-  renderer.domElement.style.cursor = k ? 'pointer' : '';
-}
-
-/* ================= organ viewer (iframe module) ================= */
-const viewer = $('viewer'), frameEl = $('frame'), vload = $('vload');
-let blankTimer = null;
-function openOrgan(k) { if (location.hash !== '#' + k) location.hash = k; else route(); }
-function closeOrgan() { if (location.hash) history.pushState('', document.title, location.pathname + location.search); route(); }
-function route() {
-  const k = decodeURIComponent(location.hash.slice(1));
-  const o = OBY[k];
-  clearTimeout(blankTimer);
-  if (o) {
-    selectedKey = k;
-    const src = 'organs/' + o.file;
-    if (o.system) setLayer(k, true);
-    if (!frameEl.src.endsWith(src)) { vload.style.opacity = 1; $('vloadTxt').textContent = `Loading the 3D ${o.name.toLowerCase()}…`; frameEl.src = src; }
-    $('vTitle').innerHTML = `<i style="background:${o.color};box-shadow:0 0 10px ${o.color}"></i>${o.name}`; $('vDesc').textContent = o.desc;
-    $('fullBtn').href = src; $('crumbOrgan').textContent = o.name;
-    viewer.classList.add('open'); document.body.classList.add('focus'); setPeek(false, 0);
-    controls.autoRotate = false; $('spinBtn').classList.remove('on');
-    for (const q of ORGANS) q.btn.classList.toggle('sel', q.key === k);
-    document.title = o.name + ' — Human Anatomy Explorer';
-  } else {
-    selectedKey = null; viewer.classList.remove('open'); document.body.classList.remove('focus'); setPeek(false, 0);
-    for (const q of ORGANS) q.btn.classList.remove('sel');
-    blankTimer = setTimeout(() => { if (!selectedKey) frameEl.src = 'about:blank'; }, 900);   // stop the hidden module's animation
-    document.title = 'Human Anatomy Explorer — Interactive 3D';
+  if (going) { // 3D card zoom: the chosen book swings to face you and fills the view
+    going.t = Math.min(1, going.t + dt / 1.15); const k = easeIO(going.t), g = going.s.g;
+    g.position.lerp(V(0, 0.08, 4.6), k); g.rotation.set(lerp(g.rotation.x, 0, k), lerp(g.rotation.y, 0, k), lerp(g.rotation.z, 0, k));
+    for (const s of SHELF) if (s !== going.s) s.g.position.y -= dt * 2.5 * k;
   }
+  planet.rotation.y += dt * 0.01; scene.backgroundRotation.y = time * 0.004;
+  for (const m of dust.items) { m.s += dt * 0.4; m.x += dt * 0.04; if (m.x > 11) m.x = -11; m.a = 0.25 + 0.25 * Math.sin(m.s * 2); } dust.flush(() => true);
+  camera.position.set(mx * 0.35, 0.15 - my * 0.2, 7.2); camera.lookAt(0, 0.05, 0);
+  placeCards(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }
-frameEl.addEventListener('load', () => { if (frameEl.src !== 'about:blank') vload.style.opacity = 0; });
-addEventListener('hashchange', route); addEventListener('popstate', route);
-$('backBtn').onclick = closeOrgan; $('crumbHome').onclick = closeOrgan;
-const step = d => { const i = ORGANS.findIndex(o => o.key === selectedKey); openOrgan(ORGANS[(i + d + ORGANS.length) % ORGANS.length].key); };
-$('prevBtn').onclick = () => step(-1); $('nextBtn').onclick = () => step(1);
-addEventListener('keydown', e => { if (e.key === 'Escape' && selectedKey) closeOrgan(); if (selectedKey && e.key === 'ArrowRight' && e.altKey) step(1); if (selectedKey && e.key === 'ArrowLeft' && e.altKey) step(-1); });
-$('skeletonBtn').onclick = () => setLayer('skeleton', !LAYER.skeleton);
-$('nervousBtn').onclick = () => setLayer('nervous', !LAYER.nervous);
-$('skinBtn').onclick = () => setLayer('skin', !LAYER.skin);
-$('labelsBtn').onclick = () => { labelsOn = !labelsOn; $('labelsBtn').classList.toggle('on', labelsOn); $('labelsBtn').textContent = labelsOn ? 'Hide labels' : 'Show labels'; };
-$('spinBtn').onclick = () => { controls.autoRotate = !controls.autoRotate; $('spinBtn').classList.toggle('on', controls.autoRotate); };
-let camTween = null;
-$('resetBtn').onclick = () => { camTween = { fp: camera.position.clone(), ft: controls.target.clone(), tp: sph(HOME_T, HOME_D(), 0.35, 1.5), tt: HOME_T.clone(), t: 0 }; };
-controls.addEventListener('start', () => { camTween = null; });
+requestAnimationFrame(() => { const l = document.getElementById('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 500); document.getElementById('fade').className = 'out'; requestAnimationFrame(frame); });
 
-/* ================= picking ================= */
-const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
-let mouseIn = false, moved = false, downAt = null;
-renderer.domElement.addEventListener('pointerenter', () => setPeek(true));
-$('brand').addEventListener('pointerenter', () => setPeek(true)); $('crumb').addEventListener('pointerenter', () => setPeek(true));
-viewer.addEventListener('pointerenter', () => setPeek(false, 140));
-document.addEventListener('pointermove', e => { if (selectedKey && !peek && innerWidth >= 900 && e.clientX < viewer.getBoundingClientRect().left - 4) setPeek(true); });
-renderer.domElement.addEventListener('pointermove', e => { if (selectedKey && !peek) setPeek(true); mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); mouseIn = true; moved = true; });
-renderer.domElement.addEventListener('pointerleave', () => { mouseIn = false; moved = true; });
-renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
-renderer.domElement.addEventListener('pointerup', e => {
-  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
-  const k = pickAt(); if (k) openOrgan(k);
-});
-function pickAt() { if (!mouseIn) return null; ray.setFromCamera(mouse, camera); const h = ray.intersectObjects(organPick, false)[0]; return h ? h.object.userData.key : null; }
-
-/* ================= loop ================= */
-let last = performance.now(), time = 0;
-const tmpV = V(), tmpC = new THREE.Color(), HL = new THREE.Color(0.45, 0.85, 1.0);
-function frame(t) {
-  const dt = Math.min(0.05, (t - last) / 1000); last = t; time += dt;
-  SKIN.time.value = time; SKIN.scan.value = -4.2 + ((time * 0.9) % 9.5);
-  // focus mode: slide the body to the left third of the screen
-  const narrow = innerWidth < 900, fTarget = selectedKey && !narrow ? 1 : 0;
-  const nf = lerp(focusAmt, fTarget, Math.min(1, dt * 3.2)); if (Math.abs(nf - focusAmt) > 1e-4 || (fTarget === 0 && focusAmt !== 0 && nf < 1e-3)) { focusAmt = nf < 1e-3 && fTarget === 0 ? 0 : nf; }
-  peekAmt = lerp(peekAmt, peek && selectedKey ? 1 : 0, Math.min(1, dt * 4.5));
-  const fa = ss(0, 1, focusAmt), bw = lerp(0.24, 0.42, peekAmt), off = fa * innerWidth * (0.5 - bw / 2);
-  const zoom = lerp(1, lerp(0.8, 1.12, peekAmt), fa);
-  if (Math.abs(camera.zoom - zoom) > 1e-4) { camera.zoom = zoom; camera.updateProjectionMatrix(); }
-  if (off > 0.5) camera.setViewOffset(innerWidth, innerHeight, off, 0, innerWidth, innerHeight); else camera.clearViewOffset();
-  bodyMesh.material.uniforms.uDim.value = lerp(1, lerp(0.7, 0.95, peekAmt), focusAmt);
-  if (camTween) { camTween.t += dt / 1.2; const k = ss(0, 1, camTween.t); controls.target.lerpVectors(camTween.ft, camTween.tt, k); camera.position.lerpVectors(camTween.fp, camTween.tp, k); if (camTween.t >= 1) camTween = null; }
-  if (moved) { moved = false; const k = pickAt(); if (k !== hoveredKey && (k || !OBY[hoveredKey]?.btn.matches(':hover'))) setHover(k); }
-  bodyMesh.visible = bodyBack.visible = LAYER.skin;
-  for (const o of ORGANS) {
-    const on = o.key === hoveredKey, sel = o.key === selectedKey;
-    o.hl = lerp(o.hl || 0, on ? 1 : sel ? 0.55 + 0.25 * Math.sin(time * 3) : 0, Math.min(1, dt * 9));
-    for (const m of o.mats) { m.emissive.copy(m.userData.baseEm); if (o.hl > 0.002) m.emissive.add(tmpC.copy(HL).multiplyScalar(o.hl * 0.45)); }
-    if (o.system) {
-      if (o.key === 'nervous' && (on || sel)) ensureNerves();
-      const g = o.group; if (g) { const vis = LAYER[o.key] || o.hl > 0.03; g.visible = vis; g.material.opacity = g.userData.base * (vis ? 1 : 0) * (1 + 1.6 * o.hl) ; }
-    } else { const s = 1 + 0.06 * o.hl; o.group.scale.setScalar(s); o.group.position.copy(o.center).multiplyScalar(1 - s); }
-    const show = labelsOn || on || sel;
-    tmpV.copy(o.anchor).project(camera);
-    if (!show || tmpV.z > 1) { o.label.style.opacity = 0; o.label.style.pointerEvents = 'none'; continue; }
-    o.label.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px) translate(-50%,calc(-100% - 12px))`;
-    o.label.style.opacity = 1; o.label.style.pointerEvents = 'auto'; o.label.classList.toggle('hot', on || sel);
-  }
-  // keep the view centred on the body (zooming toward the cursor can't drift away)
-  const T = controls.target; T.x = clamp(T.x, -1.3, 1.3); T.y = clamp(T.y, -3.4, 4.2); T.z = clamp(T.z, -0.5, 0.5);
-  controls.update();
-  if (camera.position.y < -3.7) camera.position.y = -3.7;
-  composer.render();
-  requestAnimationFrame(frame);
-}
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); });
-requestAnimationFrame(() => setTimeout(() => {
-  try {
-    const g = buildBodyGeometry(0.034);
-    bodyBack = new THREE.Mesh(g, skinMaterial(THREE.BackSide, 0.35)); bodyBack.renderOrder = 8; root.add(bodyBack);
-    bodyMesh = new THREE.Mesh(g, skinMaterial(THREE.FrontSide, 1)); bodyMesh.renderOrder = 9; root.add(bodyMesh);
-    skel = buildSkeletonLayer(root); buildOrgans(root); buildPlatform();
-    OBY.skeleton.group = skel; OBY.skeleton.mats = [skel.material]; skel.material.userData.baseEm = skel.material.emissive.clone(); OBY.skeleton.anchor = V(0.42, -1.6, 0.12);
-    OBY.nervous.mats = []; OBY.nervous.anchor = V(0.06, 2.9, -0.22);
-  } catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong while building the body: ' + err.message; return; }
-  buildDock(); route();
-  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
-  last = performance.now(); requestAnimationFrame(frame);
-}, 40));
 </script>
 </body>
 </html>

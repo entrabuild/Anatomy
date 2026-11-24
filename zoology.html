@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zoology — The Human Body · Interactive 3D Book</title>
+<style>
+  :root{--glass:rgba(16,22,18,.72);--line:rgba(255,255,255,.1);--txt:#f2f4ee;--mut:#a9b5a6;--acc:#ff8a7a;--gold:#e8c36a;--ease:cubic-bezier(.22,.8,.26,1)}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#03050a;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
+  canvas{display:block;outline:none;touch-action:none}
+  .glass{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 36px rgba(0,0,0,.35)}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:14px;color:var(--mut);background:#03050a;z-index:40;transition:opacity .6s}
+  #loading .bar{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  #loading .bar::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  @keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+  #intro{position:fixed;left:50%;bottom:7vh;transform:translateX(-50%);text-align:center;transition:opacity .6s,transform .6s var(--ease);pointer-events:none}
+  #intro h1{margin:0;font:700 30px Georgia,serif;letter-spacing:.5px;color:#f4ecd2;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+  #intro p{margin:8px 0 0;font-size:14px;color:var(--mut)}
+  #intro .pill{display:inline-block;margin-top:14px;padding:8px 16px;border-radius:20px;border:1px solid rgba(232,195,106,.5);color:var(--gold);font-size:13px;font-weight:600;background:rgba(40,32,10,.4);animation:pulse 2.2s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 22px rgba(232,195,106,.35)}}
+  body.open #intro{opacity:0;transform:translate(-50%,20px)}
+  #top{position:fixed;top:12px;left:50%;transform:translate(-50%,-80px);display:flex;align-items:center;gap:6px;padding:6px;transition:transform .7s var(--ease);max-width:calc(100vw - 24px);overflow-x:auto;scrollbar-width:none}
+  body.open #top{transform:translate(-50%,0)}
+  .tab{font:inherit;font-size:12px;font-weight:600;color:var(--mut);background:transparent;border:1px solid transparent;padding:7px 11px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:all .15s}
+  .tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+  .tab.on{color:#10140f;background:var(--acc);border-color:var(--acc)}
+  .tab b{opacity:.6;margin-right:5px}
+  .btn{font:inherit;font-size:12.5px;font-weight:600;color:var(--txt);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);padding:8px 12px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
+  .btn:hover{background:rgba(255,255,255,.14)} .btn.on{background:rgba(143,224,122,.2);border-color:rgba(143,224,122,.6)}
+  #nav{position:fixed;inset:auto 12px 12px auto;display:flex;gap:6px;opacity:0;pointer-events:none;transition:opacity .5s}
+  body.open #nav{opacity:1;pointer-events:auto}
+  #lab{position:fixed;left:50%;bottom:12px;transform:translate(-50%,140%);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:min(980px,calc(100vw - 260px));transition:transform .7s var(--ease)}
+  body.open #lab{transform:translate(-50%,0)}
+  #lab .ttl{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);font-weight:700;margin-right:4px}
+  #lab .ctrl{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut)}
+  #lab input[type=range]{width:110px;accent-color:var(--acc)}
+  #lab .val{color:#fff;font-weight:600;min-width:34px;font-variant-numeric:tabular-nums}
+  #lab .chip{font-size:12px;padding:6px 10px;border-radius:9px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--mut)}
+  #lab .chip b{color:#fff;font-variant-numeric:tabular-nums}
+  #lab .sep{width:1px;height:24px;background:var(--line)}
+  #top,#lab,#nav,#hint,#intro,#libBtn{z-index:5}
+  #libBtn{position:fixed;top:12px;left:12px;text-decoration:none;transition:opacity .4s}
+  body.open #libBtn{opacity:.75}
+  .frameWrap{overflow:hidden;opacity:0;pointer-events:none;transition:opacity .5s;background:#0a0d14;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  .frameWrap.on{opacity:1;pointer-events:auto}
+  .frameWrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#0a0d14}
+  .frameLoad{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#cfd8e2;font-size:14px;background:#0a0d14;transition:opacity .5s;pointer-events:none}
+  .frameLoad .bar{width:150px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+  .frameLoad .bar::after{content:"";display:block;height:100%;width:40%;background:var(--acc);animation:ld 1.1s ease-in-out infinite}
+  #fullView{position:fixed;inset:0;z-index:25;background:#05070c;opacity:0;pointer-events:none;transition:opacity .35s}
+  #fullView.on{opacity:1;pointer-events:auto}
+  #fullView iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  #fullView .fvBar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:14px;padding:6px 6px 6px 16px;font-size:13px}
+  body.fv #themeBtn{display:none}
+  #tip{position:fixed;left:0;top:0;max-width:280px;padding:9px 12px;font-size:12.5px;line-height:1.45;color:#dfe7da;pointer-events:none;opacity:0;transition:opacity .15s;z-index:30}
+  #tip b{display:block;color:#fff;font-size:13.5px;margin-bottom:2px}
+  #hint{position:fixed;left:12px;bottom:12px;font-size:11.5px;color:var(--mut);padding:7px 11px;opacity:0;transition:opacity .5s}
+  body.open #hint{opacity:1}
+  @media (max-width:900px){#lab{max-width:calc(100vw - 24px);bottom:62px}#nav{right:50%;transform:translateX(50%)}#hint{display:none}}
+/* ================= THEMES — 10 design styles; every panel, button and chip reads these variables ================= */
+[data-theme]{--font:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--hfont:Georgia,serif;--tt:none;--fw:600;--ls:0;
+  --p-blur:blur(12px);--p-shine:none}
+[data-theme=spatial]{--p-bg:rgba(44,52,66,.42);--p-bd:1px solid rgba(255,255,255,.22);--p-rad:26px;--p-sh:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25);--p-blur:blur(30px) saturate(160%);
+  --t-txt:#fff;--t-mut:rgba(235,240,250,.72);--b-bg:rgba(255,255,255,.12);--b-bd:1px solid rgba(255,255,255,.16);--b-rad:999px;--b-sh:inset 0 1px 0 rgba(255,255,255,.18);--b-txt:#fff;
+  --on-bg:#fff;--on-txt:#14181f;--on-soft:rgba(255,255,255,.32);--chip-bg:rgba(0,0,0,.22);--chip-bd:1px solid rgba(255,255,255,.12);--acc2:#9fd0ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif;
+  --p-shine:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 40%)}
+[data-theme=bento]{--p-bg:#151515;--p-bd:1px solid #2a2a2a;--p-rad:20px;--p-sh:0 14px 40px rgba(0,0,0,.5);--p-blur:none;
+  --t-txt:#f3f3ee;--t-mut:#b9b9b0;--b-bg:#2b2b2b;--b-bd:1px solid transparent;--b-rad:14px;--b-sh:none;--b-txt:#f3f3ee;
+  --on-bg:#e9ef8a;--on-txt:#161616;--on-soft:#3f7a5a;--chip-bg:#232323;--chip-bd:1px solid #333;--acc2:#e9ef8a;--h1:#f4f4ea;--hfont:Inter,system-ui,sans-serif}
+[data-theme=liquid]{--p-bg:linear-gradient(135deg,rgba(110,90,255,.34),rgba(40,30,130,.46));--p-bd:1px solid rgba(200,190,255,.38);--p-rad:24px;--p-sh:0 16px 50px rgba(40,20,140,.45),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 30px rgba(140,120,255,.18);--p-blur:blur(26px) saturate(170%);
+  --t-txt:#fff;--t-mut:#cdc7ff;--b-bg:rgba(255,255,255,.1);--b-bd:1px solid rgba(210,200,255,.3);--b-rad:16px;--b-sh:inset 0 1px 0 rgba(255,255,255,.2);--b-txt:#fff;
+  --on-bg:linear-gradient(135deg,#9a6cff,#4f8cff);--on-txt:#fff;--on-soft:rgba(154,108,255,.45);--chip-bg:rgba(20,10,80,.35);--chip-bd:1px solid rgba(200,190,255,.22);--acc2:#c7b8ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=maximal]{--p-bg:#fffaf0;--p-bd:2px solid #ffd2a8;--p-rad:22px;--p-sh:0 10px 0 #ffb37a,0 18px 40px rgba(0,0,0,.3);--p-blur:none;
+  --t-txt:#1d1b16;--t-mut:#5d5646;--b-bg:#fff;--b-bd:2px solid #1d1b16;--b-rad:999px;--b-sh:0 3px 0 #1d1b16;--b-txt:#1d1b16;
+  --on-bg:#ff5a1f;--on-txt:#fff;--on-soft:#9be564;--chip-bg:#fff1c2;--chip-bd:2px solid #ffcf4a;--acc2:#e8460f;--h1:#fff3d6;--fw:800;--hfont:"Arial Black",Impact,sans-serif}
+[data-theme=minimal]{--p-bg:#ecebe6;--p-bd:1px solid #d3d1ca;--p-rad:4px;--p-sh:none;--p-blur:none;
+  --t-txt:#141414;--t-mut:#6b6a66;--b-bg:transparent;--b-bd:1px solid #141414;--b-rad:999px;--b-sh:none;--b-txt:#141414;
+  --on-bg:#141414;--on-txt:#fff;--on-soft:#d6d4cc;--chip-bg:transparent;--chip-bd:1px solid #d3d1ca;--acc2:#ff5a1f;--h1:#f2f1ec;--fw:500;--hfont:Inter,system-ui,sans-serif}
+[data-theme=brutal]{--p-bg:#f4f4f0;--p-bd:3px solid #000;--p-rad:0;--p-sh:6px 6px 0 #000;--p-blur:none;
+  --t-txt:#000;--t-mut:#333;--b-bg:#fff;--b-bd:2px solid #000;--b-rad:0;--b-sh:3px 3px 0 #000;--b-txt:#000;
+  --on-bg:#d4ff2a;--on-txt:#000;--on-soft:#b89bff;--chip-bg:#fff;--chip-bd:2px solid #000;--acc2:#7c4dff;--h1:#fff;--tt:uppercase;--fw:800;--ls:.4px;--font:"Arial Narrow",Arial,sans-serif;--hfont:Impact,"Arial Black",sans-serif}
+[data-theme=clay]{--p-bg:#eef0ff;--p-bd:none;--p-rad:28px;--p-sh:0 14px 30px rgba(80,70,190,.35),inset -6px -6px 14px rgba(110,100,200,.18),inset 6px 6px 14px #fff;--p-blur:none;
+  --t-txt:#3a3463;--t-mut:#6c66a0;--b-bg:#f7f8ff;--b-bd:none;--b-rad:18px;--b-sh:0 6px 12px rgba(90,80,200,.25),inset -3px -3px 6px rgba(110,100,200,.2),inset 3px 3px 6px #fff;--b-txt:#3a3463;
+  --on-bg:#8c7cf6;--on-txt:#fff;--on-soft:#8bdc8b;--chip-bg:#fff;--chip-bd:none;--acc2:#7a6af0;--h1:#fff;--fw:800;--font:Nunito,"Trebuchet MS",system-ui,sans-serif;--hfont:Nunito,"Trebuchet MS",sans-serif}
+[data-theme=glassy]{--p-bg:rgba(255,255,255,.58);--p-bd:1px solid rgba(255,255,255,.8);--p-rad:22px;--p-sh:0 12px 40px rgba(0,0,0,.25);--p-blur:blur(20px) saturate(140%);
+  --t-txt:#1d2433;--t-mut:#5a6275;--b-bg:rgba(255,255,255,.65);--b-bd:1px solid rgba(255,255,255,.9);--b-rad:14px;--b-sh:0 2px 8px rgba(0,0,0,.08);--b-txt:#1d2433;
+  --on-bg:#ff7a1a;--on-txt:#fff;--on-soft:#ffd2ad;--chip-bg:rgba(255,255,255,.55);--chip-bd:1px solid rgba(255,255,255,.8);--acc2:#ff7a1a;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=neumo]{--p-bg:#e6e9ef;--p-bd:none;--p-rad:20px;--p-sh:8px 8px 18px rgba(0,0,0,.35),-4px -4px 12px rgba(255,255,255,.08);--p-blur:none;
+  --t-txt:#39415a;--t-mut:#7a8199;--b-bg:#e6e9ef;--b-bd:none;--b-rad:12px;--b-sh:4px 4px 9px #c3c8d2,-4px -4px 9px #fff;--b-txt:#39415a;
+  --on-bg:#e6e9ef;--on-txt:#3a6df0;--on-soft:#e6e9ef;--chip-bg:#e6e9ef;--chip-bd:none;--acc2:#3a6df0;--h1:#eef1f7;--hfont:Inter,system-ui,sans-serif}
+[data-theme=skeuo]{--p-bg:linear-gradient(180deg,#fafafa,#dcdcdc);--p-bd:1px solid #b9b9b9;--p-rad:16px;--p-sh:0 1px 0 #fff inset,0 14px 34px rgba(0,0,0,.45);--p-blur:none;
+  --t-txt:#2e2e2e;--t-mut:#6a6a6a;--b-bg:linear-gradient(180deg,#ffffff,#d9d9d9);--b-bd:1px solid #a9a9a9;--b-rad:10px;--b-sh:0 2px 0 #9a9a9a,0 3px 6px rgba(0,0,0,.25),inset 0 1px 0 #fff;--b-txt:#2e2e2e;
+  --on-bg:linear-gradient(180deg,#d0d0d0,#ececec);--on-txt:#111;--on-soft:linear-gradient(180deg,#d0d0d0,#ececec);--chip-bg:#1d2a22;--chip-bd:1px solid #555;--acc2:#a0581a;--h1:#f2f2f2;--fw:700}
+
+/* components wired to the variables */
+html[data-theme],html[data-theme] body{font-family:var(--font)}
+[data-theme] .glass{background:var(--p-shine),var(--p-bg);border:var(--p-bd);border-radius:var(--p-rad);box-shadow:var(--p-sh);backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);color:var(--t-txt)}
+[data-theme] .btn{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);letter-spacing:var(--ls);color:var(--b-txt);background:var(--b-bg);border:var(--b-bd);border-radius:var(--b-rad);box-shadow:var(--b-sh);transition:transform .12s,box-shadow .12s,background .15s,filter .15s}
+[data-theme] .btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+[data-theme] .btn:active{transform:translateY(1px)}
+[data-theme] .btn.on{background:var(--on-soft);color:var(--b-txt)}
+[data-theme] .tab{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);letter-spacing:var(--ls);color:var(--t-mut);border-radius:var(--b-rad)}
+[data-theme] .tab:hover{color:var(--t-txt);background:var(--b-bg)}
+[data-theme] .tab.on{background:var(--on-bg);color:var(--on-txt);border-color:transparent;box-shadow:var(--b-sh)}
+[data-theme] #lab .chip{background:var(--chip-bg);border:var(--chip-bd);color:var(--t-mut);border-radius:calc(var(--b-rad) * .7)}
+[data-theme] #lab .chip b,[data-theme] #lab .val{color:var(--t-txt)}
+[data-theme] #lab .ttl{color:var(--acc2)} [data-theme] #lab .ctrl{color:var(--t-mut)}
+[data-theme] #lab input[type=range]{accent-color:var(--acc2)}
+[data-theme] #tip{color:var(--t-mut)} [data-theme] #tip b{color:var(--t-txt)} [data-theme] #hint{color:var(--t-mut)}
+[data-theme] #intro h1,[data-theme] #head h1{font-family:var(--hfont);color:var(--h1);text-transform:var(--tt)}
+/* style-specific touches */
+[data-theme=bento] #lab .btn:nth-child(4n+1){background:#c9c3f5;color:#161616} [data-theme=bento] #lab .btn:nth-child(4n+2){background:#3d7a5a}
+[data-theme=bento] #lab .btn:nth-child(4n+3){background:#f3c6e3;color:#161616} [data-theme=bento] #lab .btn:nth-child(4n){background:#e9ef8a;color:#161616}
+[data-theme=bento] #lab .btn.on{outline:3px solid #fff;outline-offset:-3px}
+[data-theme=maximal] #lab .btn:nth-child(4n+1){background:#ffd84a} [data-theme=maximal] #lab .btn:nth-child(4n+2){background:#9be564}
+[data-theme=maximal] #lab .btn:nth-child(4n+3){background:#ffb3d9} [data-theme=maximal] #lab .btn:nth-child(4n){background:#a8c8ff}
+[data-theme=maximal] #lab .btn.on{background:#ff5a1f;color:#fff}
+[data-theme=neumo] .btn.on,[data-theme=neumo] .tab.on{box-shadow:inset 4px 4px 9px #c3c8d2,inset -4px -4px 9px #fff;color:#3a6df0}
+[data-theme=skeuo] .btn.on,[data-theme=skeuo] .tab.on{box-shadow:inset 0 2px 5px rgba(0,0,0,.35),0 1px 0 #fff}
+[data-theme=skeuo] .btn.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#3cff5a;box-shadow:0 0 6px #3cff5a;vertical-align:1px}
+[data-theme=skeuo] #lab .chip{font-family:"Courier New",monospace;color:#7dffa0} [data-theme=skeuo] #lab .chip b{color:#c8ffd6}
+[data-theme=brutal] .glass{backdrop-filter:none}
+[data-theme=liquid] .tab.on,[data-theme=liquid] .btn.on{box-shadow:0 0 18px rgba(140,110,255,.6)}
+
+/* the style switcher */
+#themeBtn{position:fixed;top:12px;right:12px;z-index:20}
+#themePop{position:fixed;top:58px;right:12px;z-index:21;width:min(520px,calc(100vw - 24px));padding:14px;display:none}
+#themePop.show{display:block}
+#themePop h4{margin:0 0 10px;font:700 13px var(--font);color:var(--t-txt);text-transform:var(--tt)}
+#themePop .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{cursor:pointer;border-radius:14px;padding:3px;border:2px solid transparent;background:none;font:inherit;text-align:left}
+.sw.cur{border-color:var(--acc2)}
+.sw .prev{height:78px;display:flex;flex-direction:column;justify-content:space-between;padding:9px;overflow:hidden;font-family:var(--font)}
+.sw .prev .row{display:flex;gap:5px}
+.sw .prev .btn{font-size:10px;padding:4px 8px}
+.sw .prev .tab{font-size:10px;padding:4px 8px;border:0;cursor:pointer}
+.sw .nm{display:block;margin:6px 4px 2px;font:600 12px Inter,system-ui,sans-serif;color:var(--t-txt)}
+.sw[data-theme=spatial] .prev{background-image:linear-gradient(135deg,#2a3550,#5b6d8a)}
+</style>
+</head>
+<body>
+<div id="loading"><div>Opening Zoology…</div><div class="bar"></div></div>
+<a id="libBtn" class="btn glass" href="index.html">⌂ Library</a>
+<div id="intro"><h1>Zoology · The Human Body</h1><p>An interactive 3D book — read on the left, explore a live model on the right.</p><div class="pill">Click the book to open it</div></div>
+<div id="top" class="glass"></div>
+<div id="lab" class="glass"></div>
+<div id="nav"><button class="btn" id="prev">← Prev</button><button class="btn" id="next">Next →</button><button class="btn" id="close">Close book</button></div>
+<div id="hint" class="glass">Drag the experiment to turn it · Scroll to zoom · ← → turn pages</div>
+<div id="tip" class="glass"></div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+/* Spatial UI everywhere */
+document.documentElement.dataset.theme = 'spatial';
+const THEME = { get: () => 'spatial', set() { } };
+
+
+/* ================= helpers ================= */
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const lerp = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x)), clamp01 = x => clamp(x, 0, 1);
+const ss = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const rand = Math.random;
+let ENV = null;
+const std = (hex, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.55 }, o));
+const phys = (hex, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.5, clearcoat: 0.12, clearcoatRoughness: 0.5, sheen: 0.35, sheenRoughness: 0.6 }, o));
+const glassMat = (o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: '#dff4ff', roughness: 0.05, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.5 }, o));
+function tag(mesh, name, desc, list) { mesh.userData.info = { name, desc }; if (list) list.push(mesh); return mesh; }
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+function latheGeo(prof, seg = 48) { return new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), seg); }
+function tubeGeo(pts, r, radial = 8, seg) { const c = new THREE.CatmullRomCurve3(pts); return new THREE.TubeGeometry(c, seg || Math.max(8, pts.length * 6), r, radial, false); }
+function roundedBox(w, h, d, r, seg = 10) {
+  const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg), p = g.attributes.position, v = V(), inner = V();
+  const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r;
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); inner.set(clamp(v.x, -hx, hx), clamp(v.y, -hy, hy), clamp(v.z, -hz, hz)); v.sub(inner); if (v.lengthSq() > 0) v.normalize().multiplyScalar(r); v.add(inner); p.setXYZ(i, v.x, v.y, v.z); }
+  g.computeVertexNormals(); return g;
+}
+/* leaf / petal: a curved blade along +y */
+const LEAF_TEX = (() => { let t; return () => t || (t = canvasTex(512, 1024, (g, w, h) => {
+  const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, '#2b5a22'); gr.addColorStop(0.6, '#3f7a2e'); gr.addColorStop(1, '#4f8a36'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(${rand() < 0.5 ? '20,50,15' : '120,160,70'},${rand() * 0.06})`; g.beginPath(); g.arc(rand() * w, rand() * h, 3 + rand() * 18, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(200,230,150,.35)'; g.lineWidth = 1; for (let i = 0; i < 900; i++) { const x = rand() * w, y = rand() * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rand() - 0.5) * 22, y + (rand() - 0.5) * 22); g.stroke(); }
+  g.strokeStyle = 'rgba(214,236,170,.75)'; g.lineWidth = 7; g.beginPath(); g.moveTo(w / 2, h); g.lineTo(w / 2, 0); g.stroke();
+  g.lineWidth = 2.6; g.strokeStyle = 'rgba(205,232,160,.55)'; for (let i = 1; i < 12; i++) { const y = h - i * h / 12; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(w / 2, y); g.quadraticCurveTo(w / 2 + s * w * 0.22, y - 40, w / 2 + s * w * 0.47, y - 110); g.stroke(); } }
+})); })();
+function bladeGeo(len, wid, curl = 0.15, shape = 'leaf', segU = 14, segV = 6) {
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= segU; i++) {
+    const u = i / segU, w = shape === 'petal' ? wid * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.85 + 0.08)), 0.7) * (0.55 + 0.45 * u) : wid * Math.pow(Math.sin(Math.PI * u), 0.8) * (1 - 0.25 * u);
+    for (let j = 0; j <= segV; j++) {
+      const v = j / segV * 2 - 1, x = v * w, y = u * len, z = -curl * len * u * u + 0.08 * w * (1 - v * v);
+      pos.push(x, y, z); uv.push((v + 1) / 2, u);
+    }
+  }
+  for (let i = 0; i < segU; i++) for (let j = 0; j < segV; j++) { const a = i * (segV + 1) + j, b = a + segV + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+const leafMat = (o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: '#ffffff', map: LEAF_TEX(), side: THREE.DoubleSide, roughness: 0.55, sheen: 0.5, sheenRoughness: 0.4, sheenColor: new THREE.Color('#c8f0a0'), clearcoat: 0.25, clearcoatRoughness: 0.4 }, o));
+/* glowing dots for gases, water, pollen … */
+class Dots {
+  constructor(n, size, additive = true) {
+    this.n = n; const g = new THREE.BufferGeometry();
+    this.pos = new Float32Array(n * 3); this.col = new Float32Array(n * 3); this.al = new Float32Array(n);
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(this.col, 3)); g.setAttribute('alpha', new THREE.BufferAttribute(this.al, 1));
+    this.mat = new THREE.ShaderMaterial({ uniforms: { uSize: { value: size } }, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      vertexShader: 'attribute vec3 color; attribute float alpha; varying vec3 vC; varying float vA; uniform float uSize; void main(){ vC = color; vA = alpha; vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = uSize * 300.0 / -mv.z; gl_Position = projectionMatrix*mv; }',
+      fragmentShader: 'varying vec3 vC; varying float vA; void main(){ float d = length(gl_PointCoord-0.5); if (d > 0.5) discard; float a = smoothstep(0.5, 0.15, d) * vA; gl_FragColor = vec4(vC, a); }' });
+    this.points = new THREE.Points(g, this.mat); this.points.frustumCulled = false; this.items = [];
+  }
+  add(o) { if (this.items.length >= this.n) return null; this.items.push(o); return o; }
+  flush(fn) { // fn(item) returns false to remove; item has x,y,z,r,g,b,a
+    let k = 0;
+    for (let i = 0; i < this.items.length; i++) { const it = this.items[i]; if (fn(it) === false) continue; this.items[k++] = it; }
+    this.items.length = k;
+    for (let i = 0; i < this.n; i++) { const it = this.items[i]; if (!it) { this.al[i] = 0; continue; } this.pos[i * 3] = it.x; this.pos[i * 3 + 1] = it.y; this.pos[i * 3 + 2] = it.z; this.col[i * 3] = it.r; this.col[i * 3 + 1] = it.g; this.col[i * 3 + 2] = it.b; this.al[i] = it.a; }
+    const a = this.points.geometry.attributes; a.position.needsUpdate = a.color.needsUpdate = a.alpha.needsUpdate = true;
+  }
+}
+const RGB = hex => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
+function baseScene(bg = ['#24382c', '#0d1712']) {
+  // a calm, dark lab backdrop (vignette) with studio lighting — realistic rather than cartoon-bright
+  const s = new THREE.Scene(), c0 = new THREE.Color(bg[0]).lerp(new THREE.Color('#0c0f12'), 0.45), c1 = new THREE.Color(bg[1]).lerp(new THREE.Color('#020304'), 0.5);
+  s.background = canvasTex(256, 320, (g, w, h) => { const gr = g.createRadialGradient(w * 0.5, h * 0.42, 8, w * 0.5, h * 0.5, w * 0.85); gr.addColorStop(0, '#' + c0.getHexString()); gr.addColorStop(1, '#' + c1.getHexString()); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  s.environment = ENV;
+  s.add(new THREE.HemisphereLight(0xe8f0ff, 0x101410, 0.55));
+  const d = new THREE.DirectionalLight(0xfff4e6, 2.0); d.position.set(3, 5, 4); s.add(d);
+  const f = new THREE.DirectionalLight(0x9fb8ff, 0.5); f.position.set(-4, 1, 2); s.add(f);
+  const r = new THREE.DirectionalLight(0xffffff, 0.9); r.position.set(-1, 3, -5); s.add(r);
+  return s;
+}
+/* deep-space backdrop: stars, dust lanes and a soft nebula (one texture, no per-frame cost) */
+function spaceTex(neb = ['#3a5cff', '#ff5ab4']) {
+  const t = canvasTex(2048, 1024, (g, w, h) => {
+    g.fillStyle = '#02030a'; g.fillRect(0, 0, w, h);
+    const band = g.createLinearGradient(0, h * 0.25, 0, h * 0.75); band.addColorStop(0, 'rgba(0,0,0,0)'); band.addColorStop(0.5, 'rgba(40,50,90,.28)'); band.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = band; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'lighter';
+    const blob = (x, y, r, col, a) => { const c = new THREE.Color(col), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
+    for (let i = 0; i < 70; i++) { const k = i / 70, x = w * (0.3 + 0.45 * k) + (rand() - 0.5) * 260, y = h * (0.45 + 0.12 * Math.sin(k * 6)) + (rand() - 0.5) * 160; blob(x, y, 60 + rand() * 190, neb[i % 2], 0.05 + rand() * 0.06); }
+    for (let i = 0; i < 18; i++) blob(rand() * w, h * (0.2 + rand() * 0.6), 80 + rand() * 200, neb[i % 2], 0.03);
+    for (let i = 0; i < 5200; i++) { const y = h * (0.5 + (rand() - 0.5) * (rand() < 0.6 ? 0.5 : 1)), x = rand() * w, r = rand() < 0.97 ? 0.5 + rand() * 0.9 : 1.4 + rand() * 1.4, a = 0.35 + rand() * 0.65, tint = rand(); g.fillStyle = tint < 0.15 ? `rgba(255,214,170,${a})` : tint < 0.3 ? `rgba(170,200,255,${a})` : `rgba(255,255,255,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); if (r > 1.8) blob(x, y, r * 7, '#9fc0ff', 0.18); }
+    g.globalCompositeOperation = 'source-over';
+  });
+  t.mapping = THREE.EquirectangularReflectionMapping; return t;
+}
+/* organic, softly translucent surface: wrap lighting + rim glow, like tissue under a microscope */
+function tissue(hex, o = {}) {
+  const { rim, rimK: _rk, ...props } = o;
+  const m = new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: 0.55, metalness: 0, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), 0.5), clearcoat: 0.15, clearcoatRoughness: 0.6 }, props));
+  const rimCol = new THREE.Color(o.rim || hex).lerp(new THREE.Color('#ffffff'), 0.35), rimK = o.rimK ?? 0.55;
+  m.onBeforeCompile = sh => { sh.uniforms.uRim = { value: rimCol }; sh.uniforms.uRimK = { value: rimK };
+    sh.fragmentShader = 'uniform vec3 uRim; uniform float uRimK;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', 'float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.5); outgoingLight += uRim * fr * uRimK;\n#include <opaque_fragment>'); };
+  m.customProgramCacheKey = () => 'tissue' + rimK; return m;
+}
+/* fine grain noise for bump / roughness maps */
+const NOISE = (() => { let t; return () => t || (t = (() => { const x = canvasTex(256, 256, (g, w, h) => { const d = g.createImageData(w, h); for (let i = 0; i < d.data.length; i += 4) { const v = 110 + rand() * 120; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); g.filter = 'blur(1.2px)'; g.drawImage(g.canvas, 0, 0); }); x.colorSpace = THREE.NoColorSpace; x.wrapS = x.wrapT = THREE.RepeatWrapping; return x; })()); })();
+/* the leather cover with gilt title and emblem */
+function coverTex(BOOK) { return canvasTex(1024, 1434, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, BOOK.cover[0]); gr.addColorStop(1, BOOK.cover[1]); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.strokeStyle = BOOK.gold; g.lineWidth = 6; g.strokeRect(50, 50, w - 100, h - 100); g.lineWidth = 2; g.strokeRect(70, 70, w - 140, h - 140);
+  g.fillStyle = BOOK.gold; g.textAlign = 'center'; g.font = 'bold 120px Georgia, serif'; g.fillText(BOOK.title, w / 2, 330);
+  g.font = 'italic 46px Georgia, serif'; g.fillText(BOOK.sub, w / 2, 410);
+  g.save(); g.translate(w / 2, 820); g.strokeStyle = BOOK.gold; g.fillStyle = BOOK.gold; BOOK.emblem(g); g.restore(); g.fillStyle = BOOK.gold; g.textAlign = 'center';
+  g.font = '38px Georgia, serif'; g.fillText('An interactive 3D book', w / 2, 1210); g.font = 'bold 30px Inter, sans-serif'; g.fillText(BOOK.vol, w / 2, 1270);
+}); }
+
+/* ================= BOOK: ZOOLOGY ================= */
+const BOOK = {
+  title: 'ZOOLOGY', sub: 'The Human Body', vol: 'VOLUME I  ·  12 LIVE 3D MODELS', footer: 'Zoology · The Human Body', lab0: 'LIVE MODEL',
+  cover: ['#5a2a26', '#2a100f'], edge: '#3a1614', spine: '#331311', gold: '#e2bf68', ink: '#4a1a16', rim: 0xffb0a0, screen: '#0a0d14', nebula: ['#ff5a7a', '#5a6cff'],
+  emblem(g) { // a stylised skull-and-spine mark
+    g.lineWidth = 7; g.beginPath(); g.ellipse(0, -160, 120, 135, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.ellipse(-45, -165, 30, 34, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.ellipse(45, -165, 30, 34, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(0, -125); g.lineTo(-14, -95); g.lineTo(14, -95); g.closePath(); g.stroke();
+    for (let i = 0; i < 7; i++) { const y = -10 + i * 42, w = 38 - i * 2; g.beginPath(); g.roundRect ? g.roundRect(-w, y, w * 2, 26, 10) : g.rect(-w, y, w * 2, 26); g.stroke(); }
+    g.lineWidth = 5; for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(s * 40, 10 + i * 42); g.quadraticCurveTo(s * 170, -10 + i * 46, s * 150, 70 + i * 40); g.stroke(); }
+  },
+};
+const CHAPTERS = [
+  { short: 'Skeleton', key: 'skeleton', frame: 'organs/skeleton.html', sys: 'Skeletal system', title: 'The Skeletal System',
+    intro: 'The adult skeleton has 206 bones joined at about 360 joints. It supports the body, protects the brain, heart and lungs, anchors muscles for movement, stores calcium and phosphate, and its red marrow makes blood cells. Bone is living tissue: osteoblasts build it and osteoclasts remodel it throughout life.',
+    contents: true },
+  { short: 'Nerves', key: 'nervous', frame: 'organs/nervous.html', sys: 'Nervous system', title: 'The Nervous System',
+    intro: 'The central nervous system (brain and spinal cord) integrates information; the peripheral nervous system — 31 pairs of spinal nerves and 12 pairs of cranial nerves — carries it. Neurons signal with action potentials, electrical impulses that travel at up to 120 m/s along myelinated axons and pass to the next cell across synapses.',
+    words: [['Neuron', 'nerve cell: dendrites, cell body, axon'], ['Myelin', 'fatty sheath that speeds conduction'], ['Synapse', 'junction where neurotransmitters cross'], ['Reflex arc', 'receptor → spinal cord → effector']],
+    tryit: ['Press “Knee reflex” and follow the impulse through the spinal cord and back.', 'Try “Fight or flight” versus “Rest & digest” to compare the two halves of the autonomic system.', 'Open “Neuron view” to see a single nerve cell and its myelin sheath.'],
+    know: 'Laid end to end, the nerves of one adult would stretch for about 72 km.' },
+  { short: 'Brain', key: 'brain', frame: 'organs/brain.html', sys: 'Central nervous system', title: 'The Brain',
+    intro: 'The brain holds about 86 billion neurons. The cerebrum, divided into frontal, parietal, temporal and occipital lobes, handles thought, sensation, language and voluntary movement. The cerebellum coordinates balance and fine movement, and the brainstem controls breathing, heart rate and other vital reflexes.',
+    words: [['Cerebrum', 'largest part; conscious functions'], ['Cerebellum', 'balance and coordination'], ['Medulla oblongata', 'breathing and heart rate'], ['Hypothalamus', 'temperature, hunger, hormones']],
+    tryit: ['Switch on “Color lobes” to see the four lobes of the cerebrum.', 'Use “Cutaway” to look at the deep structures.', 'Turn on “Signals” and hover regions for their functions.'],
+    know: 'The brain is about 2 % of body mass but uses roughly 20 % of the body’s energy at rest.' },
+  { short: 'Eye', key: 'eyes', frame: 'organs/eye.html', sys: 'Sensory organ', title: 'The Eye',
+    intro: 'Light is refracted by the cornea and focused by the lens onto the retina. Ciliary muscles change the lens shape to focus near or far (accommodation), and the iris adjusts the pupil to control the light entering. About 120 million rods detect dim light; 6 million cones, packed in the fovea, detect colour and detail.',
+    words: [['Cornea', 'clear front; most of the refraction'], ['Lens', 'fine focusing by accommodation'], ['Retina', 'rods and cones convert light to impulses'], ['Optic nerve', 'carries signals to the brain']],
+    tryit: ['Choose “Far object” then “Near object” — watch the lens change shape (accommodation).', 'Try “Short-sight” and “Long-sight”, then correct them with “Glasses”.', 'Use “Dim light” to see the pupil widen; open “Retina view” for rods and cones.'],
+    know: 'The image on the retina is upside down — the brain turns it the right way up.' },
+  { short: 'Heart', key: 'heart', frame: 'organs/heart.html', sys: 'Circulatory system', title: 'The Heart',
+    intro: 'The heart is a four-chambered muscular pump. The right side sends deoxygenated blood to the lungs (pulmonary circulation); the left side pumps oxygenated blood to the body (systemic circulation). Each beat starts at the sinoatrial node, the natural pacemaker, and valves keep blood flowing one way.',
+    words: [['Atria', 'upper receiving chambers'], ['Ventricles', 'lower pumping chambers'], ['SA node', 'pacemaker that starts each beat'], ['Valves', 'prevent backflow of blood']],
+    tryit: ['Compare “Rest” and “Exercise” — watch heart rate and the ECG change.', 'Pick “Valves” or “Electrical” to study one part of each beat.', 'Use “Cutaway” to see the four chambers and blood flow.'],
+    know: 'The heart beats about 100,000 times a day and pumps around 7,500 litres of blood.' },
+  { short: 'Lungs', key: 'lungs', frame: 'organs/lungs.html', sys: 'Respiratory system', title: 'The Lungs',
+    intro: 'Air passes through the trachea, bronchi and bronchioles to about 480 million alveoli. Their thin walls and dense capillary network give a gas-exchange surface of around 70 m², where oxygen diffuses into the blood and carbon dioxide out. Breathing is driven by the diaphragm and intercostal muscles.',
+    words: [['Alveoli', 'air sacs where gases are exchanged'], ['Bronchi', 'airways branching from the trachea'], ['Diaphragm', 'main muscle of breathing'], ['Diffusion', 'gas moves down its concentration gradient']],
+    tryit: ['Turn on “Gas flow” to watch O₂ enter and CO₂ leave.', 'Use “Inside view” to follow the airways inside the lung.', 'Use “Explode” to separate the lobes and airways.'],
+    know: 'Spread out flat, the alveoli would cover roughly half a tennis court.' },
+  { short: 'Stomach', key: 'stomach', frame: 'organs/stomach.html', sys: 'Digestive system', title: 'The Stomach',
+    intro: 'The stomach stores food and churns it with gastric juice: hydrochloric acid (pH about 1.5–2) kills microbes and activates pepsin, which begins protein digestion. Peristaltic waves mix the contents into chyme, released gradually through the pyloric sphincter into the duodenum. A mucus layer protects the lining from self-digestion.',
+    words: [['Gastric juice', 'HCl, pepsin and mucus'], ['Pepsin', 'enzyme that digests protein'], ['Chyme', 'semi-liquid mix of food and juice'], ['Pyloric sphincter', 'valve into the small intestine']],
+    tryit: ['Press “Eat a meal” and watch peristalsis churn it into chyme.', 'Use “Wall view” to see the layers of the stomach wall.', 'Use “Cutaway” to look inside the stomach.'],
+    know: 'The stomach lining replaces itself every few days to resist its own acid.' },
+  { short: 'Liver', key: 'liver', frame: 'organs/liver.html', sys: 'Digestive system', title: 'The Liver',
+    intro: 'The liver is the largest internal organ and the body’s chemical factory. It receives nutrient-rich blood from the gut through the hepatic portal vein, stores glucose as glycogen, makes plasma proteins, breaks down toxins and old red cells, converts ammonia to urea, and produces bile, which emulsifies fats.',
+    words: [['Hepatocytes', 'liver cells doing most of the work'], ['Hepatic portal vein', 'carries blood from the gut'], ['Bile', 'emulsifies fats; stored in the gall bladder'], ['Glycogen', 'stored form of glucose']],
+    tryit: ['Give a “Fatty meal” and watch bile flow.', 'Give a “Toxin dose” and see the liver detoxify it.', 'Open “Lobule view” to see blood filtering past the hepatocytes.'],
+    know: 'The liver can regrow to full size even after up to 70 % of it is removed.' },
+  { short: 'Pancreas', key: 'pancreas', frame: 'organs/pancreas.html', sys: 'Digestive & endocrine', title: 'The Pancreas',
+    intro: 'The pancreas has two roles. As an exocrine gland it releases pancreatic juice — amylase, lipase and trypsin with bicarbonate — into the duodenum. As an endocrine gland its islets of Langerhans secrete insulin (beta cells) to lower blood glucose and glucagon (alpha cells) to raise it.',
+    words: [['Islets of Langerhans', 'hormone-producing cell clusters'], ['Insulin', 'lowers blood glucose'], ['Glucagon', 'raises blood glucose'], ['Pancreatic juice', 'enzymes and bicarbonate']],
+    tryit: ['Press “Eat a meal” — blood sugar rises and insulin is released.', 'Press “Exercise” — glucagon raises blood sugar again.', 'Open “Lobule view” to see the islets of Langerhans.'],
+    know: 'The pancreas makes about 1.5 litres of digestive juice every day.' },
+  { short: 'Intestines', key: 'intestines', frame: 'organs/intestines.html', sys: 'Digestive system', title: 'The Intestines',
+    intro: 'The small intestine (duodenum, jejunum, ileum) completes digestion and absorbs nutrients through millions of villi and microvilli, which give a surface of about 30 m². The large intestine (colon) absorbs water and salts, and its trillions of bacteria ferment fibre and make vitamin K.',
+    words: [['Villi', 'finger-like folds that absorb nutrients'], ['Peristalsis', 'muscular waves moving food'], ['Ileum', 'main site of absorption'], ['Colon', 'absorbs water; forms faeces']],
+    tryit: ['Press “Eat a meal” and follow the food along the gut.', 'Use “Wall view” to zoom in on the villi.', 'Press “Drink water” and watch the colon absorb it.'],
+    know: 'The gut holds around 38 trillion bacteria — about as many as the body’s own cells.' },
+  { short: 'Kidneys', key: 'kidneys', frame: 'organs/kidneys.html', sys: 'Urinary system', title: 'The Kidneys',
+    intro: 'Each kidney contains about a million nephrons. Blood is filtered under pressure in the glomerulus (ultrafiltration); the tubule then reabsorbs glucose, salts and most of the water and secretes waste, leaving urine. The kidneys also balance blood pH, salt and water, guided by antidiuretic hormone (ADH).',
+    words: [['Nephron', 'functional filtering unit'], ['Glomerulus', 'capillary knot where filtration occurs'], ['Reabsorption', 'useful substances returned to blood'], ['ADH', 'hormone that conserves water']],
+    tryit: ['Open “Nephron view” to follow filtration and reabsorption.', 'Use “Cutaway” to see the cortex, medulla and renal pelvis.', 'Hover structures to read what each one does.'],
+    know: 'The kidneys filter about 180 litres of plasma a day but make only 1–2 litres of urine.' },
+  { short: 'Whole body', key: 'body', frame: 'explorer.html', sys: 'All systems', title: 'The Whole Body',
+    intro: 'Organs work together as organ systems — skeletal, muscular, nervous, circulatory, respiratory, digestive, urinary, endocrine and others — keeping the internal environment stable (homeostasis). This transparent body shows where every organ in this book sits. Click an organ to turn straight to its chapter.',
+    words: [['Organ system', 'organs working together'], ['Homeostasis', 'keeping internal conditions stable'], ['Tissue', 'group of similar cells'], ['Organ', 'tissues with a shared job']],
+    tryit: ['Hover the body to identify organs.', 'Click an organ — the book turns to its chapter.', 'Show the skeleton or nerves as layers.'],
+    know: 'An adult body is built from about 37 trillion cells of over 200 types.' },
+];
+const EXPS = [];
+
+
+
+/* ================= RENDERER (light enough for 3–4 GB laptops) ================= */
+const LOWEND = (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+const renderer = new THREE.WebGLRenderer({ antialias: !LOWEND, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOWEND ? 1 : 1.25));
+renderer.setSize(innerWidth, innerHeight);
+renderer.localClippingEnabled = true;
+document.body.prepend(renderer.domElement);
+ENV = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const scene = new THREE.Scene();
+scene.background = spaceTex(BOOK.nebula);
+scene.environment = ENV;
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 100);
+scene.add(new THREE.HemisphereLight(0xfff6e0, 0x18221a, 0.9));
+const key = new THREE.DirectionalLight(0xfff2dc, 1.6); key.position.set(-3, 4, 6); scene.add(key);
+const rim = new THREE.DirectionalLight(BOOK.rim, 0.9); rim.position.set(4, 2, -4); scene.add(rim);
+const motes = new Dots(120, 0.035); scene.add(motes.points);
+for (let i = 0; i < 120; i++) motes.add({ x: (rand() - .5) * 12, y: (rand() - .5) * 8, z: -2 - rand() * 4, s: rand() * 6, r: 0.8, g: 0.88, b: 1.0, a: 0.25 });
+
+/* ================= THE BOOK ================= */
+const W = 1.5, H = 2.1, CT = 0.035, TP = 0.17, T = 2 * CT + TP, N = CHAPTERS.length;
+const bookRoot = new THREE.Group(); scene.add(bookRoot);
+const rightHalf = new THREE.Group(), coverPivot = new THREE.Group(); bookRoot.add(rightHalf, coverPivot);
+const PAPER = '#f3ead2';
+const leather = coverTex(BOOK);
+const plain = (hex, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.75 }, o));
+const edgeTex = canvasTex(64, 256, (g, w, h) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 2) { g.fillStyle = `rgba(120,100,60,${0.08 + Math.random() * 0.12})`; g.fillRect(x, 0, 1, h); } });
+const leatherEdge = plain(BOOK.edge, { roughness: 0.6 }), endpaper = plain('#c9b98a', { roughness: 0.9 });
+const coverMats = [leatherEdge, leatherEdge, leatherEdge, leatherEdge, new THREE.MeshStandardMaterial({ map: leather, roughness: 0.55, metalness: 0.05 }), endpaper];
+const backMats = [leatherEdge, leatherEdge, leatherEdge, leatherEdge, endpaper, plain(BOOK.edge, { roughness: 0.6 })];
+const cover = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, H + 0.08, CT), coverMats); cover.position.set(W / 2 + 0.03, 0, T / 2 - CT / 2); coverPivot.add(cover);
+const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.06, H + 0.08, CT), backMats); back.position.set(W / 2 + 0.03, 0, -T / 2 + CT / 2); rightHalf.add(back);
+const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, H + 0.08, 1), plain(BOOK.spine, { roughness: 0.55 })); spine.position.set(-0.01, 0, 0); bookRoot.add(spine);
+const blockMat = [new THREE.MeshStandardMaterial({ map: edgeTex, roughness: 0.9 }), plain('#e9dfc2'), new THREE.MeshStandardMaterial({ map: edgeTex, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: edgeTex, roughness: 0.9 }), plain(PAPER, { roughness: 0.95 }), plain(PAPER, { roughness: 0.95 })];
+const rBlock = new THREE.Mesh(new THREE.BoxGeometry(W, H, 1), blockMat); rightHalf.add(rBlock);
+const lBlock = new THREE.Mesh(new THREE.BoxGeometry(W, H, 1), blockMat); coverPivot.add(lBlock);
+const rightPage = new THREE.Mesh(new THREE.PlaneGeometry(W, H), null); rightHalf.add(rightPage);
+const leftPage = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateY(Math.PI), null); coverPivot.add(leftPage);
+let tl = 0, tr = 0;
+function setBlocks(prog) {
+  tl = 0.012 + (TP - 0.024) * prog; tr = 0.012 + (TP - 0.024) * (1 - prog);
+  rBlock.scale.z = tr; rBlock.position.set(W / 2, 0, -T / 2 + CT + tr / 2); rightPage.position.set(W / 2, 0, -T / 2 + CT + tr + 0.0015);
+  lBlock.scale.z = tl; lBlock.position.set(W / 2, 0, T / 2 - CT - tl / 2); leftPage.position.set(W / 2, 0, T / 2 - CT - tl - 0.0015);
+}
+/* the turning leaf */
+function leafGeo(back) { const g = new THREE.PlaneGeometry(W, H, 28, 1); if (back) g.rotateY(Math.PI); g.translate(W / 2, 0, 0); g.userData.base = g.attributes.position.array.slice(); return g; }   // the back face is mirrored so it reads correctly once turned
+const faceA = new THREE.Mesh(leafGeo(false), null), faceB = new THREE.Mesh(leafGeo(true), null);
+faceA.visible = faceB.visible = false; bookRoot.add(faceA, faceB);
+function bendLeaf(theta, z0) {
+  for (const m of [faceA, faceB]) {
+    const p = m.geometry.attributes.position, b = m.geometry.userData.base;
+    for (let i = 0; i < p.count; i++) { const r = b[i * 3], th = theta + 0.55 * (r / W) * Math.sin(theta) * (theta < Math.PI / 2 ? -1 : 1) * 0.6; p.setXYZ(i, r * Math.cos(th), b[i * 3 + 1], z0 + r * Math.sin(th)); }
+    p.needsUpdate = true; m.geometry.computeVertexNormals();
+  }
+}
+/* ================= PAGES: text on the left, live lab on the right ================= */
+const RECT = [0.07, 0.1, 0.93, 0.86];
+function wrap(g, text, maxW) { const words = text.split(' '), lines = []; let line = ''; for (const w of words) { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); return lines; }
+function paperBG(g, w, h, gutterRight) {
+  g.fillStyle = PAPER; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 5000; i++) { g.fillStyle = `rgba(120,95,50,${Math.random() * 0.05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  const v = g.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.85); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(90,60,20,0.18)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
+  const gx = gutterRight ? w : 0, gs = g.createLinearGradient(gx, 0, gutterRight ? w - 90 : 90, 0); gs.addColorStop(0, 'rgba(60,40,10,0.32)'); gs.addColorStop(1, 'rgba(60,40,10,0)'); g.fillStyle = gs; g.fillRect(0, 0, w, h);
+}
+const TOC = [];
+function drawTextPage(i) {
+  const ch = CHAPTERS[i];
+  return canvasTex(1024, 1434, (g, w, h) => {
+    paperBG(g, w, h, true);
+    const L = 86, R = w - 96, MW = R - L; let y = 120;
+    g.fillStyle = '#9a7a2a'; g.font = 'bold 24px Inter, sans-serif'; g.fillText(i === 0 ? 'WELCOME' : 'CHAPTER ' + i, L, y);
+    y += 74; g.fillStyle = BOOK.ink; g.font = 'bold 64px Georgia, serif'; g.fillText(ch.title, L, y);
+    y += 26; g.fillStyle = '#c9a24a'; g.fillRect(L, y, 120, 5); y += 52;
+    g.fillStyle = '#2c2a22'; g.font = '30px Georgia, serif';
+    for (const ln of wrap(g, ch.intro, MW)) { g.fillText(ln, L, y); y += 44; }
+    y += 14;
+    const box = (title, color, lines, draw) => { const bh = draw ? draw.h : 60 + lines.length * 40; g.fillStyle = color; roundRect(g, L - 14, y, MW + 28, bh, 18); g.fill(); g.fillStyle = '#6a5420'; g.font = 'bold 22px Inter, sans-serif'; g.fillText(title, L + 8, y + 38); if (draw) draw.f(y); else { g.fillStyle = '#2c2a22'; g.font = '27px Georgia, serif'; lines.forEach((t, k) => g.fillText(t, L + 8, y + 80 + k * 40)); } y += bh + 22; };
+    if (ch.equation) box('THE EQUATION', 'rgba(143,200,110,.22)', [], { h: 110, f: yy => { g.fillStyle = BOOK.ink; g.font = 'bold 34px Georgia, serif'; g.fillText(ch.equation, L + 8, yy + 84); } });
+    if (ch.contents) {
+      g.fillStyle = '#6a5420'; g.font = 'bold 22px Inter, sans-serif'; g.fillText('CONTENTS', L, y + 10); y += 40; TOC.length = 0;
+      CHAPTERS.slice(1).forEach((c, k) => { g.fillStyle = BOOK.ink; g.font = '31px Georgia, serif'; g.fillText((k + 1) + '.  ' + c.title, L + 4, y + 34); g.fillStyle = '#9a7a2a'; g.font = '26px Georgia, serif'; g.textAlign = 'right'; g.fillText('p. ' + ((k + 1) * 2 + 1), R, y + 34); g.textAlign = 'left';
+        g.strokeStyle = 'rgba(150,120,60,.25)'; g.setLineDash([3, 6]); g.beginPath(); g.moveTo(L, y + 48); g.lineTo(R, y + 48); g.stroke(); g.setLineDash([]); TOC.push({ i: k + 1, y0: 1 - (y + 52) / h, y1: 1 - y / h }); y += 58; });
+      y += 18;
+    }
+    if (ch.words) { const lines = ch.words.map(([a, b]) => '• ' + a + ' — ' + b); g.font = '27px Georgia, serif'; const wl = lines.flatMap(t => wrap(g, t, MW - 20)); box('KEY WORDS', 'rgba(232,195,106,.18)', wl); }
+    if (ch.tryit) { g.font = '27px Georgia, serif'; const wl = ch.tryit.flatMap((t, k) => wrap(g, (k + 1) + '. ' + t, MW - 20)); box('TRY IT ON THE RIGHT PAGE  →', 'rgba(120,190,230,.16)', wl); }
+    if (ch.know && y < h - 260) { g.font = 'italic 27px Georgia, serif'; const wl = wrap(g, ch.know, MW - 20); g.font = '27px Georgia, serif'; box('DID YOU KNOW?', 'rgba(200,150,220,.15)', wl); }
+    g.fillStyle = '#9a8a6a'; g.font = '22px Georgia, serif'; g.fillText(BOOK.footer, L, h - 60); g.textAlign = 'right'; g.fillText(String(i * 2 + 1 - 1 || ''), R, h - 60); g.textAlign = 'left';
+  });
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function drawLabPaper(i) {
+  const ch = CHAPTERS[i];
+  return canvasTex(1024, 1434, (g, w, h) => {
+    paperBG(g, w, h, false);
+    g.fillStyle = '#9a7a2a'; g.font = 'bold 24px Inter, sans-serif'; g.fillText(ch.label || (i === 0 ? BOOK.lab0 : (ch.frame ? 'LIVE MODEL ' : 'EXPERIMENT ') + i), 72, 100);
+    g.fillStyle = BOOK.ink; g.font = 'bold 40px Georgia, serif'; g.fillText(ch.exp || ch.title, 72, 150);
+    g.fillStyle = '#8a7a5a'; g.font = '22px Inter, sans-serif'; g.textAlign = 'right'; g.fillText('LIVE 3D LAB', w - 72, 100); g.textAlign = 'left';
+    g.fillStyle = 'rgba(70,50,20,.25)'; roundRect(g, w * RECT[0] - 6, h * (1 - RECT[3]) - 6, w * (RECT[2] - RECT[0]) + 12, h * (RECT[3] - RECT[1]) + 12, 26); g.fill();
+    if (ch.frame) { g.fillStyle = BOOK.screen; roundRect(g, w * RECT[0], h * (1 - RECT[3]), w * (RECT[2] - RECT[0]), h * (RECT[3] - RECT[1]), 22); g.fill(); g.fillStyle = 'rgba(220,230,240,.55)'; g.font = '30px Inter, sans-serif'; g.textAlign = 'center'; g.fillText('Live 3D model', w / 2, h * 0.52); g.font = 'bold 44px Georgia, serif'; g.fillStyle = 'rgba(240,244,248,.8)'; g.fillText(ch.short, w / 2, h * 0.47); g.textAlign = 'left'; }
+    g.fillStyle = '#6a5a3a'; g.font = 'italic 24px Georgia, serif'; g.fillText(ch.frame ? 'Drag the model to turn it · scroll to zoom · use its controls' : 'Drag to turn · scroll to zoom · hover a part to name it · controls below', 72, h - 80);
+    g.fillStyle = '#9a8a6a'; g.font = '22px Georgia, serif'; g.textAlign = 'right'; g.fillText(String(i * 2 + 2), w - 72, h - 40); g.textAlign = 'left';
+  });
+}
+function labMaterial(paper, rt) {
+  return new THREE.ShaderMaterial({
+    uniforms: { tPaper: { value: paper }, tScene: { value: rt.texture }, uR: { value: new THREE.Vector4(...RECT) }, uOn: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: `uniform sampler2D tPaper, tScene; uniform vec4 uR; uniform float uOn; varying vec2 vUv;
+      void main(){
+        vec4 paper = texture2D(tPaper, vUv);
+        vec2 l = (vUv - uR.xy) / (uR.zw - uR.xy);
+        vec2 q = abs(l - 0.5) * (uR.zw - uR.xy) - (0.5 * (uR.zw - uR.xy) - 0.025);
+        float d = length(max(q, 0.0)) - 0.025, m = 1.0 - smoothstep(-0.002, 0.002, d);
+        vec3 sc = texture2D(tScene, clamp(l, 0.0, 1.0)).rgb * uOn;
+        float edge = smoothstep(-0.03, 0.0, d);
+        vec3 col = mix(paper.rgb, sc * (1.0 - 0.35 * edge), m);
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }` });
+}
+const textMat = i => new THREE.MeshBasicMaterial({ map: drawTextPage(i), toneMapped: false });
+/* ================= experiments: lazy build, own camera + render target ================= */
+const RT_W = 720, RT_H = 890;
+let rtScale = LOWEND ? 0.7 : 1;
+const LAB = [];
+function lab(i) {
+  if (LAB[i]) return LAB[i];
+  if (CHAPTERS[i].frame) { LAB[i] = { exp: null, frame: CHAPTERS[i].frame, text: textMat(i), mat: new THREE.MeshBasicMaterial({ map: drawLabPaper(i), toneMapped: false }), t: 0 }; return LAB[i]; }
+  const exp = EXPS[i](), rt = new THREE.WebGLRenderTarget(Math.round(RT_W * rtScale), Math.round(RT_H * rtScale), { samples: LOWEND ? 0 : 4 });
+  const cam = new THREE.PerspectiveCamera(36, RT_W / RT_H, 0.05, 60), o = { ...exp.cam, target: exp.cam.target.clone(), d0: exp.cam.dist };
+  LAB[i] = { exp, rt, cam, o, text: null, mat: null, t: 0 }; exp._o = o;
+  LAB[i].text = textMat(i); LAB[i].mat = labMaterial(drawLabPaper(i), rt);
+  return LAB[i];
+}
+function renderLab(i, dt) {
+  const L = lab(i); L.t += dt; if (!L.exp) return;
+  if (dt > 0 && !L.broken) { try { L.exp.update.call(L.exp, dt, L.t); } catch (err) { L.broken = true; console.error('Experiment ' + i + ' stopped:', err); } }   // one faulty lab never freezes the book
+  const o = L.o; L.cam.position.set(o.target.x + o.dist * Math.sin(o.ph) * Math.sin(o.th), o.target.y + o.dist * Math.cos(o.ph), o.target.z + o.dist * Math.sin(o.ph) * Math.cos(o.th)); L.cam.lookAt(o.target);
+  renderer.setRenderTarget(L.rt); renderer.render(L.exp.scene, L.cam); renderer.setRenderTarget(null);
+}
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+let cur = 0, mode = 'card', openT = 0, flip = null, hoverBook = false;
+const tabs = $('top');
+CHAPTERS.forEach((c, i) => { const b = document.createElement('button'); b.className = 'tab'; b.innerHTML = `<b>${i || '★'}</b>${c.short}`; b.onclick = () => goTo(i); tabs.appendChild(b); c.tab = b; });
+function buildLab(i) {
+  const L = lab(i), box = $('lab'); box.innerHTML = '';
+  if (!L.exp) {
+    const ch = CHAPTERS[i];
+    box.innerHTML = `<span class="ttl">${i ? 'Model ' + i : 'Model'}</span><span class="chip">${ch.sys || 'Live 3D model'}</span>`;
+    const tb = document.createElement('button'); tb.className = 'btn'; tb.textContent = '⚙ Show controls'; tb.onclick = () => { const on = tb.classList.toggle('on'); tb.textContent = on ? '⚙ Hide controls' : '⚙ Show controls'; FR.send({ book: 'panel', on }); }; box.appendChild(tb);
+    const fb = document.createElement('button'); fb.className = 'btn'; fb.textContent = '⛶ Full screen + info'; fb.onclick = () => FULL.open(ch.frame, ch.title); box.appendChild(fb);
+    const sp = document.createElement('span'); sp.className = 'chip'; sp.innerHTML = 'Drag <b>inside the page</b> to turn · scroll to zoom'; box.appendChild(sp);
+    return;
+  }
+  const ttl = document.createElement('span'); ttl.className = 'ttl'; ttl.textContent = i ? 'Lab ' + i : 'Lab'; box.appendChild(ttl);
+  L.chips = {}; L.inputs = {};
+  for (const c of L.exp.controls) {
+    if (c.type === 'button') { const b = document.createElement('button'); b.className = 'btn'; b.textContent = c.label; b.onclick = c.act; box.appendChild(b); }
+    else if (c.type === 'toggle') { const b = document.createElement('button'); b.className = 'btn' + (c.value ? ' on' : ''); b.textContent = c.label; b.onclick = () => { c.value = !c.value; b.classList.toggle('on', c.value); c.set(c.value); }; box.appendChild(b); if (c.id) L.inputs[c.id] = { b, c }; }
+    else if (c.type === 'slider') { const d = document.createElement('label'); d.className = 'ctrl'; d.innerHTML = `${c.label} <input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}"><span class="val">${c.fmt(c.value)}</span>`; const inp = d.querySelector('input'), val = d.querySelector('.val'); inp.oninput = () => { c.value = +inp.value; val.textContent = c.fmt(c.value); c.set(c.value); }; box.appendChild(d); if (c.id) L.inputs[c.id] = { inp, val, c }; }
+    else if (c.type === 'select') { const d = document.createElement('span'); d.className = 'ctrl'; d.textContent = c.label + ' '; for (const [v, t] of c.options) { const b = document.createElement('button'); b.className = 'btn' + (v === c.value ? ' on' : ''); b.textContent = t; b.style.padding = '6px 9px'; b.onclick = () => { c.value = v; c.set(v); d.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }; d.appendChild(b); } box.appendChild(d); }
+    else if (c.type === 'chip') { const s = document.createElement('span'); s.className = 'chip'; s.innerHTML = `${c.label}: <b>–</b>`; box.appendChild(s); L.chips[c.id] = s.querySelector('b'); }
+  }
+  const rb = document.createElement('button'); rb.className = 'btn'; rb.textContent = '⟲ View'; rb.title = 'Reset the experiment view'; rb.onclick = () => { Object.assign(L.o, { ...L.exp.cam, target: L.exp.cam.target.clone() }); }; box.appendChild(rb);
+  L.exp._sync = vals => { for (const k in vals) { const x = L.inputs[k]; if (x && x.inp && document.activeElement !== x.inp) { x.inp.value = vals[k]; x.val.textContent = x.c.fmt(vals[k]); } } };
+}
+function setTabs() { CHAPTERS.forEach((c, i) => c.tab.classList.toggle('on', i === cur)); }
+function goTo(j) {
+  if (mode !== 'open' || flip || j === cur || j < 0 || j >= N) return;
+  const dir = j > cur ? 1 : -1, A = lab(cur), B = lab(j);
+  renderLab(j, 0);
+  if (dir > 0) { faceA.material = A.mat; faceB.material = B.text; rightPage.material = B.mat; }
+  else { faceA.material = B.mat; faceB.material = A.text; leftPage.material = B.text; }
+  flip = { dir, from: cur, to: j, t: 0 }; faceA.visible = faceB.visible = true; FR.set(null);
+  cur = j; setTabs(); buildLab(j);
+}
+$('prev').onclick = () => goTo(cur - 1); $('next').onclick = () => goTo(cur + 1);
+$('close').onclick = () => closeBook();
+addEventListener('keydown', e => { if (document.getElementById('fullView')?.classList.contains('on')) return; if (mode === 'open') { if (e.key === 'ArrowRight') goTo(cur + 1); if (e.key === 'ArrowLeft') goTo(cur - 1); if (e.key === 'Escape') closeBook(); } else if (mode === 'card' && (e.key === 'Enter' || e.key === ' ')) openBook(); });
+function openBook() { if (mode !== 'card') return; mode = 'opening'; document.body.classList.add('open'); leftPage.material = lab(cur).text; rightPage.material = lab(cur).mat; setTabs(); buildLab(cur); }
+function closeBook() { if (mode !== 'open' || flip) return; mode = 'closing'; document.body.classList.remove('open'); tip.style.opacity = 0; FR.set(null); }
+
+
+/* ================= live model pages (an organ module sits on the right page, in true 3D) ================= */
+const cssR = new CSS3DRenderer(); cssR.setSize(innerWidth, innerHeight);
+Object.assign(cssR.domElement.style, { position: 'fixed', left: 0, top: 0, pointerEvents: 'none', zIndex: 1 }); document.body.appendChild(cssR.domElement);
+const FR = (() => {
+  const wrap = document.createElement('div'); wrap.className = 'frameWrap';
+  const ifr = document.createElement('iframe'); ifr.allow = 'fullscreen'; ifr.title = '3D model';
+  const ld = document.createElement('div'); ld.className = 'frameLoad'; ld.innerHTML = '<div>Loading…</div><div class="bar"></div>';
+  wrap.append(ifr, ld);
+  const obj = new CSS3DObject(wrap); rightHalf.add(obj);
+  const WW = W * (RECT[2] - RECT[0]), WH = H * (RECT[3] - RECT[1]), cx = W * (RECT[0] + RECT[2]) / 2, cy = H * ((RECT[1] + RECT[3]) / 2 - 0.5);
+  let src = '', show = false, blankT = null;
+  function size() { const d = readDist(), ppu = innerHeight / (2 * d * Math.tan(THREE.MathUtils.degToRad(17.5))), pw = Math.round(clamp(WW * ppu, 360, 1500)), ph = Math.round(pw * WH / WW); wrap.style.width = pw + 'px'; wrap.style.height = ph + 'px'; wrap.style.borderRadius = Math.round(22 / 1024 * W * pw / WW) + 'px'; obj.scale.setScalar(WW / pw); }
+  setTimeout(size, 0);
+  ifr.addEventListener('load', () => { if (src) ld.style.opacity = 0; try { ifr.contentWindow.postMessage({ book: 'theme', name: THEME.get() }, '*'); } catch (e) { } });
+  return {
+    set(url, name) { clearTimeout(blankT); if ((url || '') === src) return; src = url || ''; if (url) { ld.style.opacity = 1; ld.firstChild.textContent = 'Loading the 3D ' + String(name).toLowerCase() + '…'; ifr.src = url + (url.includes('?') ? '&' : '?') + 'book=1&theme=' + THEME.get(); } else blankT = setTimeout(() => { if (!src) ifr.src = 'about:blank'; }, 700); },
+    update() { obj.position.set(cx, cy, rightPage.position.z + 0.002); const want = mode === 'open' && !flip && !!src; if (want !== show) { show = want; wrap.classList.toggle('on', show); } },
+    send(m) { try { ifr.contentWindow.postMessage(m, '*'); } catch (e) { } },
+    size, get on() { return show; },
+  };
+})();
+const FULL = (() => {
+  const box = document.createElement('div'); box.id = 'fullView';
+  box.innerHTML = '<div class="fvBar glass"><b></b><button class="btn" id="fvClose">✕ Back to the book</button></div><iframe title="Full model" allow="fullscreen"></iframe>';
+  document.body.appendChild(box);
+  const ifr = box.querySelector('iframe'), ttl = box.querySelector('b');
+  const close = () => { box.classList.remove('on'); setTimeout(() => { if (!box.classList.contains('on')) ifr.src = 'about:blank'; }, 400); FR.set(null); syncFrame(); };
+  box.querySelector('#fvClose').onclick = close;
+  addEventListener('keydown', e => { if (e.key === 'Escape' && box.classList.contains('on')) close(); });
+  return { open(url, name) { ttl.textContent = name; FR.set(null); ifr.src = url + '?theme=spatial&full=1'; box.classList.add('on'); }, get on() { return box.classList.contains('on'); } };
+})();
+function syncFrame() { if (typeof FULL !== 'undefined' && FULL.on) return; const ch = CHAPTERS[cur]; FR.set(mode === 'open' || mode === 'opening' ? ch.frame : null, ch.short); }
+addEventListener('message', e => { const m = e.data; if (!m || !m.book) return; if (m.book === 'go') { const j = CHAPTERS.findIndex(c => c.key === m.key); if (j >= 0) goTo(j); } });
+
+/* ================= pointer: book, pages and the live lab ================= */
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $('tip');
+let mx = innerWidth / 2, my = innerHeight / 2, drag = null, hovered = null;
+const canvasEl = renderer.domElement;
+function pageHit() { ray.setFromCamera(mouse, camera); const h = ray.intersectObjects([rightPage, leftPage], false)[0]; return h || null; }
+function labPoint(uv) { const u = (uv.x - RECT[0]) / (RECT[2] - RECT[0]), v = (uv.y - RECT[1]) / (RECT[3] - RECT[1]); return u >= 0 && u <= 1 && v >= 0 && v <= 1 ? new THREE.Vector2(u * 2 - 1, v * 2 - 1) : null; }
+function labHover() {
+  hovered = null; let cursor = '';
+  if (mode === 'card') { ray.setFromCamera(mouse, camera); hoverBook = ray.intersectObject(bookRoot, true).length > 0; cursor = hoverBook ? 'pointer' : ''; }
+  else if (mode === 'open' && !flip) {
+    const h = pageHit();
+    if (h && h.object === rightPage) { const p = labPoint(h.uv); if (p) { cursor = drag ? 'grabbing' : 'grab'; const L = lab(cur); if (!L.exp) { canvasEl.style.cursor = ''; } else { if (L.exp.pick.length > 150) L.exp.pick = L.exp.pick.filter(o => o.parent); ray.setFromCamera(p, L.cam); const hit = ray.intersectObjects(L.exp.pick, false).find(x => x.object.userData.info && x.object.visible && x.object.parent); if (hit) hovered = hit.object.userData.info; } } }
+    else if (h && h.object === leftPage && cur === 0) { const row = TOC.find(r => h.uv.y > r.y0 && h.uv.y < r.y1); if (row) { cursor = 'pointer'; hovered = { name: CHAPTERS[row.i].title, desc: 'Click to turn to this chapter.' }; } }
+  }
+  canvasEl.style.cursor = cursor;
+  if (hovered && hovered.desc !== '') { tip.innerHTML = `<b>${hovered.name}</b>${hovered.desc}`; tip.style.opacity = 1; const w = tip.offsetWidth, hh = tip.offsetHeight; let x = mx + 16, y = my + 16; if (x + w > innerWidth - 8) x = mx - w - 16; if (y + hh > innerHeight - 8) y = my - hh - 16; tip.style.transform = `translate(${x}px,${y}px)`; }
+  else tip.style.opacity = 0;
+}
+canvasEl.addEventListener('pointermove', e => {
+  mx = e.clientX; my = e.clientY; mouse.set(mx / innerWidth * 2 - 1, -my / innerHeight * 2 + 1);
+  if (drag) { const L = lab(cur), dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy); L.o.th -= dx * 0.008; L.o.ph = clamp(L.o.ph - dy * 0.006, 0.25, 2.6); }
+  needHover = true;
+});
+let needHover = true;
+canvasEl.addEventListener('pointerdown', e => {
+  canvasEl.setPointerCapture(e.pointerId);
+  if (mode === 'open' && !flip) { const h = pageHit(); if (h && h.object === rightPage && labPoint(h.uv) && lab(cur).exp) drag = { x: e.clientX, y: e.clientY, moved: 0 }; }
+  drag0 = { x: e.clientX, y: e.clientY };
+});
+let drag0 = null;
+canvasEl.addEventListener('pointerup', e => {
+  const clicked = drag0 && Math.hypot(e.clientX - drag0.x, e.clientY - drag0.y) < 6; drag = null; drag0 = null;
+  if (!clicked) return;
+  if (mode === 'card' && hoverBook) openBook();
+  else if (mode === 'open' && cur === 0 && !flip) { const h = pageHit(); if (h && h.object === leftPage) { const row = TOC.find(r => h.uv.y > r.y0 && h.uv.y < r.y1); if (row) goTo(row.i); } }
+});
+canvasEl.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (mode !== 'open') return;
+  const h = pageHit();
+  if (h && h.object === rightPage && labPoint(h.uv) && lab(cur).exp) { const L = lab(cur); L.o.dist = clamp(L.o.dist * (1 + Math.sign(e.deltaY) * 0.08), L.o.d0 * 0.45, L.o.d0 * 1.8); }
+  else { readZoom = clamp(readZoom * (1 + Math.sign(e.deltaY) * 0.06), 0.62, 1.25); clearTimeout(zoomT); zoomT = setTimeout(FR.size, 300); }
+}, { passive: false });
+let readZoom = 1, zoomT = null;
+
+/* ================= camera framing ================= */
+function readDist() { const vh = 2 * Math.tan(THREE.MathUtils.degToRad(17.5)), aspect = innerWidth / innerHeight; const byH = (H + 0.75) / vh, byW = (2 * W + 0.35) / (vh * aspect); return Math.max(byH, byW) * readZoom; }
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); cssR.setSize(innerWidth, innerHeight); FR.size(); });
+
+/* ================= auto quality ================= */
+const PERF = (() => {
+  const dpr = Math.min(devicePixelRatio || 1, 2), L = [{ pr: Math.min(dpr, 0.75), rt: 0.55, every: 2 }, { pr: Math.min(dpr, 1), rt: 0.75, every: 1 }, { pr: Math.min(dpr, 1.25), rt: 1, every: 1 }, { pr: Math.min(dpr, 1.5), rt: 1, every: 1 }];
+  let level = LOWEND ? 1 : 2, ceiling = 3, slow = 0, fast = 0, frames = 0, t0 = performance.now();
+  const apply = () => { renderer.setPixelRatio(L[level].pr); renderer.setSize(innerWidth, innerHeight); const s = L[level].rt; if (s !== rtScale) { rtScale = s; for (const x of LAB) if (x && x.rt) x.rt.setSize(Math.round(RT_W * s), Math.round(RT_H * s)); } };
+  apply();
+  return { tick() { frames++; const t = performance.now(); if (t - t0 >= 1000) { const fps = frames * 1000 / (t - t0); frames = 0; t0 = t; if (fps < 42) { slow++; fast = 0; } else if (fps > 57) { fast++; slow = 0; } else slow = fast = 0; if (slow >= 2 && level > 0) { ceiling = level - 1; level--; slow = 0; apply(); } else if (fast >= 5 && level < ceiling) { level++; fast = 0; apply(); } } }, get every() { return L[level].every; } };
+})();
+
+/* ================= loop ================= */
+let last = performance.now(), time = 0, frameN = 0, uiT = 0, lastSig = 0;
+const easeIO = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const CARD = { pos: V(-W / 2 - 0.03, 0.15, 0), rot: V(0.12, -0.5, 0.04) };
+setBlocks(0);
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; frameN++;
+  PERF.tick();
+  // open / close animation
+  if (mode === 'opening') { openT = Math.min(1, openT + dt / 1.7); if (openT >= 1) { mode = 'open'; syncFrame(); } }
+  else if (mode === 'closing') { openT = Math.max(0, openT - dt / 1.4); if (openT <= 0) { mode = 'card'; } }
+  const k = easeIO(openT), coverK = ss(0.22, 0.95, openT);
+  const tilt = mode === 'card' ? V((my / innerHeight - 0.5) * 0.35, (mx / innerWidth - 0.5) * 0.6, 0) : V();
+  bookRoot.position.set(lerp(CARD.pos.x, 0, k), lerp(CARD.pos.y + 0.06 * Math.sin(time * 1.2), 0.08, k), 0);
+  bookRoot.rotation.set(lerp(CARD.rot.x + tilt.x, 0, k), lerp(CARD.rot.y + tilt.y, 0, k), lerp(CARD.rot.z, 0, k));
+  const hs = 1 + (mode === 'card' && hoverBook ? 0.05 : 0); bookRoot.scale.setScalar(lerp(bookRoot.scale.x, hs, Math.min(1, dt * 8)));
+  coverPivot.rotation.y = -Math.PI * coverK;
+  spine.scale.z = lerp(T, 0.02, coverK); spine.position.z = lerp(0, -T / 2 + 0.01, coverK);
+  leatherEdge.emissive?.setRGB(0.05, 0.12, 0.04).multiplyScalar(mode === 'card' && hoverBook ? 1 + Math.sin(time * 4) * 0.5 : 0);
+  const camCard = V(0, 0.1, 6.4), camRead = V(0, 0.02, readDist());
+  camera.position.lerpVectors(camCard, camRead, k); camera.lookAt(0, lerp(0, -0.05, k), 0);
+  // page flip
+  if (flip) {
+    flip.t = Math.min(1, flip.t + dt / 0.95); const e = easeIO(flip.t);
+    const theta = flip.dir > 0 ? e * Math.PI : (1 - e) * Math.PI;
+    const zR = -T / 2 + CT + tr + 0.004, zL = -T / 2 + CT + tl + 0.004; bendLeaf(theta, lerp(zR, zL, theta / Math.PI));
+    if (flip.t >= 1) {
+      if (flip.dir > 0) leftPage.material = lab(flip.to).text; else rightPage.material = lab(flip.to).mat;
+      faceA.visible = faceB.visible = false; flip = null; setBlocks(cur / (N - 1)); syncFrame();
+    }
+  }
+  // live experiments (only what can be seen)
+  if (mode !== 'card' && openT > 0.3) {
+    const every = PERF.every;
+    if (frameN % every === 0) { renderLab(cur, dt * every); if (flip) renderLab(flip.from, 0); }
+  }
+  for (const m of motes.items) { m.s += dt * 0.3; m.y += dt * 0.05; if (m.y > 3) m.y = -3; m.x += Math.sin(m.s) * 0.002; m.a = 0.18 + 0.12 * Math.sin(m.s * 2); }
+  motes.flush(() => true);
+  if (needHover || frameN % 10 === 0) { labHover(); needHover = false; }
+  if ((uiT += dt) > 0.2 && mode === 'open') { uiT = 0; const L = lab(cur); if (L.exp && L.chips && L.exp.readout) { const r = L.exp.readout.call(L.exp); for (const kk in r) if (L.chips[kk]) L.chips[kk].textContent = r[kk]; } }
+  FR.update();
+  const sig = camera.position.x * 3 + camera.position.y * 7 + camera.position.z * 13, still = Math.abs(sig - lastSig) < 1e-6; lastSig = sig;
+  if (!(FR.on && still) || frameN % 30 === 0) renderer.render(scene, camera);   // idle book + live model → let the model have the computer
+  cssR.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(() => setTimeout(() => {
+  try { lab(0); renderLab(0, 0); leftPage.material = faceB.material = LAB[0].text; rightPage.material = faceA.material = LAB[0].mat; }
+  catch (err) { console.error(err); $('loading').firstElementChild.textContent = 'Something went wrong: ' + err.message; return; }
+  const l = $('loading'); l.style.opacity = 0; setTimeout(() => l.remove(), 650);
+  last = performance.now(); requestAnimationFrame(frame);
+  if (/open/.test(location.hash)) setTimeout(openBook, 700);
+}, 30));
+</script>
+</body>
+</html>

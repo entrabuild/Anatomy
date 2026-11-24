@@ -1,6 +1,6 @@
 {
-  "name": "anatomy-explorer",
-  "version": "1.0.0",
+  "name": "anatomy-library",
+  "version": "1.1.0",
   "private": true,
-  "description": "Interactive 3D human anatomy explorer with nine organ modules"
+  "description": "The Anatomy Library \u2014 Interactive 3D books for Botany, Zoology, and Human Anatomy with eleven organ modules"
 }

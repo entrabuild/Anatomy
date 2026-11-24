@@ -87,6 +87,64 @@
     #right{left:12px;right:12px;width:auto;max-height:45vh}
   }
 </style>
+<script>if (/[?&]book=/.test(location.search)) document.documentElement.classList.add('inbook');</script>
+<script>document.documentElement.dataset.theme = 'spatial';</script>
+<style>
+/* ================= THEMES — 10 design styles; every panel, button and chip reads these variables ================= */
+[data-theme]{--font:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--hfont:Georgia,serif;--tt:none;--fw:600;--ls:0;
+  --p-blur:blur(12px);--p-shine:none}
+[data-theme=spatial]{--p-bg:rgba(44,52,66,.42);--p-bd:1px solid rgba(255,255,255,.22);--p-rad:26px;--p-sh:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25);--p-blur:blur(30px) saturate(160%);
+  --t-txt:#fff;--t-mut:rgba(235,240,250,.72);--b-bg:rgba(255,255,255,.12);--b-bd:1px solid rgba(255,255,255,.16);--b-rad:999px;--b-sh:inset 0 1px 0 rgba(255,255,255,.18);--b-txt:#fff;
+  --on-bg:#fff;--on-txt:#14181f;--on-soft:rgba(255,255,255,.32);--chip-bg:rgba(0,0,0,.22);--chip-bd:1px solid rgba(255,255,255,.12);--acc2:#9fd0ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif;
+  --p-shine:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 40%)}
+[data-theme=bento]{--p-bg:#151515;--p-bd:1px solid #2a2a2a;--p-rad:20px;--p-sh:0 14px 40px rgba(0,0,0,.5);--p-blur:none;
+  --t-txt:#f3f3ee;--t-mut:#b9b9b0;--b-bg:#2b2b2b;--b-bd:1px solid transparent;--b-rad:14px;--b-sh:none;--b-txt:#f3f3ee;
+  --on-bg:#e9ef8a;--on-txt:#161616;--on-soft:#3f7a5a;--chip-bg:#232323;--chip-bd:1px solid #333;--acc2:#e9ef8a;--h1:#f4f4ea;--hfont:Inter,system-ui,sans-serif}
+[data-theme=liquid]{--p-bg:linear-gradient(135deg,rgba(110,90,255,.34),rgba(40,30,130,.46));--p-bd:1px solid rgba(200,190,255,.38);--p-rad:24px;--p-sh:0 16px 50px rgba(40,20,140,.45),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 30px rgba(140,120,255,.18);--p-blur:blur(26px) saturate(170%);
+  --t-txt:#fff;--t-mut:#cdc7ff;--b-bg:rgba(255,255,255,.1);--b-bd:1px solid rgba(210,200,255,.3);--b-rad:16px;--b-sh:inset 0 1px 0 rgba(255,255,255,.2);--b-txt:#fff;
+  --on-bg:linear-gradient(135deg,#9a6cff,#4f8cff);--on-txt:#fff;--on-soft:rgba(154,108,255,.45);--chip-bg:rgba(20,10,80,.35);--chip-bd:1px solid rgba(200,190,255,.22);--acc2:#c7b8ff;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=maximal]{--p-bg:#fffaf0;--p-bd:2px solid #ffd2a8;--p-rad:22px;--p-sh:0 10px 0 #ffb37a,0 18px 40px rgba(0,0,0,.3);--p-blur:none;
+  --t-txt:#1d1b16;--t-mut:#5d5646;--b-bg:#fff;--b-bd:2px solid #1d1b16;--b-rad:999px;--b-sh:0 3px 0 #1d1b16;--b-txt:#1d1b16;
+  --on-bg:#ff5a1f;--on-txt:#fff;--on-soft:#9be564;--chip-bg:#fff1c2;--chip-bd:2px solid #ffcf4a;--acc2:#e8460f;--h1:#fff3d6;--fw:800;--hfont:"Arial Black",Impact,sans-serif}
+[data-theme=minimal]{--p-bg:#ecebe6;--p-bd:1px solid #d3d1ca;--p-rad:4px;--p-sh:none;--p-blur:none;
+  --t-txt:#141414;--t-mut:#6b6a66;--b-bg:transparent;--b-bd:1px solid #141414;--b-rad:999px;--b-sh:none;--b-txt:#141414;
+  --on-bg:#141414;--on-txt:#fff;--on-soft:#d6d4cc;--chip-bg:transparent;--chip-bd:1px solid #d3d1ca;--acc2:#ff5a1f;--h1:#f2f1ec;--fw:500;--hfont:Inter,system-ui,sans-serif}
+[data-theme=brutal]{--p-bg:#f4f4f0;--p-bd:3px solid #000;--p-rad:0;--p-sh:6px 6px 0 #000;--p-blur:none;
+  --t-txt:#000;--t-mut:#333;--b-bg:#fff;--b-bd:2px solid #000;--b-rad:0;--b-sh:3px 3px 0 #000;--b-txt:#000;
+  --on-bg:#d4ff2a;--on-txt:#000;--on-soft:#b89bff;--chip-bg:#fff;--chip-bd:2px solid #000;--acc2:#7c4dff;--h1:#fff;--tt:uppercase;--fw:800;--ls:.4px;--font:"Arial Narrow",Arial,sans-serif;--hfont:Impact,"Arial Black",sans-serif}
+[data-theme=clay]{--p-bg:#eef0ff;--p-bd:none;--p-rad:28px;--p-sh:0 14px 30px rgba(80,70,190,.35),inset -6px -6px 14px rgba(110,100,200,.18),inset 6px 6px 14px #fff;--p-blur:none;
+  --t-txt:#3a3463;--t-mut:#6c66a0;--b-bg:#f7f8ff;--b-bd:none;--b-rad:18px;--b-sh:0 6px 12px rgba(90,80,200,.25),inset -3px -3px 6px rgba(110,100,200,.2),inset 3px 3px 6px #fff;--b-txt:#3a3463;
+  --on-bg:#8c7cf6;--on-txt:#fff;--on-soft:#8bdc8b;--chip-bg:#fff;--chip-bd:none;--acc2:#7a6af0;--h1:#fff;--fw:800;--font:Nunito,"Trebuchet MS",system-ui,sans-serif;--hfont:Nunito,"Trebuchet MS",sans-serif}
+[data-theme=glassy]{--p-bg:rgba(255,255,255,.58);--p-bd:1px solid rgba(255,255,255,.8);--p-rad:22px;--p-sh:0 12px 40px rgba(0,0,0,.25);--p-blur:blur(20px) saturate(140%);
+  --t-txt:#1d2433;--t-mut:#5a6275;--b-bg:rgba(255,255,255,.65);--b-bd:1px solid rgba(255,255,255,.9);--b-rad:14px;--b-sh:0 2px 8px rgba(0,0,0,.08);--b-txt:#1d2433;
+  --on-bg:#ff7a1a;--on-txt:#fff;--on-soft:#ffd2ad;--chip-bg:rgba(255,255,255,.55);--chip-bd:1px solid rgba(255,255,255,.8);--acc2:#ff7a1a;--h1:#fff;--hfont:Inter,system-ui,sans-serif}
+[data-theme=neumo]{--p-bg:#e6e9ef;--p-bd:none;--p-rad:20px;--p-sh:8px 8px 18px rgba(0,0,0,.35),-4px -4px 12px rgba(255,255,255,.08);--p-blur:none;
+  --t-txt:#39415a;--t-mut:#7a8199;--b-bg:#e6e9ef;--b-bd:none;--b-rad:12px;--b-sh:4px 4px 9px #c3c8d2,-4px -4px 9px #fff;--b-txt:#39415a;
+  --on-bg:#e6e9ef;--on-txt:#3a6df0;--on-soft:#e6e9ef;--chip-bg:#e6e9ef;--chip-bd:none;--acc2:#3a6df0;--h1:#eef1f7;--hfont:Inter,system-ui,sans-serif}
+[data-theme=skeuo]{--p-bg:linear-gradient(180deg,#fafafa,#dcdcdc);--p-bd:1px solid #b9b9b9;--p-rad:16px;--p-sh:0 1px 0 #fff inset,0 14px 34px rgba(0,0,0,.45);--p-blur:none;
+  --t-txt:#2e2e2e;--t-mut:#6a6a6a;--b-bg:linear-gradient(180deg,#ffffff,#d9d9d9);--b-bd:1px solid #a9a9a9;--b-rad:10px;--b-sh:0 2px 0 #9a9a9a,0 3px 6px rgba(0,0,0,.25),inset 0 1px 0 #fff;--b-txt:#2e2e2e;
+  --on-bg:linear-gradient(180deg,#d0d0d0,#ececec);--on-txt:#111;--on-soft:linear-gradient(180deg,#d0d0d0,#ececec);--chip-bg:#1d2a22;--chip-bd:1px solid #555;--acc2:#a0581a;--h1:#f2f2f2;--fw:700}
+
+
+[data-theme] .panel{background:var(--p-shine),var(--p-bg)!important;border:var(--p-bd)!important;border-radius:var(--p-rad)!important;box-shadow:var(--p-sh)!important;backdrop-filter:var(--p-blur)!important;-webkit-backdrop-filter:var(--p-blur)!important;--txt:var(--t-txt);--mut:var(--t-mut);color:var(--t-txt);font-family:var(--font)}
+[data-theme] .panel h1,[data-theme] .panel h2{font-family:var(--hfont);text-transform:var(--tt)}
+[data-theme] .panel button{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);letter-spacing:var(--ls);color:var(--b-txt);background:var(--b-bg);border:var(--b-bd);border-radius:var(--b-rad);box-shadow:var(--b-sh)}
+[data-theme] .panel button.on,[data-theme] .panel .sel{background:var(--on-soft);color:var(--b-txt)}
+[data-theme=neumo] .panel button.on{box-shadow:inset 4px 4px 9px #c3c8d2,inset -4px -4px 9px #fff;color:#3a6df0}
+[data-theme=skeuo] .panel button.on{box-shadow:inset 0 2px 5px rgba(0,0,0,.35)}
+[data-theme=bento] .panel button.on{background:#e9ef8a;color:#161616}
+[data-theme=maximal] .panel button.on{background:#ff5a1f;color:#fff}
+[data-theme=brutal] .panel button.on{background:#d4ff2a;color:#000}
+:is([data-theme=glassy],[data-theme=neumo],[data-theme=clay],[data-theme=skeuo],[data-theme=minimal],[data-theme=maximal],[data-theme=brutal]) .panel :is(div,p,span,b,small,label,h1,h2,h3,li,em,strong):not([style*="color"]):not(button *){color:inherit}
+:is([data-theme=glassy],[data-theme=neumo],[data-theme=clay],[data-theme=skeuo],[data-theme=minimal],[data-theme=maximal],[data-theme=brutal]) .panel :is(.sub,.sec,.t,small){opacity:.75}
+[data-theme] #listToggle,[data-theme] #homeLink{font-family:var(--font);font-weight:var(--fw);text-transform:var(--tt);color:var(--b-txt);background:var(--b-bg);border:var(--b-bd);border-radius:var(--b-rad);box-shadow:var(--b-sh)}
+:is([data-theme=spatial],[data-theme=liquid],[data-theme=glassy]) :is(#listToggle,#homeLink){backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur)}
+
+html.inbook #right,html.inbook #listToggle,html.inbook #hint,html.inbook #homeLink{display:none!important}
+html.inbook #left{transform:scale(.72);transform-origin:top left;top:10px!important;left:10px!important;max-height:calc((100vh - 20px) / .72)!important;overflow:auto!important}
+html.inbook:not(.panel) #left{display:none!important}
+html.inbook #brand,html.inbook #crumb,html.inbook #peekTip,html.inbook #viewer{display:none!important}
+</style>
 </head>
 <body>
 <div id="loading"><div>Building the eye…</div><div class="bar2"></div></div>
@@ -558,8 +616,9 @@ function spawn(pool, stages, speed, jitter = 0.03) {
 }
 
 /* ================= renderer & scene ================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const LOWEND = (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+const renderer = new THREE.WebGLRenderer({ antialias: !LOWEND, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOWEND ? 1 : 1.25));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;
@@ -594,6 +653,55 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.35, 0.95));
 composer.addPass(new OutputPass());
+/* ================= AUTO QUALITY (keeps it smooth on 3–4 GB laptops) ================= */
+const PERF = (() => {
+  const bloomPass = composer.passes.find(p => p.strength !== undefined && p.radius !== undefined && p.threshold !== undefined);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const LEVELS = [ // pixel ratio, glow, rich materials
+    { name: 'Smooth', pr: Math.min(dpr, 0.75), bloom: false, rich: false },
+    { name: 'Smooth', pr: Math.min(dpr, 1), bloom: false, rich: false },
+    { name: 'Balanced', pr: Math.min(dpr, 1.25), bloom: false, rich: true },
+    { name: 'High', pr: Math.min(dpr, 1.5), bloom: true, rich: true },
+  ];
+  let level = LOWEND ? 1 : 2, ceiling = 3, slow = 0, fast = 0, frames = 0, t0 = performance.now(), richNow = true;
+  const saved = new Map();
+  const pill = document.createElement('div');
+  pill.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:50;font:600 11px Inter,system-ui,sans-serif;color:#dfe8f2;background:rgba(10,14,20,.78);border:1px solid rgba(255,255,255,.12);padding:5px 11px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .5s';
+  document.body.appendChild(pill);
+  let pillT = null;
+  const show = txt => { pill.textContent = txt; pill.style.opacity = 1; clearTimeout(pillT); pillT = setTimeout(() => pill.style.opacity = 0, 2600); };
+  function setRich(on) { // turn the costly clear-coat / sheen layers on or off
+    if (on === richNow) return; richNow = on;
+    scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) { if (!m.isMeshPhysicalMaterial) continue;
+      if (!on) { if (!saved.has(m)) saved.set(m, [m.clearcoat, m.sheen]); m.clearcoat = 0; m.sheen = 0; } else if (saved.has(m)) { [m.clearcoat, m.sheen] = saved.get(m); }
+      m.needsUpdate = true; } });
+  }
+  function apply(announce) {
+    const L = LEVELS[level];
+    renderer.setPixelRatio(L.pr); composer.setPixelRatio(L.pr); composer.setSize(innerWidth, innerHeight);
+    if (bloomPass) bloomPass.enabled = L.bloom;
+    setRich(L.rich);
+    if (announce) show('⚡ Auto quality: ' + L.name);
+  }
+  apply(false);
+  function tick() {
+    frames++;
+    const t = performance.now();
+    if (t - t0 >= 1000) {
+      const fps = frames * 1000 / (t - t0); frames = 0; t0 = t;
+      if (!document.hidden) {
+        if (fps < 42) { slow++; fast = 0; } else if (fps > 57) { fast++; slow = 0; } else { slow = 0; fast = 0; }
+        if (slow >= 2 && level > 0) { ceiling = level - 1; level--; slow = 0; apply(true); }
+        else if (fast >= 5 && level < ceiling) { level++; fast = 0; apply(true); }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  // the build runs after the first frame; re-apply once it is done so new materials follow the setting
+  setTimeout(() => { richNow = !LEVELS[level].rich; setRich(LEVELS[level].rich); requestAnimationFrame(tick); }, 2500);
+  return { get level() { return level; } };
+})();
+
 scene.add(root); scene.add(insetRoot);
 
 function makeNormalMap(size, fine) {
@@ -951,7 +1059,8 @@ requestAnimationFrame(() => setTimeout(() => {
   last = performance.now(); requestAnimationFrame(frame);
 }, 40));
 </script>
-<a id="homeLink" href="../index.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
+<a id="homeLink" href="../explorer.html" style="position:fixed;right:16px;bottom:16px;z-index:30;display:none;font:600 12.5px Inter,system-ui,sans-serif;color:#eef3f8;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(12,16,24,.78);border:1px solid rgba(90,209,255,.45);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.4)">← Anatomy Explorer</a>
 <script>if (window.self === window.top) document.getElementById('homeLink').style.display = 'block';</script>
+<script>addEventListener('message', e => { const m = e.data; if (m && m.book === 'panel') document.documentElement.classList.toggle('panel', !!m.on); });</script>
 </body>
 </html>
